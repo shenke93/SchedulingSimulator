@@ -55,4 +55,8 @@ public class Job {
 		return requiredOperations;
 	}
 
+	@Override
+	public String toString() {
+		return "JobID: " + (id+1) + " ReleaseTime: " + releaseTime + " DueTime: " + dueTime;
+	}
 }

@@ -1,17 +1,31 @@
 package machine;
 
+import java.util.Hashtable;
+import java.util.Map;
+
+import platform.KeyJobOperation;
+
 public class Machine {
-	// Constant attributes
+	// Equipment attributes
 	private int ID; // EquipmentID
 	private String name; // Name
 	
 	// Variables
 	private State state;
-	private int speed;
+
+	// Production plan related attributes
+	private Map<KeyJobOperation, Integer> cycleProduction = new Hashtable<KeyJobOperation, Integer>();//processing time dependent on job, operation, and machine
+	private Map<KeyJobOperation, Double> powerProduction = new Hashtable<KeyJobOperation, Double>();//operation-dependent production power
+
 	
 	public Machine(int id, String name) {
 		ID = id;
 		this.name = name;
+	}
+	
+	public Machine(int id) {
+		ID = id;
+		name = "Mach" + ID;
 	}
 	
 	// Setters and Getters
@@ -27,12 +41,7 @@ public class Machine {
 			System.exit(0);
 		}
 	}
-	public int getSpeed() {
-		return speed;
-	}
-	public void setSpeed(int speed) {
-		this.speed = speed;
-	}
+	
 	public int getID() {
 		return ID;
 	}
@@ -63,7 +72,19 @@ public class Machine {
 		return state.getName();
 	}
 	
+	public void setProductionPowerProfile(int jobID, int operationID, int processingTime, double power) {
+		KeyJobOperation key = new KeyJobOperation(jobID, operationID);
+		cycleProduction.put(key, processingTime);
+		powerProduction.put(key, power);
+	}
 	
-	
+	@Override
+	public String toString() {
+		StringBuilder s = new StringBuilder();
+		for (KeyJobOperation key : cycleProduction.keySet()) {
+			s.append(key + " ProcessingTime: " + cycleProduction.get(key) + "\n");
+		}
+		return "MachineID: " + (ID+1) + " Name: " + name + "\n" + s.toString();
+	}
 	
 }

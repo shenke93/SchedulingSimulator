@@ -32,6 +32,7 @@ public class Config {
 	 * Equipment related parameters
 	 */
 	public static LinkedList<Machine> listMachines = new LinkedList<Machine>();
+	public static int numMachines;
 	
 	/**
 	 * Production planning related parameters
@@ -57,13 +58,13 @@ public class Config {
 		if (shopFloorConfiguration.equalsIgnoreCase("single machine")) {
 			getOperations();
 			getJobs();
-			// getMachines();
+			getMachines();
 		}
 	}
 	
 	/**
 	 * Create operations based on the given instance.
-	 * TODO: Not tested
+	 * 
 	 */
 	private static void getOperations() {
 		listOperations.clear();
@@ -94,7 +95,7 @@ public class Config {
 	
 	/**
 	 * Create jobs based on the given instance.
-	 * TODO: test
+	 * 
 	 * 
 	 */
 	private static void getJobs() {
@@ -107,13 +108,14 @@ public class Config {
 			int endRow = sheet.getPhysicalNumberOfRows();
 			
 			int jobID = 0;
+			@SuppressWarnings("unused")
 			int operationID = 0;
 			Config.inputJobID.add(jobID);
 			Job job = new Job(jobID);
 			job.setReleaseTime(Config.startTimeSchedule);
 			job.setDueTime(Config.dueTime);
 			Iterator<Operation> iter = listOperations.iterator();
-			System.out.println("listOperations.size = " + listOperations.size());
+			// System.out.println("listOperations.size = " + listOperations.size());
 
 			// Set job attributes
 			for (int rowIdx = startRow; rowIdx < endRow; rowIdx++) {
@@ -121,7 +123,7 @@ public class Config {
 				// System.out.println("rowIdx: "+row);
 				// New row compared to the previous row
 				if (jobID < (int) row.getCell(0).getNumericCellValue() - 1) {
-					// System.out.println("job: "+jobID);			
+					// UDUT System.out.println(job.toString());			
 					// System.out.println(Arrays.toString(job.getRequiredOperations().toArray()));
 					listJobs.add(job);
 					operationID = 0;
@@ -137,7 +139,7 @@ public class Config {
 				}
 				job.addRequiredOperation(iter.next());
 			}
-			// System.out.println("job: "+job.getId());
+			// UDUT System.out.println(job.toString());
 			// System.out.println(Arrays.toString(job.getRequiredOperations().toArray()));
 			listJobs.add(job);
 			Config.numJobs = Config.inputJobID.size();
@@ -146,6 +148,57 @@ public class Config {
 		}
 	}
 	
+	/**
+	 * Create machines based on the given instance.
+	 */
+	private static void getMachines() {
+		String xlsFile = instanceFile;
+		try {
+			HSSFWorkbook wb = Config.readFile(xlsFile);
+			HSSFSheet sheetProcessingTime = wb.getSheet(instanceName + "ProcessingTime");
+			HSSFSheet sheetProductionPower = wb.getSheet(instanceName + "ProductionPower");
+			int startRow = 1;
+			int endRow = sheetProcessingTime.getPhysicalNumberOfRows();
+			
+			// Get all machines in the instance
+			Config.numMachines = sheetProcessingTime.getRow(1).getLastCellNum() - 2;
+			for (int idx = 0; idx < Config.numMachines; ++idx) {
+				listMachines.add(new Machine(idx));
+			}
+			
+			// Set production power profile (cycle time and power) of each machine
+			int processingTime;
+			double productionPower;
+			int jobID = 0;
+			int operationID = 0;
+			int startIdxMachine = 2;
+			HSSFRow rowProcessingTime, rowProductionPower;
+			for (int rowIdx = startRow; rowIdx < endRow; rowIdx++) {
+				rowProcessingTime = sheetProcessingTime.getRow(rowIdx);
+				rowProductionPower = sheetProductionPower.getRow(rowIdx);
+				if (jobID != (int) rowProcessingTime.getCell(0).getNumericCellValue() - 1) {
+					++jobID;
+					operationID = 0;
+				}
+				
+				for (int idxMachine = startIdxMachine; idxMachine < rowProcessingTime.getLastCellNum(); ++idxMachine) {
+					processingTime = (int) rowProcessingTime.getCell(idxMachine).getNumericCellValue();
+					productionPower = (double) rowProductionPower.getCell(idxMachine).getNumericCellValue();
+					
+					if (processingTime > 0) {
+						listMachines.get(idxMachine - startIdxMachine).setProductionPowerProfile(jobID, operationID, processingTime, productionPower);
+					}
+				}
+				++operationID;
+			}
+			// UDUT System.out.print(Arrays.toString(listMachines.toArray()));
+			
+			// Set job and operation sequence-dependent setup times for each machine
+			// TODO
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 	/**
 	 * creates an {@link HSSFWorkbook} the specified OS filename.

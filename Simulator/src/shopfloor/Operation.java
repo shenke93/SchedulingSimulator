@@ -34,6 +34,6 @@ public class Operation {
 	
 	@Override
 	public String toString() {
-		return "JobID: " + jobID + " OpID: " + ID;
+		return "JobID: " + (jobID+1) + " OpID: " + (ID+1);
 	}
 }
