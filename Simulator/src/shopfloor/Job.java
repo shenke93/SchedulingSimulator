@@ -59,4 +59,23 @@ public class Job {
 	public String toString() {
 		return "JobID: " + (id+1) + " ReleaseTime: " + releaseTime + " DueTime: " + dueTime;
 	}
+	
+	/**
+	 * Get a copy of {@code Job} with {@code id, dueTime and releaseTime}.
+	 * @return
+	 */
+	public Job getInitializedCopy() {
+		Job job = new Job(this.id);
+		job.setDueTime(this.dueTime);
+		job.setReleaseTime(this.releaseTime);
+		return job;
+	}
+	
+	public int getQuantity() {
+		return quantity;
+	}
+	
+	public void setQuantity(int q) {
+		quantity = q;
+	}
 }

@@ -1,28 +1,39 @@
 package machine;
 
-import java.util.HashSet;
-import java.util.Set;
-
-public class State {
-	private String name;
-	private Set<String> successor = new HashSet<String>();
+public interface State {
+	/**
+	 * 
+	 * @return name of the state
+	 */
+	public String getName();
 	
-	public State(String name) {
-		this.name = name;
-	}
+	/**
+	 * 
+	 * @param buttonState: ON: buttonState=1; OFF: buttonState=0
+	 */
+	public void pressPowerButton(int buttonState);
 	
-	public String getName() {
-		return name;
-	}
+	/**
+	 * delay: to indicate the duration for staying at the current state
+	 * @param delay
+	 * The time will advance in this method
+	 */
+	public void doSelfTransition(long duration);	
 	
-	public void setSuccessors(String[] name) {
-		for(String s : name) {
-			successor.add(s);
-		}
-	}
-
-	public Set<String> getSuccessor() {
-		return successor;
-	}
+	/**
+	 * Make the current state transition to the next neighbouring state 
+	 * The next state is implicately indicated by the variable finalDestState in each state
+	 * The time will NOT advance in this method
+	 */
+	public void doInterStateTransition();
 	
+	/**
+	 * Set the final destination state of the current state
+	 * @param destState
+	 */
+	public void setFinalDestState(String destState);
+	
+	public String getFinalDestState();
+	
+	public void setTimeEnergyCost(long stateDuration);
 }

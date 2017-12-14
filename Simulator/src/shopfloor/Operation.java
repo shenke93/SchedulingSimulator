@@ -1,7 +1,9 @@
 package shopfloor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Operation {
@@ -13,6 +15,9 @@ public class Operation {
 	private Job job; // job j that this operation targets at
 	private int idxSequenceInAJob; // operation sequence in a job
 	private List<Integer> eligibleMachineIDs = new ArrayList<Integer>(); 
+
+	// Decision variable
+	private LinkedList<LocalDateTime> startTime = new LinkedList<LocalDateTime>();
 
 
 	public Operation(int jobID, int opID, List<Integer> machineIDs) {
@@ -32,8 +37,28 @@ public class Operation {
 		job = j;
 	}
 	
+	public Job getJob() {
+		return job;
+	}
+	
+	public int getID() {
+		return ID;
+	}
+	
 	@Override
 	public String toString() {
 		return "JobID: " + (jobID+1) + " OpID: " + (ID+1);
+	}
+	
+	/**
+	 * Get a copy of {@code Operation} with {@code jobID, ID, eligibleMachineIDs}.
+	 * @return
+	 */
+	public Operation getInitializedCopy() {
+		return new Operation(jobID, ID, eligibleMachineIDs);
+	}
+	
+	public LinkedList<LocalDateTime> getStartTime() {
+		return startTime;
 	}
 }

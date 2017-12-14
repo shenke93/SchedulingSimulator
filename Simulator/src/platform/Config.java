@@ -13,6 +13,7 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 
 import machine.Machine;
+import machine.State;
 import shopfloor.Job;
 import shopfloor.Operation;
 
@@ -22,6 +23,9 @@ public class Config {
 	/**
 	 * Time related parameters
 	 */
+	public static final int defaultStartupDuration = 1200; 		//sec
+	public static final int durationPowerOn = defaultStartupDuration;
+
 	public static boolean workOnWeekend = false;	//True: production can be scheduled at weekends. False: no production scheduled at weekends.	
 	public static final int startHourOfWeek = 6;	//start/end hour (of 24h) within a week
 	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 11, 14, startHourOfWeek, 0, 0);
@@ -33,6 +37,9 @@ public class Config {
 	 */
 	public static LinkedList<Machine> listMachines = new LinkedList<Machine>();
 	public static int numMachines;
+	
+	public static State on;
+	public static State off;
 	
 	/**
 	 * Production planning related parameters
@@ -112,6 +119,7 @@ public class Config {
 			int operationID = 0;
 			Config.inputJobID.add(jobID);
 			Job job = new Job(jobID);
+			job.setQuantity(1);
 			job.setReleaseTime(Config.startTimeSchedule);
 			job.setDueTime(Config.dueTime);
 			Iterator<Operation> iter = listOperations.iterator();
@@ -130,6 +138,7 @@ public class Config {
 					++jobID;
 					Config.inputJobID.add(jobID);
 					job = new Job(jobID);
+					job.setQuantity(1);
 					job.setReleaseTime(Config.startTimeSchedule);
 					job.setDueTime(Config.dueTime);
 				}
