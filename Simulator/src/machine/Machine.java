@@ -40,18 +40,19 @@ public class Machine {
 	
 	// Decision variables
 	private LinkedList<Operation> listOperations = new LinkedList<Operation>();	//operations assigned to this machine
-
-	
-	public Machine(int id, String name) {
-		ID = id;
-		this.name = name;
-		startTimeOfTheFirstDay = Config.startTimeSchedule; //.truncatedTo(ChronoUnit.DAYS);
-
-	}
 	
 	public Machine(int id) {
 		ID = id;
-		name = "Mach" + ID;
+		name = "Machine" + (ID+1);
+		
+		OffState = new OffState(this);
+		ProductionState = new ProductionState(this);
+		
+		listState = new LinkedList<String>();
+		state = OffState;
+		
+		timeCurrent = Config.startTimeSchedule;
+
 	}
 	
 	// Setters and Getters
@@ -109,7 +110,7 @@ public class Machine {
 	}
 	
 	public double getPowerProduction(Job job, Operation operation) {
-		return powerProduction.get(new KeyJobOperation(job.getId(), operation.getID()));
+		return powerProduction.get(new KeyJobOperation(job.getID(), operation.getID()));
 	}
 	
 	public void addStateToList(LocalDateTime currentTime, String currentState, double power) {
@@ -122,6 +123,10 @@ public class Machine {
 	 */
 	public LocalDateTime getCurrentTime() {
 		return timeCurrent;
+	}
+	
+	public void setCurrentTime(LocalDateTime time) {
+		timeCurrent = time;
 	}
 	
 	// Functional methods
@@ -175,16 +180,30 @@ public class Machine {
 	}
 	
 	/**
-	 * Keep the machine on a state for some time.
-	 * @param state current state of machine
-	 * @param duration time of this state to continue
+	 * Used for Off state
 	 */
-	public void keepState(State state, long duration) {
-		this.state = state;
-		timeCurrent.plusSeconds(duration);
-		// UDUT
-		System.out.println("Machine stays at state " + state + " for " + calculateDay(duration) + " day "
-				+ calculateHour(duration) + " hour " + calculateMin(duration) + " min " + calculateSec(duration) + " sec.");
+	public void powerOn() {
+		System.out.println("[" + getCurrentTime() + "][" + name + "] is powered on.");
+		state.pressPowerButton(1); // 1 means on
+	}
+	
+	public void powerOff() {
+		System.out.println("[" + getCurrentTime() + "][" + name + "] is powered off.");
+		state.pressPowerButton(0); // 0 means off
+	}
+	
+	/**
+	 * Used for Off state, indicating how long the machine stay at off state
+	 * @param periodOff
+	 */
+	public void stayOff(long periodOff) {
+		if (state == OffState) {
+			state.doSelfTransition(periodOff);
+		}
+		else {
+			throw new IllegalArgumentException("[" + getCurrentTime() + "][Mach] Wrong state " + 
+					state.getName() + " when performing stayOff().");
+		}
 	}
 	
 	public static long calculateDay(long second) {
@@ -212,6 +231,10 @@ public class Machine {
 	public void performAnOperation(Operation op) {
 		// TODO Consider job attributes, currentMachine, currentOperation, Duration etc
 		currentJob = op.getJob();
+		currentJob.setCurrentMachine(this);
+		currentJob.setCurrentOperation(op);
+		currentJob.setDuration();
+	
 		currentOperation = op;
 		
 		// Job processing
@@ -252,5 +275,15 @@ public class Machine {
 			throw new IllegalArgumentException("[" + getCurrentTime() + "][Machine] Error!! Can not update state duration with incorrect state name: " + state
 					+ ".");
 		}
+	}
+	
+	/**
+	 * Get the processing time for one operation.
+	 * @param jobID
+	 * @param operationID
+	 * @return
+	 */
+	public int getCycleProduction(int jobID, int operationID) {
+		return cycleProduction.get(new KeyJobOperation(jobID, operationID));
 	}
 }

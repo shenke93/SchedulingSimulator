@@ -15,7 +15,7 @@ public interface State {
 	
 	/**
 	 * delay: to indicate the duration for staying at the current state
-	 * @param delay
+	 * @param duration
 	 * The time will advance in this method
 	 */
 	public void doSelfTransition(long duration);	

@@ -9,6 +9,9 @@ public class ProductionState implements State {
 	private String name = "Production";
 	private String finalDestState;
 	
+	public ProductionState(Machine machine) {
+		this.machine = machine;
+	}
 	@Override
 	public String getName() {
 		return name;

@@ -5,12 +5,15 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import machine.Machine;
+
 public class Job {
 	public String name = "Job";
 	
 	// Job attributes
 	private int id;
 	private int quantity;
+	private int productType; // attribute not initialized
 	private LocalDateTime releaseTime;
 	private LocalDateTime dueTime;
 	private int weight;
@@ -20,6 +23,11 @@ public class Job {
 	private LinkedList<Operation> requiredOperations = new LinkedList<Operation>();
 	private Iterator<Operation> iterOperation;
 
+	// Dynamic variables during the simulation
+	private Operation currentOperation;
+	private long duration, totalDuation;
+	private Machine currentMachine;
+	
 	
 	public Job(int id) {
 		this.id = id;
@@ -46,7 +54,7 @@ public class Job {
 	}
 
 
-	public int getId() {
+	public int getID() {
 		return id;
 	}
 
@@ -57,7 +65,7 @@ public class Job {
 
 	@Override
 	public String toString() {
-		return "JobID: " + (id+1) + " ReleaseTime: " + releaseTime + " DueTime: " + dueTime;
+		return "JobID: " + (id+1) + " Quantity " + quantity + " ReleaseTime: " + releaseTime + " DueTime: " + dueTime;
 	}
 	
 	/**
@@ -68,6 +76,7 @@ public class Job {
 		Job job = new Job(this.id);
 		job.setDueTime(this.dueTime);
 		job.setReleaseTime(this.releaseTime);
+		job.setQuantity(this.quantity);
 		return job;
 	}
 	
@@ -75,7 +84,24 @@ public class Job {
 		return quantity;
 	}
 	
+	public int getProductType() {
+		return productType;
+	}
+	
 	public void setQuantity(int q) {
 		quantity = q;
+	}
+	
+	public void setCurrentMachine(Machine m) {
+		currentMachine = m;
+	}
+	
+	// For flexible-job-shop
+	public void setCurrentOperation(Operation op) {
+		currentOperation = op;
+	}
+	
+	public void setDuration() {
+		duration = quantity * currentMachine.getCycleProduction(this.id, currentOperation.getID());
 	}
 }

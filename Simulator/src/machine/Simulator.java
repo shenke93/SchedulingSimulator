@@ -1,6 +1,7 @@
 package machine;
 
 import platform.Config;
+import shopfloor.ShopFloor;
 
 public class Simulator {
 
@@ -23,7 +24,8 @@ public class Simulator {
 
 		Config.getInstance();
 		
-		
+		ShopFloor shopFloor = new ShopFloor("Soubry");
+		shopFloor.performJobs();
 	}
 
 }

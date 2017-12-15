@@ -9,6 +9,11 @@ import machine.Machine;
 import machine.State;
 import platform.Config;
 
+/**
+ * This class simulates the actual shop floor. Input data are received from the Config class. 
+ * 
+ *
+ */
 public class ShopFloor {
 	
 	private final String name = "ShopFloor";
@@ -16,6 +21,7 @@ public class ShopFloor {
 	// Input info
 	private LinkedList<Machine> listMachines = new LinkedList<Machine>();
 	private LinkedList<Operation> listOperations = new LinkedList<Operation>();
+	
 	private LinkedList<Job> listJobs = new LinkedList<Job>();
 	
 	// Variables used in production simulation
@@ -47,7 +53,10 @@ public class ShopFloor {
 		listJobs.clear();
 		for (Job job : Config.listJobs) {
 			listJobs.add(job.getInitializedCopy());
-			// TODO Conditions can be added
+			if (listJobs.getLast().getQuantity() <= 0) {
+				System.err.println("[" + name + "] Job" + listJobs.getLast().getID() + 
+						" has quantity " + listJobs.getLast().getQuantity());
+			}
 		}
 	}
 	
@@ -65,6 +74,7 @@ public class ShopFloor {
 	 * @return makespan for processing all jobs (seconds).
 	 */
 	public long getMakespan() {
+		// TODO Question: Def of makespan
 		return ChronoUnit.SECONDS.between(Config.startTimeSchedule, currentTime);
 	}
 	
@@ -89,19 +99,46 @@ public class ShopFloor {
 				if (m.getExecutedOperations().size() == 0) {
 					duration = ChronoUnit.SECONDS.between(Config.startTimeSchedule, startTime.minusSeconds(Config.durationPowerOn));
 					if (duration > 0) {
-						m.keepState(Config.off, duration);
+						m.stayOff(duration);
 					}
-					m.setState(Config.on);;
+					m.powerOn();
 				}
 				else {
 					// TODO Consider changeover
 				}
 				
 				// Perform current operation of current job
+				System.out.println(m.getCurrentTime() + "Current operation" + op.getID() + " starts...");
 				m.performAnOperation(op);
+				System.out.println(m.getCurrentTime() + "Current operation" + op.getID() + " ends...");
 			}
+			
+			// TODO: Question: why machine power off here
+			if (m.getExecutedOperations().size() > 0) {
+				m.powerOff();
+			}
+			// System.out.println(currentTime);
+			if (m.getCurrentTime().isAfter(currentTime)) {
+				currentTime = m.getCurrentTime();
+			}
+			
+			for (Job job: listJobs) {
+				listExedJobs.add(job);
+				productQuantity[job.getProductType()] = job.getQuantity();	
+			}
+			
+			aggregateInfo();
+			// TODO Consider energy
+			
 		}
 	}
 	
+	private void aggregateInfo() {
+		// Product
+		TotalProductQuantity = 0;
+		for (int type = 0; type < Config.numProdType; ++type) {
+			TotalProductQuantity += productQuantity[type];
+		}
+	}
 	
 }

@@ -32,8 +32,14 @@ public class OffState implements State {
 
 	@Override
 	public void doSelfTransition(long duration) {
-		// TODO Auto-generated method stub
-
+		if (duration < 0) {
+			System.out.println("[" + machine.getCurrentTime() + "][Off] Error in duration = " + duration + "!");
+			System.exit(-1);
+		}
+		else {
+			// TODO Consider stochastic events (machine failure)
+			setTimeEnergyCost(duration);
+		}
 	}
 
 	@Override
@@ -51,7 +57,6 @@ public class OffState implements State {
 		return finalDestState;
 	}
 
-	
 	@Override
 	public void setTimeEnergyCost(long stateDuration) {
 		machine.updateCurrentTime(stateDuration);

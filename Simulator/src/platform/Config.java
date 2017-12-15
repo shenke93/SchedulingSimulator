@@ -38,9 +38,6 @@ public class Config {
 	public static LinkedList<Machine> listMachines = new LinkedList<Machine>();
 	public static int numMachines;
 	
-	public static State on;
-	public static State off;
-	
 	/**
 	 * Production planning related parameters
 	 */
@@ -131,24 +128,27 @@ public class Config {
 				// System.out.println("rowIdx: "+row);
 				// New row compared to the previous row
 				if (jobID < (int) row.getCell(0).getNumericCellValue() - 1) {
-					// UDUT System.out.println(job.toString());			
+					// UDUT 
+					System.out.println(job.toString());			
 					// System.out.println(Arrays.toString(job.getRequiredOperations().toArray()));
 					listJobs.add(job);
 					operationID = 0;
 					++jobID;
 					Config.inputJobID.add(jobID);
 					job = new Job(jobID);
-					job.setQuantity(1);
+					job.setQuantity((int) row.getCell(2).getNumericCellValue());
 					job.setReleaseTime(Config.startTimeSchedule);
 					job.setDueTime(Config.dueTime);
 				}
 				else {
+					job.setQuantity((int) row.getCell(2).getNumericCellValue());
 					++operationID;
 					// System.out.println("Operations: "+operationID);
 				}
 				job.addRequiredOperation(iter.next());
 			}
-			// UDUT System.out.println(job.toString());
+			// UDUT 
+			System.out.println(job.toString());
 			// System.out.println(Arrays.toString(job.getRequiredOperations().toArray()));
 			listJobs.add(job);
 			Config.numJobs = Config.inputJobID.size();
@@ -200,7 +200,8 @@ public class Config {
 				}
 				++operationID;
 			}
-			// UDUT System.out.print(Arrays.toString(listMachines.toArray()));
+			// UDUT 
+			// System.out.print(Arrays.toString(listMachines.toArray()));
 			
 			// Set job and operation sequence-dependent setup times for each machine
 			// TODO
