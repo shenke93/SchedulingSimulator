@@ -21,10 +21,10 @@ public class Simulator {
 //		
 //		System.out.println("EquipmentID: " + m1.getID() + "\n" + "EquipmentName: "+m1.getName());
 //		System.out.println("MachineState: " + m1.getMachineState());;
-
-		Config.getInstance();
+		Config config = new Config("single machine");
+		config.getInstance();
 		
-		ShopFloor shopFloor = new ShopFloor("Soubry");
+		ShopFloor shopFloor = new ShopFloor("single machine");
 		shopFloor.performJobs();
 	}
 

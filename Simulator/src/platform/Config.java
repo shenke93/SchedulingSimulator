@@ -17,8 +17,15 @@ import machine.State;
 import shopfloor.Job;
 import shopfloor.Operation;
 
+/**
+ * This class is used to input data from files.
+ * 
+ *
+ */
 public class Config {
 	private static final String name = "Config";
+	public static boolean history = true;
+	
 	
 	/**
 	 * Time related parameters
@@ -28,6 +35,9 @@ public class Config {
 
 	public static boolean workOnWeekend = false;	//True: production can be scheduled at weekends. False: no production scheduled at weekends.	
 	public static final int startHourOfWeek = 6;	//start/end hour (of 24h) within a week
+//	public static final int numWeeks = 2;
+//	public static int numDays = 14;
+
 	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 11, 14, startHourOfWeek, 0, 0);
 	public static final LocalDateTime dueTime = workOnWeekend? 
 			LocalDateTime.of(2016, 11, 28, startHourOfWeek - 1, 59, 59):LocalDateTime.of(2016, 11, 26, startHourOfWeek - 1, 59, 59);
@@ -41,7 +51,7 @@ public class Config {
 	/**
 	 * Production planning related parameters
 	 */
-	private static final String shopFloorConfiguration = "single machine";
+	private static String shopFloorConfiguration;
 
 	public static List<Integer> inputJobID = new LinkedList<Integer>();
 	public static LinkedList<Job> listJobs = new LinkedList<Job>();
@@ -51,14 +61,17 @@ public class Config {
 	public static final int[] productType = new int[]{0, 1}; //{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};	//{0, 1, 2, 3}
 	public static final int numProdType = productType.length;
 
-
+	public static final String homeFolder = "C:\\Users\\admin_kshen\\Desktop\\Data";
 	public static String instanceName = "Example";
 	public static String instanceFile = "C:\\Users\\admin_kshen\\Desktop\\Data\\Instances.xls";
 	
+	public Config(String config) {
+		shopFloorConfiguration =config;
+	}
 	/**
 	 * Get experiment instances from an excel file.
 	 */
-	public static void getInstance() {
+	public void getInstance() {
 		if (shopFloorConfiguration.equalsIgnoreCase("single machine")) {
 			getOperations();
 			getJobs();
@@ -70,7 +83,7 @@ public class Config {
 	 * Create operations based on the given instance.
 	 * 
 	 */
-	private static void getOperations() {
+	private void getOperations() {
 		listOperations.clear();
 		String xlsFile = instanceFile;
 		try {
@@ -98,11 +111,11 @@ public class Config {
 	}
 	
 	/**
-	 * Create jobs based on the given instance.
+	 * Create jobs (with quantities) based on the given instance.
 	 * 
 	 * 
 	 */
-	private static void getJobs() {
+	private void getJobs() {
 		listJobs.clear();
 		String xlsFile = instanceFile;
 		try {
@@ -160,7 +173,7 @@ public class Config {
 	/**
 	 * Create machines based on the given instance.
 	 */
-	private static void getMachines() {
+	private void getMachines() {
 		String xlsFile = instanceFile;
 		try {
 			HSSFWorkbook wb = Config.readFile(xlsFile);
@@ -201,7 +214,7 @@ public class Config {
 				++operationID;
 			}
 			// UDUT 
-			// System.out.print(Arrays.toString(listMachines.toArray()));
+			 System.out.print(Arrays.toString(listMachines.toArray()));
 			
 			// Set job and operation sequence-dependent setup times for each machine
 			// TODO

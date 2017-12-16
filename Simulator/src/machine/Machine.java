@@ -8,6 +8,7 @@ import java.util.Map;
 
 import platform.Config;
 import platform.KeyJobOperation;
+import platform.Logger;
 import shopfloor.Job;
 import shopfloor.Operation;
 
@@ -18,6 +19,8 @@ public class Machine {
 	private State OffState;
 	private State ProductionState;
 	
+	private Logger logSimu;	
+
 	// Variables
 	private LocalDateTime startTimeOfTheFirstDay;
 
@@ -40,10 +43,12 @@ public class Machine {
 	
 	// Decision variables
 	private LinkedList<Operation> listOperations = new LinkedList<Operation>();	//operations assigned to this machine
-	
+
 	public Machine(int id) {
 		ID = id;
 		name = "Machine" + (ID+1);
+		
+		startTimeOfTheFirstDay = Config.startTimeSchedule;
 		
 		OffState = new OffState(this);
 		ProductionState = new ProductionState(this);
@@ -52,7 +57,16 @@ public class Machine {
 		state = OffState;
 		
 		timeCurrent = Config.startTimeSchedule;
-
+		
+		// TODO stochastic
+		// TODO subsystems
+		
+		if (Config.history) {
+			String filePath = Config.homeFolder + "\\simulationLogMachine" + (ID+1) + ".txt";
+//			System.out.println(filePath);
+			logSimu = new Logger(filePath);
+		}
+		
 	}
 	
 	// Setters and Getters
@@ -95,6 +109,11 @@ public class Machine {
 	
 	public LinkedList<Operation> getOperations() {
 		return listOperations;
+	}
+	
+	// TODO (Remove)
+	public void setListOperations(LinkedList<Operation> listOperations) {
+		this.listOperations = listOperations;
 	}
 	
 	public LinkedList<Operation> getExecutedOperations() {
@@ -238,6 +257,9 @@ public class Machine {
 		currentOperation = op;
 		
 		// Job processing
+		Logger.printSimulationInfo(this.timeCurrent, this.name, "Quantity of current workpieces: " + "Job " +
+									(currentJob.getID()+1) + " Operation " + (op.getID()+1)+ ": " + currentJob.getQuantity());
+		
 		if (currentOperation.getStartTime().size() == 1) {
 			giveProdScheduling();
 		} else {
@@ -250,7 +272,19 @@ public class Machine {
 	}
 	
 	public void giveProdScheduling() {
-		
+//		System.out.println("giveProdScheduling");
+		if (currentJob.getQuantity() > 0) {
+			if (Config.history) {
+//				System.out.println(currentJob.getQuantity());
+//				System.out.println(currentJob.getID());
+				logSimu.log("[" + timeCurrent + "][Machine] New production scheduling of " + 
+							currentJob.getQuantity() + " workpieces (job" + currentJob.getID() + ") is given externally.");
+			}
+			Logger.printSimulationInfo(timeCurrent, name, "New Production scheduling of " + 
+							currentJob.getQuantity() + " workpieces (job" + (currentJob.getID()+1) + ") is given externally.");	
+			state.setFinalDestState("Procduction");
+			state.doInterStateTransition();
+		}
 	}
 	
 	/**
@@ -285,5 +319,13 @@ public class Machine {
 	 */
 	public int getCycleProduction(int jobID, int operationID) {
 		return cycleProduction.get(new KeyJobOperation(jobID, operationID));
+	}
+	
+	public void terminateSimulation() {
+		if (Config.history) {
+			logSimu.log("[" + getCurrentTime() + "][OFF] Simulation terminates.");
+			logSimu.output();
+			// printEnergyConsumption();
+		}
 	}
 }

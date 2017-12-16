@@ -8,6 +8,7 @@ import java.util.List;
 import machine.Machine;
 import machine.State;
 import platform.Config;
+import platform.Logger;
 
 /**
  * This class simulates the actual shop floor. Input data are received from the Config class. 
@@ -20,20 +21,27 @@ public class ShopFloor {
 	
 	// Input info
 	private LinkedList<Machine> listMachines = new LinkedList<Machine>();
-	private LinkedList<Operation> listOperations = new LinkedList<Operation>();
-	
+	private LinkedList<Operation> listOperations = new LinkedList<Operation>();	
 	private LinkedList<Job> listJobs = new LinkedList<Job>();
 	
 	// Variables used in production simulation
 	private LocalDateTime currentTime = Config.startTimeSchedule;	//it keeps up with the latest time of all machines
 	private LinkedList<Job> listExedJobs = new LinkedList<Job>();	//a job is considered executed once its last operation is completed
+	
 	private int[] productQuantity = new int[Config.numProdType];	//accumulated amount of produced products (whose last operation is completed)
 	private int TotalProductQuantity; 	//the sum of all types of products
 
+	// TODO (Remove) temporary variables for simulation
+	LinkedList<LocalDateTime> timeList = new LinkedList<LocalDateTime>();
+
 	public ShopFloor(String config) {
-		createOperations();
-		createJobs();
-		createMachines();
+		if (config.equalsIgnoreCase("single machine")) {
+			createOperations();
+			createJobs();
+			createMachines();
+		} else {
+			System.err.println("ShopFloor type unrecognized!");
+		}
 	}
 	
 	/**
@@ -43,6 +51,7 @@ public class ShopFloor {
 		listOperations.clear();
 		for (Operation op : Config.listOperations) {
 			listOperations.add(op.getInitializedCopy());
+			// System.out.println("create operation");
 		}
 	}
 	
@@ -64,6 +73,7 @@ public class ShopFloor {
 	 * Initialize machines from production planning for the shopfloor.
 	 */
 	private void createMachines() {
+		// TODO Question: no initialize list?
 		listMachines.clear();
 		for (Machine m : Config.listMachines) {
 			listMachines.add(m.getInitializedCopy());
@@ -78,6 +88,12 @@ public class ShopFloor {
 		return ChronoUnit.SECONDS.between(Config.startTimeSchedule, currentTime);
 	}
 	
+	public void terminateSimulation() {
+		for (Machine m : listMachines) {
+			m.terminateSimulation();
+		}
+	}
+	
 	public LinkedList<Machine>	getMachines() {
 		return listMachines;
 	}
@@ -90,7 +106,35 @@ public class ShopFloor {
 		LocalDateTime startTime;
 		long duration;
 		for (Machine m : listMachines) {
+			
+			// TODO (Remove) Now for simulation, Machine.listOperations is the same of Config.listOperations
+			m.setListOperations(listOperations);
+			
+			if (Config.history) {
+				System.out.println();
+			}
+			String info = "The operations to be performed on " + m.getName() + ": ";
+			for (Operation operation : m.getOperations()) {
+				info += (operation.getID()+1) + ", ";
+//				System.out.println("op");
+			}
+			Logger.printSimulationInfo(m.getCurrentTime(), name, info);
+			
 			for (Operation op : m.getOperations()) {
+				
+				// TODO (Remove) Now for simulation, give values to op.startTime 
+//				System.out.println(op.toString());
+//				System.out.println(op.getJobID());
+//				System.out.println(m.getCycleProduction(op.getJobID(), op.getID()));
+				timeList.clear();
+				timeList.add(currentTime);
+				op.setStartTime(timeList);
+//				System.out.println("TimeListSize:" + timeList.size());
+				
+				// TODO (Remove) Now for simulation, assign job to op
+				op.setJob(listJobs.get(op.getJobID()));
+//				System.out.println(op.getJob().getID());
+				
 				startTime = op.getStartTime().getFirst();
 				
 				// TODO Consider buffer
@@ -108,9 +152,15 @@ public class ShopFloor {
 				}
 				
 				// Perform current operation of current job
-				System.out.println(m.getCurrentTime() + "Current operation" + op.getID() + " starts...");
+				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " starts...");
 				m.performAnOperation(op);
-				System.out.println(m.getCurrentTime() + "Current operation" + op.getID() + " ends...");
+				currentTime = currentTime.plusSeconds(m.getCycleProduction(op.getJobID(), op.getID()));
+				m.setCurrentTime(currentTime);
+				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " ends...");
+				System.out.println();
+//				System.out.println(m.getCycleProduction(op.getJobID(), op.getID()));
+				
+//				System.out.println(currentTime);
 			}
 			
 			// TODO: Question: why machine power off here
@@ -121,16 +171,15 @@ public class ShopFloor {
 			if (m.getCurrentTime().isAfter(currentTime)) {
 				currentTime = m.getCurrentTime();
 			}
-			
-			for (Job job: listJobs) {
-				listExedJobs.add(job);
-				productQuantity[job.getProductType()] = job.getQuantity();	
-			}
-			
-			aggregateInfo();
-			// TODO Consider energy
-			
 		}
+		
+		for (Job job: listJobs) {
+			listExedJobs.add(job);
+			productQuantity[job.getProductType()] = job.getQuantity();	
+		}
+		
+		aggregateInfo();
+		// TODO Consider energy
 	}
 	
 	private void aggregateInfo() {

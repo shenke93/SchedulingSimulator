@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import machine.Machine;
+import platform.Logger;
 
 public class Job {
 	public String name = "Job";
@@ -101,7 +102,12 @@ public class Job {
 		currentOperation = op;
 	}
 	
+	// Calculate Processing time of a work piece (operation with quantity)
 	public void setDuration() {
 		duration = quantity * currentMachine.getCycleProduction(this.id, currentOperation.getID());
+		Logger.printSimulationInfo(currentMachine.getCurrentTime(), this.name, "Duration of current workpieces: " 
+				+ "Job " + (id+1) + " Operation " + (currentOperation.getID()+1) + ": " 
+				+ Machine.calculateDay(duration) + "d" + Machine.calculateHour(duration) + "h" + Machine.calculateMin(duration) 
+				+ "m" + Machine.calculateSec(duration) + "s");
 	}
 }
