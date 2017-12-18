@@ -105,7 +105,7 @@ public class ShopFloor {
 		LocalDateTime startTime;
 		long duration;
 		for (Machine m : listMachines) {
-			
+			m.setCurrentTime(currentTime);
 			// TODO (Remove) Now for simulation, Machine.listOperations is the same of Config.listOperations
 			m.setListOperations(listOperations);
 			
@@ -142,16 +142,20 @@ public class ShopFloor {
 				// TODO Consider buffer
 				
 				// Pre-processing idling and setup
-				if (m.getExecutedOperations().size() == 0) {
-					duration = ChronoUnit.SECONDS.between(Config.startTimeSchedule, startTime.minusSeconds(Config.durationPowerOn));
-					if (duration > 0) {
-						m.stayOff(duration);
-					}
-					m.powerOn();
-				}
-				else {
-					// TODO Consider changeover
-				}
+//				if (m.getExecutedOperations().size() == 0) {
+//					duration = ChronoUnit.SECONDS.between(Config.startTimeSchedule, startTime.minusSeconds(Config.durationPowerOn));
+//					if (duration > 0) {
+//						// UDUT
+////						System.out.println("Duration: " + duration);
+//						m.stayOff(duration);
+//					}
+//					m.powerOn();
+//				}
+//				else {
+//					// TODO Consider changeover
+//				}
+				
+				m.powerOn();
 				
 				// Perform current operation of current job
 				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current Operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " starts...");
@@ -166,10 +170,12 @@ public class ShopFloor {
 			if (m.getExecutedOperations().size() > 0) {
 				m.powerOff();
 			}
-			// System.out.println(currentTime);
+			
 			if (m.getCurrentTime().isAfter(currentTime)) {
 				currentTime = m.getCurrentTime();
 			}
+			
+//			System.out.println(currentTime);
 		}
 		
 		for (Job job: listJobs) {
