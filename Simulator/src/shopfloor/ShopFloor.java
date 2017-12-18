@@ -101,6 +101,7 @@ public class ShopFloor {
 		return listJobs;
 	}
 	
+	// TODO Perform jobs on multiple machines may cause problems
 	public void performJobs() {
 		LocalDateTime startTime;
 		long duration;
@@ -146,7 +147,7 @@ public class ShopFloor {
 //					duration = ChronoUnit.SECONDS.between(Config.startTimeSchedule, startTime.minusSeconds(Config.durationPowerOn));
 //					if (duration > 0) {
 //						// UDUT
-////						System.out.println("Duration: " + duration);
+//						System.out.println("Duration: " + duration);
 //						m.stayOff(duration);
 //					}
 //					m.powerOn();
