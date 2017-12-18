@@ -37,6 +37,10 @@ public class Operation {
 		Collections.sort(eligibleMachineIDs);
 	}
 	
+	public List<Integer> getEligibleMachineIDs() {
+		return eligibleMachineIDs;
+	}
+
 	public void setJob(Job j) {
 		job = j;
 	}

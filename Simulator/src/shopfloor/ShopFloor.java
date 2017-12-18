@@ -2,6 +2,7 @@ package shopfloor;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -73,7 +74,6 @@ public class ShopFloor {
 	 * Initialize machines from production planning for the shopfloor.
 	 */
 	private void createMachines() {
-		// TODO Question: no initialize list?
 		listMachines.clear();
 		for (Machine m : Config.listMachines) {
 			listMachines.add(m.getInitializedCopy());
@@ -84,7 +84,6 @@ public class ShopFloor {
 	 * @return makespan for processing all jobs (seconds).
 	 */
 	public long getMakespan() {
-		// TODO Question: Def of makespan
 		return ChronoUnit.SECONDS.between(Config.startTimeSchedule, currentTime);
 	}
 	
@@ -110,17 +109,20 @@ public class ShopFloor {
 			// TODO (Remove) Now for simulation, Machine.listOperations is the same of Config.listOperations
 			m.setListOperations(listOperations);
 			
+			// UDUT
+//			System.out.println(Arrays.toString(m.getListOperations().toArray()));
+			
 			if (Config.history) {
 				System.out.println();
 			}
 			String info = "The operations to be performed on " + m.getName() + ": ";
-			for (Operation operation : m.getOperations()) {
-				info += (operation.getID()+1) + ", ";
+			for (Operation operation : m.getListOperations()) {
+				info += "JobID " + (operation.getJobID()+1) + " OperationID " + (operation.getID()+1) + ",\n";
 //				System.out.println("op");
 			}
 			Logger.printSimulationInfo(m.getCurrentTime(), name, info);
 			
-			for (Operation op : m.getOperations()) {
+			for (Operation op : m.getListOperations()) {
 				
 				// TODO (Remove) Now for simulation, give values to op.startTime 
 //				System.out.println(op.toString());
@@ -152,18 +154,15 @@ public class ShopFloor {
 				}
 				
 				// Perform current operation of current job
-				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " starts...");
+				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current Operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " starts...");
 				m.performAnOperation(op);
-				currentTime = currentTime.plusSeconds(m.getCycleProduction(op.getJobID(), op.getID()));
-				m.setCurrentTime(currentTime);
-				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " ends...");
+				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current Operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " ends...");
 				System.out.println();
 //				System.out.println(m.getCycleProduction(op.getJobID(), op.getID()));
 				
 //				System.out.println(currentTime);
 			}
 			
-			// TODO: Question: why machine power off here
 			if (m.getExecutedOperations().size() > 0) {
 				m.powerOff();
 			}
@@ -180,6 +179,8 @@ public class ShopFloor {
 		
 		aggregateInfo();
 		// TODO Consider energy
+		
+		// TODO Objective calculation
 	}
 	
 	private void aggregateInfo() {

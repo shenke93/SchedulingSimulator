@@ -107,13 +107,17 @@ public class Machine {
 		this.cycleProduction = cycleProduction;
 	}
 	
-	public LinkedList<Operation> getOperations() {
+	public LinkedList<Operation> getListOperations() {
 		return listOperations;
 	}
 	
 	// TODO (Remove)
 	public void setListOperations(LinkedList<Operation> listOperations) {
-		this.listOperations = listOperations;
+		for (Operation op : listOperations)	{
+			if (op.getEligibleMachineIDs().contains(this.ID)) {
+				this.listOperations.add(op);
+			}
+		}
 	}
 	
 	public LinkedList<Operation> getExecutedOperations() {
@@ -281,7 +285,7 @@ public class Machine {
 							currentJob.getQuantity() + " workpieces (job" + currentJob.getID() + ") is given externally.");
 			}
 			Logger.printSimulationInfo(timeCurrent, name, "New Production scheduling of " + 
-							currentJob.getQuantity() + " workpieces (job" + (currentJob.getID()+1) + ") is given externally.");	
+							currentJob.getQuantity() + " workpieces (Job " + (currentJob.getID()+1) + " Operation " + (currentOperation.getID()+1) + ") is given externally.");	
 			state.setFinalDestState("Procduction");
 			state.doInterStateTransition();
 		}

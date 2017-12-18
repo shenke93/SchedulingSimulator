@@ -88,7 +88,7 @@ public class Config {
 		String xlsFile = instanceFile;
 		try {
 			HSSFWorkbook wb = Config.readFile(xlsFile);
-			HSSFSheet sheet = wb.getSheet(instanceName);
+			HSSFSheet sheet = wb.getSheet(instanceName + "ProcessingTime");
 			int startRow = 1;
 			int startColumn = 2;
 			int endRow = sheet.getPhysicalNumberOfRows();
@@ -105,6 +105,8 @@ public class Config {
 				}
 				listOperations.add(new Operation(jobID, operationID, machineIDs));
 			}
+			// UDUT
+//			System.out.println(Arrays.toString(listOperations.toArray()));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -132,8 +134,9 @@ public class Config {
 			job.setQuantity(1);
 			job.setReleaseTime(Config.startTimeSchedule);
 			job.setDueTime(Config.dueTime);
+			
 			Iterator<Operation> iter = listOperations.iterator();
-			// System.out.println("listOperations.size = " + listOperations.size());
+//			System.out.println("listOperations.size = " + listOperations.size());
 
 			// Set job attributes
 			for (int rowIdx = startRow; rowIdx < endRow; rowIdx++) {
@@ -142,6 +145,7 @@ public class Config {
 				// New row compared to the previous row
 				if (jobID < (int) row.getCell(0).getNumericCellValue() - 1) {
 					// UDUT 
+					
 					System.out.println(job.toString());			
 					// System.out.println(Arrays.toString(job.getRequiredOperations().toArray()));
 					listJobs.add(job);

@@ -1,6 +1,7 @@
 package shopfloor;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,8 +51,8 @@ public class Job {
 	 * @param op
 	 */
 	public void addRequiredOperation(Operation op) {
-		op.setJob(this);
-		requiredOperations.add(op);		
+			op.setJob(this);
+			requiredOperations.add(op);		
 	}
 
 
@@ -66,7 +67,9 @@ public class Job {
 
 	@Override
 	public String toString() {
-		return "JobID: " + (id+1) + " Quantity " + quantity + " ReleaseTime: " + releaseTime + " DueTime: " + dueTime;
+		return "JobID: " + (id+1) + " Quantity " + quantity + " ReleaseTime: " 
+				+ "RequiredOperations: " + Arrays.toString(requiredOperations.toArray())
+				+ " ReleaseTime: " + releaseTime + " DueTime: " + dueTime;
 	}
 	
 	/**
@@ -102,12 +105,16 @@ public class Job {
 		currentOperation = op;
 	}
 	
-	// Calculate Processing time of a work piece (operation with quantity)
+	/**
+	 * Calculate Processing time of a work piece (operation with quantity).
+	 * Update current machine time.
+	 */
 	public void setDuration() {
 		duration = quantity * currentMachine.getCycleProduction(this.id, currentOperation.getID());
 		Logger.printSimulationInfo(currentMachine.getCurrentTime(), this.name, "Duration of current workpieces: " 
 				+ "Job " + (id+1) + " Operation " + (currentOperation.getID()+1) + ": " 
-				+ Machine.calculateDay(duration) + "d" + Machine.calculateHour(duration) + "h" + Machine.calculateMin(duration) 
-				+ "m" + Machine.calculateSec(duration) + "s");
+				+ Machine.calculateDay(duration) + "d " + Machine.calculateHour(duration) + "h " + Machine.calculateMin(duration) 
+				+ "m " + Machine.calculateSec(duration) + "s");
+		currentMachine.setCurrentTime(currentMachine.getCurrentTime().plusSeconds(duration));
 	}
 }
