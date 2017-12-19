@@ -2,15 +2,11 @@ package platform;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.time.DayOfWeek;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalField;
-import java.time.temporal.WeekFields;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
@@ -34,21 +30,13 @@ public class Config {
 	/**
 	 * Time related parameters
 	 */
-	public static final int durationWeekday = 5*24*3600; 	//sec, 6h Monday to 6h Saturday
-	public static final int defaultStartupDuration = 1200; 		
+	public static final int defaultStartupDuration = 1200; 		//sec
 	public static final int durationPowerOn = defaultStartupDuration;
-	public static final int defaultShutdownDuration = 120;		
-	public static final int durationPowerOnOff = defaultStartupDuration + defaultShutdownDuration;
-	public static final int freeDurationOfNormalWeek = durationWeekday - durationPowerOnOff;	//valid period within a week (first and last exclusive) to accommodate jobs 
-
-
 
 	public static boolean workOnWeekend = false;	//True: production can be scheduled at weekends. False: no production scheduled at weekends.	
 	public static final int startHourOfWeek = 6;	//start/end hour (of 24h) within a week
 //	public static final int numWeeks = 2;
 //	public static int numDays = 14;
-
-	public static final TemporalField weekOfYear = WeekFields.of(DayOfWeek.MONDAY, 4).weekOfWeekBasedYear();	//ISO-8601 requires 4 days (more than half a week) to be present before counting the first week.
 
 	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 11, 14, startHourOfWeek, 0, 0);
 	public static final LocalDateTime dueTime = workOnWeekend? 
@@ -158,7 +146,7 @@ public class Config {
 				if (jobID < (int) row.getCell(0).getNumericCellValue() - 1) {
 					// UDUT 
 					
-//					System.out.println(job.toString());			
+					System.out.println(job.toString());			
 					// System.out.println(Arrays.toString(job.getRequiredOperations().toArray()));
 					listJobs.add(job);
 					operationID = 0;
@@ -177,7 +165,7 @@ public class Config {
 				job.addRequiredOperation(iter.next());
 			}
 			// UDUT 
-//			System.out.println(job.toString());
+			System.out.println(job.toString());
 			// System.out.println(Arrays.toString(job.getRequiredOperations().toArray()));
 			listJobs.add(job);
 			Config.numJobs = Config.inputJobID.size();
@@ -230,44 +218,10 @@ public class Config {
 				++operationID;
 			}
 			// UDUT 
-//			System.out.print(Arrays.toString(listMachines.toArray()));
+			 System.out.print(Arrays.toString(listMachines.toArray()));
 			
 			// Set job and operation sequence-dependent setup times for each machine
-			int columnIdx = startIdxMachine;	//machine selection in the excel file
-			HSSFRow row;
-			for (Machine machine : listMachines) {
-				List<KeyJobOperation> listKeys = new LinkedList<KeyJobOperation>();
-				for (int rowIdx = startRow; rowIdx < endRow; ++rowIdx) {
-					row = sheetProcessingTime.getRow(rowIdx);
-					if ((int) row.getCell(columnIdx).getNumericCellValue() > 0) {
-						jobID = (int) row.getCell(0).getNumericCellValue() - 1;
-						operationID = (int) row.getCell(1).getNumericCellValue() - 1;
-						listKeys.add(new KeyJobOperation(jobID, operationID));
-					}
-				}
-				// UDUT
-				System.out.println(Arrays.toString(listKeys.toArray()));
-				// Assign a setup time for each pair of job-operation keys
-				for (KeyJobOperation key : listKeys) {
-					Iterator<KeyJobOperation> iter = listKeys.iterator();
-					KeyJobOperation nextKey;
-					
-					while (iter.hasNext()) {
-						nextKey = iter.next();							
-						int setupTime;
-						if (key.equals(nextKey)) {
-							setupTime = 0;
-						}
-						else {
-							setupTime = generateARandomSetupTime();
-						}
-						
-						machine.setSetupTime(key, nextKey, setupTime);
-					}
-				}
-				++columnIdx;
-			}
-			
+			// TODO
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -285,14 +239,4 @@ public class Config {
 	        fis.close();
 	    }
 	}
-	
-	/**
-	 * Randomly generate job sequence-dependent setup times of each machine.
-	 * @return
-	 */
-	private static int generateARandomSetupTime() {
-		int[] setupTime = new int[]{10, 20, 1800, 3600, 5400, 7200};	//seconds
-		Random rand = new Random();
-		return setupTime[rand.nextInt(setupTime.length)];
-	}	
 }

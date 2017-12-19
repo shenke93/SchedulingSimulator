@@ -8,9 +8,7 @@ import java.util.Map;
 
 import platform.Config;
 import platform.KeyJobOperation;
-import platform.KeyJobOperationJobOperation;
 import platform.Logger;
-import shopfloor.Changeover;
 import shopfloor.Job;
 import shopfloor.Operation;
 
@@ -25,11 +23,6 @@ public class Machine {
 
 	// Variables
 	private LocalDateTime startTimeOfTheFirstDay;
-	private Changeover changeover;
-	private int changeoverTimes;
-	private boolean flagChangeover = false;	//whether the machine stays at Ready for a changeover
-	private LinkedList<Changeover> listChangeovers = new LinkedList<Changeover>();
-	
 
 	private LocalDateTime timeCurrent;
 	private Job currentJob;
@@ -45,8 +38,6 @@ public class Machine {
 	private LinkedList<Job> listExedJobs = new LinkedList<Job>();	//all the executed jobs
 
 	// Production plan related attributes
-	private Map<KeyJobOperationJobOperation, Integer> setupTimes = 
-			new Hashtable<KeyJobOperationJobOperation, Integer>();	//sequence-dependent setup times
 	private Map<KeyJobOperation, Integer> cycleProduction = new Hashtable<KeyJobOperation, Integer>();//processing time dependent on job, operation, and machine
 	private Map<KeyJobOperation, Double> powerProduction = new Hashtable<KeyJobOperation, Double>();//operation-dependent production power
 	
@@ -203,7 +194,7 @@ public class Machine {
 	 */
 	public Machine getInitializedCopy() {
 		Machine mach = new Machine(ID);
-		mach.setSetupTimes(setupTimes);
+
 		mach.setPowerProduction(powerProduction);
 		mach.setCycleProduction(cycleProduction);
 		
@@ -211,9 +202,6 @@ public class Machine {
 
 	}
 	
-	private void setSetupTimes(Map<KeyJobOperationJobOperation, Integer> setupTimes) {
-		this.setupTimes = setupTimes;
-	}
 	/**
 	 * Used for Off state
 	 */
@@ -343,86 +331,5 @@ public class Machine {
 			logSimu.output();
 			// printEnergyConsumption();
 		}
-	}
-	
-	public int getSetupTime(KeyJobOperation previousJobOperation, KeyJobOperation currentJobOperation) {
-		Logger.printSimulationInfo(timeCurrent, name, "previousJob ID = " + (previousJobOperation.getJobID()+1) + 
-				", previousOperation ID = " + (previousJobOperation.getOperationID()+1) + 
-				", currentJob ID = " + (currentJobOperation.getJobID()+1) + 
-				", currentOperation ID = " + (currentJobOperation.getOperationID()+1));
-		// UDUT
-		System.out.println(setupTimes.get(new KeyJobOperationJobOperation(previousJobOperation, currentJobOperation)));
-		return setupTimes.get(new KeyJobOperationJobOperation(previousJobOperation, currentJobOperation));
-	}
-	
-	public void setSetupTime(KeyJobOperation previousJobOperation, KeyJobOperation currentJobOperation, int setupTime) {
-		setupTimes.put(new KeyJobOperationJobOperation(previousJobOperation, currentJobOperation), setupTime);
-	}
-	
-	public void setChangeover(Changeover c) {
-		changeover = c;
-	}
-	
-	public void stayIdle(long periodIdle) {
-		state.doSelfTransition(periodIdle);
-	}
-	
-	public Changeover getChangeover() {
-		return changeover;
-	}
-	
-	public void doSplitChangeovers() {
-		Logger.printSimulationInfo(timeCurrent, name, "Machine performs two split changeovers before and after a weekend, respectively");
-//		System.out.println("First start time of changeover = " + changeover.getFirstStartTime());
-//		System.out.println("First end time of changeover = " + changeover.getFirstEndTime());
-		long durationPartialChangeover = ChronoUnit.SECONDS.between(
-							changeover.getFirstStartTime(), changeover.getFirstEndTime());
-		Logger.printSimulationInfo(name, "The duration of 1st changeover = " + durationPartialChangeover + " sec");
-		doAPartialChangeover(durationPartialChangeover);
-		powerOff();
-		long weekendDuration = ChronoUnit.SECONDS.between(timeCurrent,
-				 changeover.getLastStartTime().minusSeconds(Config.durationPowerOn));
-//		System.out.println("Time after powering off: " + timeCurrent);
-//		System.out.println("durationPartialChangeover1 = " + durationPartialChangeover);
-//		System.out.println("weekendDuration = " + weekendDuration);
-		stayOff(weekendDuration);
-		powerOn();
-//		System.out.println("Time after powering on: " + timeCurrent);
-		durationPartialChangeover = ChronoUnit.SECONDS.between(
-				changeover.getLastStartTime(), changeover.getLastEndTime());
-		Logger.printSimulationInfo(timeCurrent, name, "The duration of 2nd changeover: " + durationPartialChangeover + " sec");
-		doAPartialChangeover(durationPartialChangeover);
-//		System.out.println("durationPartialChangeover2 = " + durationPartialChangeover);
-		++changeoverTimes;
-	}
-	
-	private void doAPartialChangeover(long durationPartialChangeover) {
-		if (Config.history) {
-			logSimu.log("[" + getCurrentTime() + "][Mach] Machine starts to do a partial changeover.");
-		}
-		flagChangeover = true;
-		state.setTimeEnergyCost(durationPartialChangeover);
-		flagChangeover = false;	//flagChangeover is usually turned off
-		if (Config.history) {
-			logSimu.log("[" + getCurrentTime() + "][Mach] The partial changeover is done.");
-		}
-	}
-	
-	public void doACompleteChangeover() {
-		if (Config.history) {
-			logSimu.log("[" + getCurrentTime() + "][Mach] Machine starts to do a complete changeover.");
-		}
-		flagChangeover = true;
-		Logger.printSimulationInfo(timeCurrent, name, "Machine performs a complete changeover of " + changeover.getDuration() + " sec");
-		state.setTimeEnergyCost(changeover.getDuration());
-		flagChangeover = false;	//flagChangeover is usually turned off
-		if (Config.history) {
-			logSimu.log("[" + getCurrentTime() + "][Mach] The complete changeover is done.");
-		}
-		++changeoverTimes;
-	}
-	
-	public void addAChangeover(Changeover c) {
-		listChangeovers.add(c.deepCopy());
 	}
 }
