@@ -415,6 +415,7 @@ public class Machine {
 		flagChangeover = true;
 		Logger.printSimulationInfo(timeCurrent, name, "Machine performs a complete changeover of " + changeover.getDuration() + " sec");
 		state.setTimeEnergyCost(changeover.getDuration());
+//		timeCurrent = timeCurrent.plusSeconds(changeover.getDuration());
 		flagChangeover = false;	//flagChangeover is usually turned off
 		if (Config.history) {
 			logSimu.log("[" + getCurrentTime() + "][Mach] The complete changeover is done.");

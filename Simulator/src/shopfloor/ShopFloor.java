@@ -206,7 +206,7 @@ public class ShopFloor {
 				if (m.getCurrentTime().isAfter(currentTime)) {
 					currentTime = m.getCurrentTime();
 				}
-				System.out.println(currentTime);
+//				System.out.println(currentTime);
 				
 				timeList.clear();
 				timeList.add(currentTime);
