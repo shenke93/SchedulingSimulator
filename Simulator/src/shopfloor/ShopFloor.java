@@ -9,7 +9,9 @@ import java.util.List;
 import machine.Machine;
 import machine.State;
 import platform.Config;
+import platform.KeyJobOperation;
 import platform.Logger;
+import platform.Utils;
 
 /**
  * This class simulates the actual shop floor. Input data are received from the Config class. 
@@ -101,7 +103,6 @@ public class ShopFloor {
 		return listJobs;
 	}
 	
-	// TODO Perform jobs on multiple machines may cause problems
 	public void performJobs() {
 		LocalDateTime startTime;
 		long duration;
@@ -132,10 +133,12 @@ public class ShopFloor {
 				timeList.clear();
 				timeList.add(currentTime);
 				op.setStartTime(timeList);
+				
 //				System.out.println("TimeListSize:" + timeList.size());
 				
-				// TODO (Remove) Now for simulation, assign job to op
+				// TODO (Remove) Now for simulation, assign job to op, assign machine to op
 				op.setJob(listJobs.get(op.getJobID()));
+				op.setMachine(m);
 //				System.out.println(op.getJob().getID());
 				
 				startTime = op.getStartTime().getFirst();
@@ -143,20 +146,54 @@ public class ShopFloor {
 				// TODO Consider buffer
 				
 				// Pre-processing idling and setup
-//				if (m.getExecutedOperations().size() == 0) {
-//					duration = ChronoUnit.SECONDS.between(Config.startTimeSchedule, startTime.minusSeconds(Config.durationPowerOn));
-//					if (duration > 0) {
-//						// UDUT
-//						System.out.println("Duration: " + duration);
-//						m.stayOff(duration);
-//					}
-//					m.powerOn();
-//				}
-//				else {
-//					// TODO Consider changeover
-//				}
-				
-				m.powerOn();
+				if (m.getExecutedOperations().size() == 0) {
+					duration = ChronoUnit.SECONDS.between(Config.startTimeSchedule, startTime.minusSeconds(Config.durationPowerOn));
+					if (duration > 0) {
+						// UDUT
+						System.out.println(m.getName() + " PowerOnDuration: " + Machine.calculateHour(duration) + "h " + Machine.calculateMin(duration) 
+						+ "m " + Machine.calculateSec(duration) + "s" + "\n");
+						m.stayOff(duration);
+					}
+					m.powerOn();
+				}
+				else {
+					// TODO Consider changeover
+					Operation previousOp = m.getExecutedOperations().getLast();
+					Changeover changeover = new Changeover(m.getSetupTime(
+							new KeyJobOperation(previousOp.getJob().getID(), previousOp.getID()),
+							new KeyJobOperation(op.getJob().getID(), op.getID())));
+					changeover.setStartEndTimeBackward(op.getFirstStartTime());
+					m.setChangeover(changeover);
+					
+					duration = ChronoUnit.SECONDS.between(previousOp.getLastEndTime(), 
+							changeover.getFirstStartTime());
+					if (duration >= Config.durationPowerOnOff) {
+						Logger.printSimulationInfo(m.getCurrentTime(), name, "Machine is now powered off " + 
+								"and will stay off for " + Utils.getDayHourMinSec(duration - Config.durationPowerOnOff));
+						m.powerOff();
+						m.stayOff(duration - Config.durationPowerOnOff);
+						m.powerOn();
+					}
+					else if (duration > 0) {
+						Logger.printSimulationInfo(m.getCurrentTime(), name, "Machine will stay idle for " + 
+								Utils.getDayHourMinSec(duration));
+						m.stayIdle(duration);
+					}
+					
+					Logger.printSimulationInfo(m.getCurrentTime(), name, "Machine" + (m.getID()+1) + " starts to do a changeover");
+					Logger.printSimulationInfo(m.getCurrentTime(), name, "Duration of this changeover is " + 
+												Utils.getDayHourMinSec(m.getChangeover().getDuration()));
+					
+					if (changeover.isSplit()) {
+						m.doSplitChangeovers();
+						Logger.printSimulationInfo(m.getCurrentTime(), name, "Changeover is split.");
+					}
+					else {
+						m.doACompleteChangeover();
+						Logger.printSimulationInfo(m.getCurrentTime(), name, "Changeover is not split.");
+					}
+					m.addAChangeover(changeover);		
+				}
 				
 				// Perform current operation of current job
 				Logger.printSimulationInfo(m.getCurrentTime(), name, "Current Operation " + (op.getID()+1) + " of Job " + (op.getJobID()+1) + " starts...");
@@ -165,7 +202,15 @@ public class ShopFloor {
 				System.out.println();
 //				System.out.println(m.getCycleProduction(op.getJobID(), op.getID()));
 				
-//				System.out.println(currentTime);
+				// TODO (Remove) for simulation, give endtime to job
+				if (m.getCurrentTime().isAfter(currentTime)) {
+					currentTime = m.getCurrentTime();
+				}
+				System.out.println(currentTime);
+				
+				timeList.clear();
+				timeList.add(currentTime);
+				op.setEndTime(timeList);
 			}
 			
 			if (m.getExecutedOperations().size() > 0) {
