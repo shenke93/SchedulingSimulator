@@ -3,6 +3,7 @@ package shopfloor;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -34,6 +35,7 @@ public class ShopFloor {
 
 	// TODO (Remove) temporary variables for simulation
 	LinkedList<LocalDateTime> timeList = new LinkedList<LocalDateTime>();
+	HashSet<Job> setLateJobs = new HashSet<Job>();
 
 	public ShopFloor(String config) {
 		if (config.equalsIgnoreCase("single machine")) {
@@ -80,11 +82,31 @@ public class ShopFloor {
 		}
 	}
 	
+	
+	public LocalDateTime getCurrentTime() {
+		return currentTime;
+	}
+
 	/**
 	 * @return makespan for processing all jobs (seconds).
 	 */
 	public long getMakespan() {
 		return ChronoUnit.SECONDS.between(Config.startTimeSchedule, currentTime);
+	}
+	
+
+	public void getLateJobs() {
+		for (Job j : setLateJobs) {
+			System.out.print((j.getID()+1)+" ");
+		}
+	}
+	
+	public long getWeightedTardiness() {
+		long res = 0;
+		for (Job j : setLateJobs) {
+			res += j.getDuration();
+		}
+		return res;
 	}
 	
 	public void terminateSimulation() {
@@ -165,7 +187,12 @@ public class ShopFloor {
 				System.out.println();
 //				System.out.println(m.getCycleProduction(op.getJobID(), op.getID()));
 				
+				currentTime = m.getCurrentTime();
 //				System.out.println(currentTime);
+				
+				if (currentTime.isAfter(Config.dueTime)) {
+					setLateJobs.add(op.getJob());
+				}
 			}
 			
 			if (m.getExecutedOperations().size() > 0) {

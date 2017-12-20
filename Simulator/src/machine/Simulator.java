@@ -28,13 +28,26 @@ public class Simulator {
 		shopFloor.performJobs();
 		
 		// Onjective
-		System.out.println("Objective:");
+		System.out.println("Summary:");
+		System.out.println("Start Schedule: " + Config.startTimeSchedule);
+		System.out.println("Due Schedule: " + Config.dueTime);
+		System.out.println("Current EndTime: " + shopFloor.getCurrentTime());
+
 		long makeSpan = shopFloor.getMakespan();
 		System.out.println("Makespan: " + Machine.calculateDay(makeSpan) + " d " 
 							+ Machine.calculateHour(makeSpan) + " h "
 							+ Machine.calculateMin(makeSpan) + " m "
 							+ Machine.calculateSec(makeSpan) + " s."
 		);
+		System.out.println("Late jobs:");
+		shopFloor.getLateJobs();
+		System.out.println("\nTotalWeightedTardiness(sum(Quantity * Duration) for each late job):");
+		long tw = shopFloor.getWeightedTardiness();
+		System.out.println(Machine.calculateDay(tw) + " d " 
+				+ Machine.calculateHour(tw) + " h "
+				+ Machine.calculateMin(tw) + " m "
+				+ Machine.calculateSec(tw) + " s."
+);
 	}
 
 }

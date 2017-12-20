@@ -38,9 +38,8 @@ public class Config {
 //	public static final int numWeeks = 2;
 //	public static int numDays = 14;
 
-	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 11, 14, startHourOfWeek, 0, 0);
-	public static final LocalDateTime dueTime = workOnWeekend? 
-			LocalDateTime.of(2016, 11, 28, startHourOfWeek - 1, 59, 59):LocalDateTime.of(2016, 1, 19, 15, 41, 32);
+	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 1, 19, 15, 41, 32);
+	public static final LocalDateTime dueTime = LocalDateTime.of(2018, 1, 19, 15, 41, 32);
 	
 	/**
 	 * Equipment related parameters

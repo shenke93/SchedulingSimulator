@@ -117,4 +117,10 @@ public class Job {
 				+ "m " + Machine.calculateSec(duration) + "s");
 		currentMachine.setCurrentTime(currentMachine.getCurrentTime().plusSeconds(duration));
 	}
+
+	public long getDuration() {
+		return duration;
+	}
+	
+	
 }
