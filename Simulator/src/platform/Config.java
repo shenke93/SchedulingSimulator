@@ -50,7 +50,7 @@ public class Config {
 
 	public static final TemporalField weekOfYear = WeekFields.of(DayOfWeek.MONDAY, 4).weekOfWeekBasedYear();	//ISO-8601 requires 4 days (more than half a week) to be present before counting the first week.
 
-	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 11, 14, startHourOfWeek, 0, 0);
+	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 1, 19, 15, 41, 32);
 	public static final LocalDateTime dueTime = workOnWeekend? 
 			LocalDateTime.of(2016, 11, 28, startHourOfWeek - 1, 59, 59):LocalDateTime.of(2016, 11, 26, startHourOfWeek - 1, 59, 59);
 	
@@ -74,8 +74,8 @@ public class Config {
 	public static final int numProdType = productType.length;
 
 	public static final String homeFolder = "C:\\Users\\admin_kshen\\Desktop\\Data";
-	public static String instanceName = "Example";
-	public static String instanceFile = "C:\\Users\\admin_kshen\\Desktop\\Data\\Instances.xls";
+	public static String instanceName = "soubryInstance";
+	public static String instanceFile = "C:\\Users\\admin_kshen\\Desktop\\Data\\Soubry.xls";
 	
 	public Config(String config) {
 		shopFloorConfiguration =config;
@@ -291,7 +291,7 @@ public class Config {
 	 * @return
 	 */
 	private static int generateARandomSetupTime() {
-		int[] setupTime = new int[]{10, 20, 1800, 3600, 5400, 7200};	//seconds
+		int[] setupTime = new int[]{60, 120};	//seconds
 		Random rand = new Random();
 		return setupTime[rand.nextInt(setupTime.length)];
 	}	
