@@ -26,6 +26,15 @@ public class Simulator {
 		
 		ShopFloor shopFloor = new ShopFloor("single machine");
 		shopFloor.performJobs();
+		
+		// Onjective
+		System.out.println("Objective:");
+		long makeSpan = shopFloor.getMakespan();
+		System.out.println("Makespan: " + Machine.calculateDay(makeSpan) + " d " 
+							+ Machine.calculateHour(makeSpan) + " h "
+							+ Machine.calculateMin(makeSpan) + " m "
+							+ Machine.calculateSec(makeSpan) + " s."
+		);
 	}
 
 }

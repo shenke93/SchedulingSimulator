@@ -40,7 +40,7 @@ public class Config {
 
 	public static final LocalDateTime startTimeSchedule = LocalDateTime.of(2016, 11, 14, startHourOfWeek, 0, 0);
 	public static final LocalDateTime dueTime = workOnWeekend? 
-			LocalDateTime.of(2016, 11, 28, startHourOfWeek - 1, 59, 59):LocalDateTime.of(2016, 11, 26, startHourOfWeek - 1, 59, 59);
+			LocalDateTime.of(2016, 11, 28, startHourOfWeek - 1, 59, 59):LocalDateTime.of(2016, 1, 19, 15, 41, 32);
 	
 	/**
 	 * Equipment related parameters
@@ -62,8 +62,8 @@ public class Config {
 	public static final int numProdType = productType.length;
 
 	public static final String homeFolder = "C:\\Users\\admin_kshen\\Desktop\\Data";
-	public static String instanceName = "Example";
-	public static String instanceFile = "C:\\Users\\admin_kshen\\Desktop\\Data\\Instances.xls";
+	public static String instanceName = "soubryInstance";
+	public static String instanceFile = "C:\\Users\\admin_kshen\\Desktop\\Data\\Soubry.xls";
 	
 	public Config(String config) {
 		shopFloorConfiguration =config;

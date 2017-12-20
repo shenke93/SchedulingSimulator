@@ -118,7 +118,7 @@ public class ShopFloor {
 			}
 			String info = "The operations to be performed on " + m.getName() + ": ";
 			for (Operation operation : m.getListOperations()) {
-				info += "JobID " + (operation.getJobID()+1) + " OperationID " + (operation.getID()+1) + ",\n";
+				info += "JobID " + (operation.getJobID()+1) + " OperationID " + (operation.getID()+1) + ",";
 //				System.out.println("op");
 			}
 			Logger.printSimulationInfo(m.getCurrentTime(), name, info);
