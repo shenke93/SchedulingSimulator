@@ -49,13 +49,21 @@ def environment_setup():
 def time_downtime(name):
     """Return down time for a machine breakdown."""
     # return 30.0
+#     if name == 'PL0063':
+#         return numpy.random.choice(down_prod)
+#     elif name == 'VL0601':
+#         return numpy.random.choice(down_pack)
+#     else:
+#         return 30.0
     if name == 'PL0063':
-        return numpy.random.choice(down_prod)
+        p = numpy.random.choice(down_prod)
     elif name == 'VL0601':
-        return numpy.random.choice(down_pack)
+        p = numpy.random.choice(down_pack)
     else:
-        return 30.0
-
+        p = 30.0
+    print('Estimated downtime:', p, end=' ')
+    return p    
+    
 def time_per_product():
     """Return actual processing time for a job."""
     # return random.normalvariate(PT_MEAN, PT_SIGMA)
@@ -64,12 +72,20 @@ def time_per_product():
 def time_to_failure(name):
     """Return time until next failure for a machine."""
     #return random.expovariate(BREAK_MEAN)
+#     if name == 'PL0063':
+#         return numpy.random.choice(run_prod)
+#     elif name == 'VL0601':
+#         return numpy.random.choice(run_pack)
+#     else:
+#         return random.expovariate(BREAK_MEAN)
     if name == 'PL0063':
-        return numpy.random.choice(run_prod)
+        p = numpy.random.choice(run_prod)
     elif name == 'VL0601':
-        return numpy.random.choice(run_pack)
+        p = numpy.random.choice(run_pack)
     else:
-        return random.expovariate(BREAK_MEAN)
+        p = random.expovariate(BREAK_MEAN)
+    print('Estimated Mean Time to failure:', p, end=' ')
+    return p
 
 class Machine(object):
     """A machine produces parts and may get broken _EveryNode
@@ -104,15 +120,21 @@ class Machine(object):
                     done_in = 0 # Set to 0 to exit while loop
                     
                 except simpy.Interrupt:
+                    print('\nAt time %d, Machine %s break down!' % (env.now, self.name))
                     self.broken = True
                     done_in -= self.env.now - start # Time left to produce a product
                     
                     # Request an operator.
                     with operator.request(priority = 1) as req:
+                        print('At time %d, Machine %s call the operator for help!' % (env.now, self.name))
                         yield req
-                        yield self.env.timeout(time_downtime(self.name))
+                        p = time_downtime(self.name)
+                        self.failure_time += p
+                        yield self.env.timeout(p)
                     
                     self.broken = False
+                    print('\nAt time %d, Machine %s is repaired, production continue...' % (env.now, self.name))
+                    print('Total failure time of Machine %s:' % self.name, self.failure_time)
             
             # Product is produced    
             self.products_done += 1
@@ -120,11 +142,10 @@ class Machine(object):
     def breaking(self):
         """Break the machine every now and then."""
         while True:
-            time_failure = time_to_failure(self.name)
-            yield self.env.timeout(time_failure)
+            mtf = time_to_failure(self.name)
+            yield self.env.timeout(mtf)
             if not self.broken:
                 # Break the machine if it is currently working
-                self.failure_time += time_failure
                 self.process.interrupt()
                 
 def other_jobs(env, operator):
@@ -146,6 +167,7 @@ def other_jobs(env, operator):
                     
 # Setup and start the simulation
 print('Mahcine Shop Simulation of Soubry Case')
+print('--------------------------------------')
 # random.seed(RANDOM_SEED)
 
 # Create an environment and start the setup process
@@ -160,6 +182,8 @@ env.process(other_jobs(env, operator))
 env.run(until=SIM_TIME)
 
 # Analyis/results
+print('--------------------------------------')
+print('Summary:')
 print('Machine shop results after %s weeks:' % WEEKS)
 for machine in machines:
     print('%s made %d products, working rate is %.2f %%' % (machine.name, machine.products_done, 100 * (1 - machine.failure_time / SIM_TIME)))
