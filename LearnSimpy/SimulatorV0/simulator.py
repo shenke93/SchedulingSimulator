@@ -61,7 +61,7 @@ def time_downtime(name):
         p = numpy.random.choice(down_pack)
     else:
         p = 30.0
-    print('At time %d, Estimated downtime:' % env.now, p)
+    print('At time %d, Estimated Downtime of Machine %s:' % (env.now, name), p)
     return p    
     
 def time_per_product():
@@ -69,7 +69,7 @@ def time_per_product():
 #   return random.normalvariate(PT_MEAN, PT_SIGMA)
     return SIM_TIME
 
-def time_to_failure(name):
+def time_between_failure(name):
     """Return time duration from the end of a failure to the next failure for a machine."""
     #return random.expovariate(BREAK_MEAN)
 #     if name == 'PL0063':
@@ -84,7 +84,7 @@ def time_to_failure(name):
         p = numpy.random.choice(run_pack)
     else:
         p = random.expovariate(BREAK_MEAN)
-    print('At time %d, Estimated Mean Time between failure:' % env.now, p)
+    print('At time %d, Estimated Mean Time Between Failure of Machine %s:' % (env.now, name), p)
     return p
 
 class Machine(object):
@@ -147,7 +147,7 @@ class Machine(object):
         """Break the machine every now and then."""
         while True:
 #             print('breaking')
-            mtf = time_to_failure(self.name)
+            mtf = time_between_failure(self.name)
             yield self.env.timeout(mtf+self.temp_down_time)
             self.temp_down_time = time_downtime(self.name)
             if not self.broken:
@@ -172,25 +172,39 @@ def other_jobs(env, operator):
                     done_in = env.now - start
                     
 # Setup and start the simulation
-print('Mahcine Shop Simulation of Soubry Case')
-print('--------------------------------------')
+# print('Mahcine Shop Simulation of Soubry Case')
+# print('--------------------------------------')
 # random.seed(RANDOM_SEED)
 
 # Create an environment and start the setup process
 
 environment_setup()
-env = simpy.Environment()
-operator = simpy.PreemptiveResource(env, capacity=2)
-# machines = [Machine(env, 'PL0063', operator), Machine(env, 'VL0601', operator)]
-machines = [Machine(env, 'PL0063', operator)]
-env.process(other_jobs(env, operator))
+# env = simpy.Environment()
+# operator = simpy.PreemptiveResource(env, capacity=2)
+# # machines = [Machine(env, 'PL0063', operator), Machine(env, 'VL0601', operator)]
+# machines = [Machine(env, 'PL0063', operator)]
+# env.process(other_jobs(env, operator))
+
 
 # Execute!
-env.run(until=SIM_TIME)
+#env.run(until=SIM_TIME)
 
 # Analyis/results
-print('--------------------------------------')
-print('Summary:')
-print('Machine shop results after %s weeks:' % WEEKS)
-for machine in machines:
-    print('%s made %d products, working rate is %.2f %%' % (machine.name, machine.products_done, 100 * (1 - machine.total_down_time / SIM_TIME)))
+# print('--------------------------------------')
+# print('Summary:')
+# print('Machine shop results after %s weeks:' % WEEKS)
+# 
+# for machine in machines:
+#         print('%s made %d products, working rate is %.2f %%' % (machine.name, machine.products_done, 100 * (1 - machine.total_down_time / SIM_TIME)))
+#   
+
+csv=open('result.csv', 'w') 
+for i in range(100): 
+    env = simpy.Environment()
+    operator = simpy.PreemptiveResource(env, capacity=2)
+    machine = Machine(env, 'PL0063', operator)
+    env.run(until=SIM_TIME)
+    csv.write('%.2f %% \n' % (100 * (1 - machine.total_down_time / SIM_TIME)))
+    
+    
+    
