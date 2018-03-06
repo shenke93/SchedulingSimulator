@@ -61,16 +61,16 @@ def time_downtime(name):
         p = numpy.random.choice(down_pack)
     else:
         p = 30.0
-    print('Estimated downtime:', p, end=' ')
+    print('At time %d, Estimated downtime:' % env.now, p)
     return p    
     
 def time_per_product():
     """Return actual processing time for a job."""
-    # return random.normalvariate(PT_MEAN, PT_SIGMA)
+#   return random.normalvariate(PT_MEAN, PT_SIGMA)
     return SIM_TIME
 
 def time_to_failure(name):
-    """Return time until next failure for a machine."""
+    """Return time duration from the end of a failure to the next failure for a machine."""
     #return random.expovariate(BREAK_MEAN)
 #     if name == 'PL0063':
 #         return numpy.random.choice(run_prod)
@@ -84,7 +84,7 @@ def time_to_failure(name):
         p = numpy.random.choice(run_pack)
     else:
         p = random.expovariate(BREAK_MEAN)
-    print('Estimated Mean Time to failure:', p, end=' ')
+    print('At time %d, Estimated Mean Time between failure:' % env.now, p)
     return p
 
 class Machine(object):
@@ -98,8 +98,10 @@ class Machine(object):
         self.name = name
         self.broken = False
         self.products_done = 0
-        self.failure_time = 0
+        self.total_down_time = 0
+        self.temp_down_time = 0
         # Start "working" and "breaking" processes for this machine
+        
         self.process = env.process(self.working(operator))
         env.process(self.breaking())
 
@@ -113,6 +115,7 @@ class Machine(object):
             done_in = time_per_product()
             while done_in:
                 try:
+#                     print('working')
                     # working on the product
                     start = self.env.now
                     yield self.env.timeout(done_in)
@@ -120,7 +123,7 @@ class Machine(object):
                     done_in = 0 # Set to 0 to exit while loop
                     
                 except simpy.Interrupt:
-                    print('\nAt time %d, Machine %s break down!' % (env.now, self.name))
+                    print('At time %d, Machine %s break down!' % (env.now, self.name))
                     self.broken = True
                     done_in -= self.env.now - start # Time left to produce a product
                     
@@ -128,13 +131,14 @@ class Machine(object):
                     with operator.request(priority = 1) as req:
                         print('At time %d, Machine %s call the operator for help!' % (env.now, self.name))
                         yield req
-                        p = time_downtime(self.name)
-                        self.failure_time += p
-                        yield self.env.timeout(p)
+#                         self.temp_down_time = time_downtime(self.name)
+                        self.total_down_time += self.temp_down_time
+                        yield self.env.timeout(self.temp_down_time)
                     
                     self.broken = False
-                    print('\nAt time %d, Machine %s is repaired, production continue...' % (env.now, self.name))
-                    print('Total failure time of Machine %s:' % self.name, self.failure_time)
+                    print('At time %d, Machine %s is repaired, production continue...' % (env.now, self.name))
+                    print('Total failure time of Machine %s:' % self.name, self.total_down_time)
+                    print()
             
             # Product is produced    
             self.products_done += 1
@@ -142,8 +146,10 @@ class Machine(object):
     def breaking(self):
         """Break the machine every now and then."""
         while True:
+#             print('breaking')
             mtf = time_to_failure(self.name)
-            yield self.env.timeout(mtf)
+            yield self.env.timeout(mtf+self.temp_down_time)
+            self.temp_down_time = time_downtime(self.name)
             if not self.broken:
                 # Break the machine if it is currently working
                 self.process.interrupt()
@@ -175,7 +181,8 @@ print('--------------------------------------')
 environment_setup()
 env = simpy.Environment()
 operator = simpy.PreemptiveResource(env, capacity=2)
-machines = [Machine(env, 'PL0063', operator), Machine(env, 'VL0601', operator)]
+# machines = [Machine(env, 'PL0063', operator), Machine(env, 'VL0601', operator)]
+machines = [Machine(env, 'PL0063', operator)]
 env.process(other_jobs(env, operator))
 
 # Execute!
@@ -186,4 +193,4 @@ print('--------------------------------------')
 print('Summary:')
 print('Machine shop results after %s weeks:' % WEEKS)
 for machine in machines:
-    print('%s made %d products, working rate is %.2f %%' % (machine.name, machine.products_done, 100 * (1 - machine.failure_time / SIM_TIME)))
+    print('%s made %d products, working rate is %.2f %%' % (machine.name, machine.products_done, 100 * (1 - machine.total_down_time / SIM_TIME)))

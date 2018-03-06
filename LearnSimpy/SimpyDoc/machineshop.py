@@ -17,7 +17,6 @@ Scenario:
 """
 import random
 import simpy
-from nt import environ
 
 RANDOM_SEED = 42
 PT_MEAN = 10.0 # Avg. processing time in minutes
