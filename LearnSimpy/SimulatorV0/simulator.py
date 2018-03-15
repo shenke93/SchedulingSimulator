@@ -2,6 +2,8 @@ import random
 import simpy
 import csv
 import numpy
+# from scipy.interpolate import interp1d
+# from statsmodels.distributions.empirical_distribution import ECDF
 
 # RANDOM_SEED = 42
 
@@ -46,6 +48,15 @@ def environment_setup():
     global run_pack
     run_pack = read_data('PL0063Run.csv')
     
+#     global down_prod
+#     down_prod = generate_random(read_data('VL0601Down.csv'))
+#     global run_prod
+#     run_prod = generate_random(read_data('VL0601Run.csv'))
+#     global down_pack
+#     down_pack = generate_random(read_data('PL0063Down.csv'))
+#     global run_pack
+#     run_pack = generate_random(read_data('PL0063Run.csv'))
+    
 def time_downtime(name):
     """Return down time for a machine breakdown."""
     # return 30.0
@@ -61,7 +72,7 @@ def time_downtime(name):
         p = numpy.random.choice(down_pack)
     else:
         p = 30.0
-    print('At time %d, Estimated Downtime of Machine %s:' % (env.now, name), p)
+#     print('At time %d, Estimated Downtime of Machine %s:' % (env.now, name), p)
     return p    
     
 def time_per_product():
@@ -84,8 +95,16 @@ def time_between_failure(name):
         p = numpy.random.choice(run_pack)
     else:
         p = random.expovariate(BREAK_MEAN)
-    print('At time %d, Estimated Mean Time Between Failure of Machine %s:' % (env.now, name), p)
+#     print('At time %d, Estimated Time Between Failure of Machine %s:' % (env.now, name), p)
     return p
+
+# def generate_random(list):
+#     x = list
+#     ecdf = ECDF(x)
+#     inv_cdf = interp1d(ecdf.y, ecdf.x, bounds_error=False, assume_sorted=True)
+#     r = numpy.random.uniform(0, 1, len(x))
+#     ys = inv_cdf(r)
+#     return ys
 
 class Machine(object):
     """A machine produces parts and may get broken _EveryNode
@@ -100,6 +119,9 @@ class Machine(object):
         self.products_done = 0
         self.total_down_time = 0
         self.temp_down_time = 0
+        
+        self.run_duration = []
+        self.down_duration = []
         # Start "working" and "breaking" processes for this machine
         
         self.process = env.process(self.working(operator))
@@ -123,22 +145,23 @@ class Machine(object):
                     done_in = 0 # Set to 0 to exit while loop
                     
                 except simpy.Interrupt:
-                    print('At time %d, Machine %s break down!' % (env.now, self.name))
+#                     print('At time %d, Machine %s break down!' % (env.now, self.name))
                     self.broken = True
                     done_in -= self.env.now - start # Time left to produce a product
                     
                     # Request an operator.
                     with operator.request(priority = 1) as req:
-                        print('At time %d, Machine %s call the operator for help!' % (env.now, self.name))
+#                         print('At time %d, Machine %s call the operator for help!' % (env.now, self.name))
                         yield req
 #                         self.temp_down_time = time_downtime(self.name)
                         self.total_down_time += self.temp_down_time
+                        self.down_duration.append(self.temp_down_time)
                         yield self.env.timeout(self.temp_down_time)
                     
                     self.broken = False
-                    print('At time %d, Machine %s is repaired, production continue...' % (env.now, self.name))
-                    print('Total failure time of Machine %s:' % self.name, self.total_down_time)
-                    print()
+#                     print('At time %d, Machine %s is repaired, production continue...' % (env.now, self.name))
+#                     print('Total failure time of Machine %s:' % self.name, self.total_down_time)
+#                     print()
             
             # Product is produced    
             self.products_done += 1
@@ -148,6 +171,7 @@ class Machine(object):
         while True:
 #             print('breaking')
             mtf = time_between_failure(self.name)
+            self.run_duration.append(mtf)
             yield self.env.timeout(mtf+self.temp_down_time)
             self.temp_down_time = time_downtime(self.name)
             if not self.broken:
@@ -168,12 +192,12 @@ def other_jobs(env, operator):
                     start = env.now
                     yield env.timeout(done_in)
                     done_in = 0
-                except simpy.Interrupt:
+                except simpy.Interrupt: 
                     done_in = env.now - start
                     
 # Setup and start the simulation
-# print('Mahcine Shop Simulation of Soubry Case')
-# print('--------------------------------------')
+print('Mahcine Shop Simulation of Soubry Case')
+print('--------------------------------------')
 # random.seed(RANDOM_SEED)
 
 # Create an environment and start the setup process
@@ -181,30 +205,37 @@ def other_jobs(env, operator):
 environment_setup()
 # env = simpy.Environment()
 # operator = simpy.PreemptiveResource(env, capacity=2)
-# # machines = [Machine(env, 'PL0063', operator), Machine(env, 'VL0601', operator)]
+# machines = [Machine(env, 'PL0063', operator), Machine(env, 'VL0601', operator)]
 # machines = [Machine(env, 'PL0063', operator)]
 # env.process(other_jobs(env, operator))
 
 
 # Execute!
-#env.run(until=SIM_TIME)
+# env.run(until=SIM_TIME)
 
 # Analyis/results
-# print('--------------------------------------')
+print('--------------------------------------')
 # print('Summary:')
 # print('Machine shop results after %s weeks:' % WEEKS)
-# 
+#  
 # for machine in machines:
 #         print('%s made %d products, working rate is %.2f %%' % (machine.name, machine.products_done, 100 * (1 - machine.total_down_time / SIM_TIME)))
-#   
+#         print('Time between failure:', machine.run_duration)
+#         print('Mean: %.2f' % numpy.mean(machine.run_duration))
+#         print('Standard deviation: %.2f' % numpy.std(machine.run_duration))
+#         print('Time of failure:', machine.down_duration)
+#         print('Mean: %.2f' % numpy.mean(machine.down_duration))
+#         print('Standard deviation: %.2f' % numpy.std(machine.down_duration))
 
-csv=open('result.csv', 'w') 
-for i in range(100): 
+
+csv=open('result.csv', 'a')
+from tqdm import trange
+for i in trange(10000): 
     env = simpy.Environment()
     operator = simpy.PreemptiveResource(env, capacity=2)
     machine = Machine(env, 'PL0063', operator)
     env.run(until=SIM_TIME)
-    csv.write('%.2f %% \n' % (100 * (1 - machine.total_down_time / SIM_TIME)))
-    
-    
-    
+#     csv.write('%.2f %% \n' % (100 * (1 - machine.total_down_time / SIM_TIME)))
+    csv.write('%.2f,' % numpy.mean(machine.run_duration))
+    csv.write('%.2f \n' % numpy.std(machine.down_duration))
+
