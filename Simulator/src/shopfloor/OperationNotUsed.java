@@ -8,7 +8,7 @@ import java.util.List;
 
 import machine.Machine;
 
-public class Operation {
+public class OperationNotUsed {
 	private final String name = "Operation";
 	
 	// Operation attributes
@@ -24,7 +24,7 @@ public class Operation {
 	private LinkedList<LocalDateTime> startTime = new LinkedList<LocalDateTime>();
 	private LinkedList<LocalDateTime> endTime = new LinkedList<LocalDateTime>();
 
-	public Operation(int jobID, int opID, List<Integer> machineIDs) {
+	public OperationNotUsed(int jobID, int opID, List<Integer> machineIDs) {
 		this.jobID = jobID;
 		this.ID = opID;
 		setEligibleMachineIDs(machineIDs);

@@ -1,12 +1,12 @@
 package machine;
 
-public class OffState implements State {
+public class OffStateNotUsed implements State {
 	
 	private Machine machine;
 	private String name = "Off";
 	private String finalDestState = name;
 	
-	public OffState(Machine machine) {
+	public OffStateNotUsed(Machine machine) {
 		this.machine = machine;
 	}
 	

@@ -5,11 +5,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.time.LocalDateTime;
 
-public class Logger {
+public class LoggerNotUsed {
 	StringBuffer sb = new StringBuffer();
 	String dir;
 	
-	public Logger(String dir) {
+	public LoggerNotUsed(String dir) {
 		this.dir = dir;
 	}
 	

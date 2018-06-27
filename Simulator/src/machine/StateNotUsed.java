@@ -1,6 +1,6 @@
 package machine;
 
-public interface State {
+public interface StateNotUsed {
 	/**
 	 * 
 	 * @return name of the state

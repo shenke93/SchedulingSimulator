@@ -1,6 +1,6 @@
-package machine;
+package platform;
 
-import platform.Config;
+import machine.Machine;
 import shopfloor.ShopFloor;
 
 public class Simulator {
@@ -47,7 +47,7 @@ public class Simulator {
 				+ Machine.calculateHour(tw) + " h "
 				+ Machine.calculateMin(tw) + " m "
 				+ Machine.calculateSec(tw) + " s."
-);
+				);
 	}
 
 }
