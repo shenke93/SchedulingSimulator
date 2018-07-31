@@ -1,0 +1,7 @@
+{Input file of job information to be processed in the plant}
+
+# Group inter_arrival_time	number_of_tasks	duration
+'Production'	0	1.0	5
+'Production'	0	1.0	20
+'Production'	0	1.0	15
+//

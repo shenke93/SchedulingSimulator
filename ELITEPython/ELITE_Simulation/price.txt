@@ -1,0 +1,14 @@
+{Price information for ELITE simulation}
+
+{SrartTime:0}
+
+{EndTime:70}
+
+# TimeStamp	Price(€)
+0	35
+5	20
+30	44
+50	30
+60	25
+70	40
+//	
