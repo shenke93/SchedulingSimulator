@@ -1,34 +1,51 @@
 import salabim as sim
+import pandas as pd
+import csv
 
 class Group(sim.Component):
     '''
     Machines in the same group are parallel machines. 
-    Attributes: name, idle_machine list, job list, job_select_method
+    Attributes: 
+        name: name of group
+        idle_machine list: idle machines of group
+        job_list: jobs to do of group
+        job_select_method: way of choosing jobs (scheduling strategy)
+        fraction: fraction of group in the workshop
+        file_name: name of configuration file
     '''
     def setup(self, job_select_method, number_of_machines, fraction, file_name):
         '''
         Initialize with scheduling strategy, machine numbers
-        ''' 
-        
-        if job_select_method.lower() == 'fifo':
+        '''     
+        if job_select_method.lower() == 'fifo': 
             self.job_select = self.job_select_fifo
         else:
             raise AssertionError('wrong selection method:', job_select_method)
         
         self.fraction = fraction
         
-        self.config_file = file_name
-        
-        self.machines = [Machine(group=self, name=self.name()+' Machine.', config_file=self.config_file) for _ in range(number_of_machines)]
+        self.machines = [Machine(group=self, name=self.name()+' Machine.') for _ in range(number_of_machines)]
 
         self.idle_machines = sim.Queue(self.name() + '.idle_machines')
         
         self.jobs = sim.Queue(self.name() + '.jobs')
-            
+        
+        self.config_file = file_name
+        
+        self.price_list = []
+        
+        # read price information from file into dictionary (format: string) 
+        with open(self.config_file, encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                self.price_list.append((row['Date'], row['Euro'])) 
+        
+#         print(self.price_list[0][0])
     def job_select_fifo(self):
         '''
         Simple strategy: first in first out
         '''
+#         print('Using strategy: fifo')
         return self.jobs.head()
     
 class Machine(sim.Component):
@@ -36,12 +53,12 @@ class Machine(sim.Component):
     Machine is the unit who processes jobs.
     Attributes: group, current running task     
     '''
-    def setup(self, group, config_file):
+    def setup(self, group):
         self.group = group
         self.task = None # Current task running on machine
         self.energy_cost = 0
         self.current_energy_price = 0
-        self.config_file = config_file
+
         
     def process(self):
         while True:
@@ -73,15 +90,21 @@ class Machine(sim.Component):
                 job.leave(plant) # All tasks of job is finished, the job can leave the plant
 
     def update_price(self):
-        with open(self.config_file, encoding='utf-8') as file:
-            for line in file:
-                key, value = line.split(',', 2)
-                time = int(key)
-                price = int(value)
-                if (env.now() < time):
-                    break
-                t = price
-        self.current_energy_price = t
+        '''
+        Read price info from group's price list the updating current price.
+        '''
+        
+#         with open(self.config_file, encoding='utf-8') as file:
+#             for line in file:
+#                 key, value = line.split(',', 2)
+#                 time = pd.to_datetime(key).strftime('%Y-%m-%d %H:%M:%S')
+# #                 print(time)
+#                 price = float(value)
+#                 if (env.now() < time):
+#                     break
+#                 t = price
+#         self.current_energy_price = t
+        
             
         
 class JobGenerator(sim.Component):
@@ -101,6 +124,7 @@ class JobGenerator(sim.Component):
         self.group_dist = group_dist
                 
     def process(self):
+        # file context format (inter_arrival_time, number_of_tasks, duration_dist)
         with open(self.config_file, encoding='utf-8') as csvfile:
             for line in csvfile:
                 inter_arrival_time_dist, number_of_tasks_dist, duration_dist = line.split(',', 3)
@@ -151,7 +175,7 @@ with sim.ItemFile('config.txt') as f:
         number_of_machines = f.read_item_int()
         fraction = f.read_item_float()
         groups.append(Group(name = name, job_select_method = job_select_method, 
-                            number_of_machines = number_of_machines, fraction = fraction, file_name = 'price.txt'))
+                            number_of_machines = number_of_machines, fraction = fraction, file_name = 'price.csv'))
 
 plant = sim.Queue('plant') # Job list of the plant        
 
