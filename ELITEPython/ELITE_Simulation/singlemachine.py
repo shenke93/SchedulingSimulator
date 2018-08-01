@@ -1,6 +1,7 @@
 import salabim as sim
 import pandas as pd
 import csv
+import math
 
 class Group(sim.Component):
     '''
@@ -34,7 +35,7 @@ class Group(sim.Component):
         
         self.price_list = []
         
-        # read price information from file into dictionary (format: string) 
+        # read price information from file into list (format: string) 
         with open(self.config_file, encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
@@ -74,10 +75,10 @@ class Machine(sim.Component):
             job.leave(self.group.jobs)
             self.task = job.tasks.pop()
             self.task.enter(job.task_in_execution)
-            self.update_price()
+            self.calculate_energy_cost_task()
             yield self.hold(self.task.duration)
             # Calculate energy cost
-            self.energy_cost += self.task.duration * self.current_energy_price
+#             self.energy_cost += self.task.duration * self.current_energy_price
 #             print(self.name)
 #             print(self.energy_cost)
             self.task.leave(job.task_in_execution)
@@ -89,11 +90,28 @@ class Machine(sim.Component):
             else:
                 job.leave(plant) # All tasks of job is finished, the job can leave the plant
 
-    def update_price(self):
+    def calculate_energy_cost_task(self):
         '''
-        Read price info from group's price list the updating current price.
+        Read price info from group's price list and calculating the energy cost of current task.
         '''
+#         print('energy_cost: %f' % self.energy_cost)
+        t_start = env.now()   # start_time
+#         print('t_start: %f' % t_start)
+        t_end = t_start + self.task.duration  # end_time
+#         print('t_end: %f' % t_end)
         
+        tmp = float(self.group.price_list[math.floor(t_start)][1]) * (math.ceil(t_start) - t_start) + float(self.group.price_list[math.floor(t_end)][1]) * (t_end - math.floor(t_end)) # Head price and tail price
+#         print('head: %f' % (float(self.group.price_list[math.floor(t_start)][1]) * (math.ceil(t_start) - t_start)))
+#         print('tail: %f' % (float(self.group.price_list[math.floor(t_end)][1]) * (t_end - math.floor(t_end))))
+#         print('tmp: %f' % tmp)
+        
+        for i in range(math.ceil(t_start), math.floor(t_end)):
+            print('price:'+self.group.price_list[i][1])
+            self.energy_cost += float(self.group.price_list[i][1])
+         
+        self.energy_cost += tmp   
+        
+            
 #         with open(self.config_file, encoding='utf-8') as file:
 #             for line in file:
 #                 key, value = line.split(',', 2)
@@ -130,7 +148,7 @@ class JobGenerator(sim.Component):
                 inter_arrival_time_dist, number_of_tasks_dist, duration_dist = line.split(',', 3)
                 self.inter_arrival_time_dist = int(inter_arrival_time_dist)
                 self.number_of_tasks_dist = int(number_of_tasks_dist)
-                self.duration_dist = int(duration_dist)
+                self.duration_dist = float(duration_dist)
                 yield self.hold(self.inter_arrival_time_dist)
                 Job(job_generator=self)
         
