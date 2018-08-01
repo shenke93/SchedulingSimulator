@@ -181,7 +181,7 @@ plant = sim.Queue('plant') # Job list of the plant
 
 group_dist = sim.Pdf(groups, probabilities=[group.fraction for group in groups])
 
-JobGenerator(file_name = 'JobInfo.txt', group_dist = group_dist)
+JobGenerator(file_name = 'JobInfo.csv', group_dist = group_dist)
         
 env.run(200)
 
