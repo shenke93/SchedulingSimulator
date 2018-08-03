@@ -75,7 +75,8 @@ class Machine(sim.Component):
             job.leave(self.group.jobs)
             self.task = job.tasks.pop()
             self.task.enter(job.task_in_execution)
-            self.calculate_energy_cost_task()
+            if not self.task.flag_dist:
+                self.calculate_energy_cost_task()
             yield self.hold(self.task.duration)
             # Calculate energy cost
 #             self.energy_cost += self.task.duration * self.current_energy_price
@@ -94,11 +95,12 @@ class Machine(sim.Component):
         '''
         Read price info from group's price list and calculating the energy cost of current task.
         '''
-#         print('energy_cost: %f' % self.energy_cost)
+        print('flag: %d' % self.task.flag_dist)
+        print('energy_cost: %f' % self.energy_cost)
         t_start = env.now()   # start_time
-#         print('t_start: %f' % t_start)
+        print('t_start: %f' % t_start)
         t_end = t_start + self.task.duration  # end_time
-#         print('t_end: %f' % t_end)
+        print('t_end: %f' % t_end)
         
         tmp = float(self.group.price_list[math.floor(t_start)][1]) * (math.ceil(t_start) - t_start) + float(self.group.price_list[math.floor(t_end)][1]) * (t_end - math.floor(t_end)) # Head price and tail price
 #         print('head: %f' % (float(self.group.price_list[math.floor(t_start)][1]) * (math.ceil(t_start) - t_start)))
@@ -106,11 +108,10 @@ class Machine(sim.Component):
 #         print('tmp: %f' % tmp)
         
         for i in range(math.ceil(t_start), math.floor(t_end)):
-            print('price:'+self.group.price_list[i][1])
+#            print('price:'+self.group.price_list[i][1])
             self.energy_cost += float(self.group.price_list[i][1])
-         
-        self.energy_cost += tmp   
         
+        self.energy_cost += tmp   
             
 #         with open(self.config_file, encoding='utf-8') as file:
 #             for line in file:
@@ -145,10 +146,11 @@ class JobGenerator(sim.Component):
         # file context format (inter_arrival_time, number_of_tasks, duration_dist)
         with open(self.config_file, encoding='utf-8') as csvfile:
             for line in csvfile:
-                inter_arrival_time_dist, number_of_tasks_dist, duration_dist = line.split(',', 3)
+                inter_arrival_time_dist, number_of_tasks_dist, duration_dist, flag_dist = line.split(',', 4)
                 self.inter_arrival_time_dist = int(inter_arrival_time_dist)
                 self.number_of_tasks_dist = int(number_of_tasks_dist)
                 self.duration_dist = float(duration_dist)
+                self.flag_dist = int(flag_dist)
                 yield self.hold(self.inter_arrival_time_dist)
                 Job(job_generator=self)
         
@@ -176,6 +178,7 @@ class Task(sim.Component):
     def setup(self, job_generator, job):
         self.group = job_generator.group_dist.sample()
         self.duration = job_generator.duration_dist
+        self.flag_dist = job_generator.flag_dist
         
 
         
@@ -199,7 +202,7 @@ plant = sim.Queue('plant') # Job list of the plant
 
 group_dist = sim.Pdf(groups, probabilities=[group.fraction for group in groups])
 
-JobGenerator(file_name = 'JobInfo.csv', group_dist = group_dist)
+JobGenerator(file_name = 'jobInfo.csv', group_dist = group_dist)
         
 env.run(200)
 
