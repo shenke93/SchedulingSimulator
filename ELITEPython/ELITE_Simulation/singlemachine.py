@@ -1,5 +1,4 @@
 import salabim as sim
-import pandas as pd
 import csv
 import math
 
@@ -106,7 +105,7 @@ class Machine(sim.Component):
 #         print('head: %f' % (float(self.group.price_list[math.floor(t_start)][1]) * (math.ceil(t_start) - t_start)))
 #         print('tail: %f' % (float(self.group.price_list[math.floor(t_end)][1]) * (t_end - math.floor(t_end))))
 #         print('tmp: %f' % tmp)
-        
+
         for i in range(math.ceil(t_start), math.floor(t_end)):
 #            print('price:'+self.group.price_list[i][1])
             self.energy_cost += float(self.group.price_list[i][1])
