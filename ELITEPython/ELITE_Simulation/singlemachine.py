@@ -105,7 +105,9 @@ class Machine(sim.Component):
 #         print('head: %f' % (float(self.group.price_list[math.floor(t_start)][1]) * (math.ceil(t_start) - t_start)))
 #         print('tail: %f' % (float(self.group.price_list[math.floor(t_end)][1]) * (t_end - math.floor(t_end))))
 #         print('tmp: %f' % tmp)
-
+        print('Head price: %f' % float(self.group.price_list[math.floor(t_start)][1]))
+        print('Tail price: %f' % float(self.group.price_list[math.floor(t_end)][1]))
+        print('Head and tail cost: %f' % tmp)
         for i in range(math.ceil(t_start), math.floor(t_end)):
 #            print('price:'+self.group.price_list[i][1])
             self.energy_cost += float(self.group.price_list[i][1])
@@ -181,7 +183,7 @@ class Task(sim.Component):
         
 
         
-env = sim.Environment(trace=True)
+env = sim.Environment(trace=False)
 
 groups=[]
 
@@ -201,7 +203,7 @@ plant = sim.Queue('plant') # Job list of the plant
 
 group_dist = sim.Pdf(groups, probabilities=[group.fraction for group in groups])
 
-JobGenerator(file_name = 'jobInfo.csv', group_dist = group_dist)
+JobGenerator(file_name = 'jobInfo1.csv', group_dist = group_dist)
         
 env.run(200)
 
