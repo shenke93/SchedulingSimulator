@@ -3,6 +3,7 @@ Features: 1. Change the style to object-oriented
           2. Improve robustness of program (Exception handling etc.)
           3. Add unit test
 '''
+import sys
 import numpy as np
 import csv
 from datetime import timedelta, datetime
@@ -29,29 +30,35 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
 #         print("\nFor job: %d" % item)
         t_start = t_now
 #         print("Time start: " + str(t_now))
-        du = job_dict.get(item, -1)[0] # get job duration
-        po = job_dict.get(item, -1)[1] # get job power profile
-        # TODO: if get duration failed (du == -1), handle this situation
+        unit = job_dict.get(item, -1)
+        if unit == -1:
+            raise ValueError("No matching item in the job dict.")
+        du = unit[0] # get job duration
+        po = unit[1] # get job power profile
         t_end = t_start + timedelta(hours=du)
 #         print("Time end: " + str(t_end))
         
         # calculate sum of head price, tail price and body price
 
-        t_u = ceil_dt(t_start, timedelta(hours=1))
-        t_d = floor_dt(t_end, timedelta(hours=1)) 
+        t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start up
+        t_ed = floor_dt(t_end, timedelta(hours=1)) #    t_end down
+        t_sd = floor_dt(t_now, timedelta(hours=1))
 #         print("Ceil time start to the next hour:" + str(t_u))
 #         print("Floor time end to the previous hour:" + str(t_d))
-        tmp = price_dict.get(floor_dt(t_now, timedelta(hours=1)), 0)*((t_u - t_start)/timedelta(hours=1)) +  price_dict.get(t_d, 0)*((t_end - t_d)/timedelta(hours=1))
-        tmp = tmp * po
+        if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
+            raise ValueError("In boundary conditions, no matching item in the price dict.")
+        tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) +  price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
 #         print("Head price: %f" % price_dict.get(floor_dt(t_now, timedelta(hours=1)), 0))
 #         print("Tail price: %f" % price_dict.get(t_d, 0))
 #         print("Head and tail cost: %f" % tmp)
         step = timedelta(hours=1)
-        while t_u < t_d:
-            energy_cost += price_dict.get(t_u, 0) * po
-            t_u += step
+        while t_su < t_ed:
+            if price_dict.get(t_su, 0) == 0:
+                raise ValueError("No matching item in the price dict.")
+            energy_cost += price_dict.get(t_su, 0) * po
+            t_su += step
         
-        energy_cost += tmp
+        energy_cost += tmp * po
         t_now = t_end
     
     return energy_cost
@@ -119,24 +126,31 @@ if __name__ == '__main__':
     price_dict = {}
     job_dict = {}
     
-    # TODO: handle exceptions: file not exist etc.
     ''' Input: Energy price
         Input file: price_ga.csv
         format: date(date), price(float)
     '''
-    with open('price_ga.csv', encoding='utf-8') as price_csv:
-        reader = csv.DictReader(price_csv)
-        for row in reader:
-            price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
+    try:
+        with open('price_ga.csv', encoding='utf-8') as price_csv:
+            reader = csv.DictReader(price_csv)
+            for row in reader:
+                price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
+    except:
+        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+        exit()
 
     ''' Input: List of jobs (original schedule)
         Input file: jobInfo_ga.csv
         format: index(int), duration(float), power(float)
     '''
-    with open('jobInfo_ga.csv', encoding='utf-8') as jobInfo_csv:
-        reader = csv.DictReader(jobInfo_csv)
-        for row in reader:
-            job_dict.update({int(row['ID']):[float(row['Duration']), float(row['Power'])]})
+    try:
+        with open('jobInfo_ga.csv', encoding='utf-8') as jobInfo_csv:
+            reader = csv.DictReader(jobInfo_csv)
+            for row in reader:
+                job_dict.update({int(row['ID']):[float(row['Duration']), float(row['Power'])]})
+    except:
+        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        exit()
      
     print(price_dict)        
     print(job_dict)        
@@ -169,3 +183,5 @@ if __name__ == '__main__':
     original_schedule = [1, 2, 3, 4, 5]        
     print("Original schedule: ", original_schedule)
     print("Original cost: ", get_energy_cost([1, 2, 3, 4, 5], start_time, job_dict, price_dict))
+    
+    
