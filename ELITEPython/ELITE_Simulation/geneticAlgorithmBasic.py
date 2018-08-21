@@ -74,7 +74,7 @@ def crossover(parent, pop):
 #         print("pop[i_]: ", pop[i_])
 #         print("choose: ", np.isin(pop[i_].ravel(), keep_city, invert=True))
         swap_city = pop[i_, np.isin(pop[i_].ravel(), keep_city, invert=True)]
-        parent = np.concatenate((keep_city, swap_city))
+        parent[:] = np.concatenate((keep_city, swap_city))
     return parent
     
 def mutate(child):
@@ -135,14 +135,13 @@ if __name__ == '__main__':
     ''' Optimization possibility 3: Job with different power profile.
     '''
     
-    
     for n in range(N_GENERATIONS):
         print("\nIn Generation %d: " % n)
         cost = [get_energy_cost(ind, start_time, job_dict, price_dict) for ind in pop]
-#         print(cost)
+        print(cost)
     
         fitness = get_fitness(cost)
-#         print(pop)
+        print(pop)
         print("Most fitted DNA: ", pop[np.argmax(fitness)])
         print("Most fitted cost: ", cost[np.argmax(fitness)])
 
