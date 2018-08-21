@@ -2,17 +2,22 @@
 Features: 1. Change the style to object-oriented
           2. Improve robustness of program (Exception handling etc.)
           3. Add unit test
+          4. Add brute force method 
+          5. Add Global value to store Elitism in GA in need of comparison
+          6. Add time comparison
 '''
 import sys
 import numpy as np
 import csv
+import itertools
+import time
 from datetime import timedelta, datetime
 
 DNA_SIZE = 5    
 POP_SIZE = 4   
 CROSS_RATE = 0.3
 MUTATION_RATE = 0.2
-N_GENERATIONS = 100
+N_GENERATIONS = 30
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -63,6 +68,13 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
     
     return energy_cost
 
+def locate_min(a):
+    ''' Find the smallest value of a list and all its indexes.
+    '''
+    smallest = min(a)
+    return smallest, [index for index, element in enumerate(a) 
+                      if smallest == element]
+    
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size):
         self.dna_size = dna_size
@@ -166,7 +178,9 @@ if __name__ == '__main__':
     
     ''' Optimization possibility 3: Job with different power profile.
     '''
-    
+    ts = time.time()
+    elite_cost = float('inf')
+    elite_schedule = []
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE)
     for generation in range(N_GENERATIONS):
         cost = [get_energy_cost(i, start_time, job_dict, price_dict) for i in ga.pop]
@@ -176,12 +190,33 @@ if __name__ == '__main__':
         print('Gen:', generation, '| best fit %.2f' % fitness[best_idx])
         print("Most fitted DNA: ", ga.pop[np.argmax(fitness)])
         print("Most fitted cost: ", cost[np.argmax(fitness)])
-       
+        
+        if cost[np.argmax(fitness)] < elite_cost:
+            elite_cost = cost[np.argmax(fitness)]
+            elite_schedule = ga.pop[np.argmax(fitness)]
+        
         ga.evolve(fitness)
     
     print()
     original_schedule = [1, 2, 3, 4, 5]        
     print("Original schedule: ", original_schedule)
-    print("Original cost: ", get_energy_cost([1, 2, 3, 4, 5], start_time, job_dict, price_dict))
+    print("Original cost: ", get_energy_cost(original_schedule, start_time, job_dict, price_dict))
+    print("Elite schedule: ", elite_schedule)
+    print("Elite cost:", elite_cost)
+    te = time.time()
+    print("Time consumed: ", te - ts)
     
+    ''' Compare with the brute force method
+    '''
+    print()
     
+    ts = time.time()
+    print("Brute force method: ")
+    space = list(itertools.permutations(range(1, 6)))
+    costs = [get_energy_cost(item, start_time, job_dict, price_dict) for item in space]
+    print("Minimal cost: ", locate_min(costs)[0])
+    best_schedules = locate_min(costs)[1]   # print all possible schedules
+    for i in best_schedules:
+        print("Best schedule: ", space[i]) 
+    te = time.time()
+    print("Time consumed: ", te - ts)
