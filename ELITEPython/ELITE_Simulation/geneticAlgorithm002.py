@@ -15,10 +15,10 @@ from datetime import timedelta, datetime
 
 
 # DNA_SIZE = 5    
-POP_SIZE = 4   
+POP_SIZE = 8   
 CROSS_RATE = 0.3
-MUTATION_RATE = 0.2
-N_GENERATIONS = 30
+MUTATION_RATE = 0.3
+N_GENERATIONS = 100
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -160,8 +160,8 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
-    start_time = datetime(2016, 1, 19, 15, 0)
-    end_time = datetime(2017, 11, 15, 0, 0)
+    start_time = datetime(2016, 2, 20, 15, 0)
+    end_time = datetime(2016, 2, 24, 0, 0)
     
     price_dict = {}
     job_dict = {}

@@ -1,12 +1,13 @@
 '''This is the script for finding the optimal solution using brute force method in comparison with near-optimal methods.
-For permutation of size 9 
+Features: 1. For permutation of size 9 
+          2. Output to tmp file.
 '''
 
 import itertools
 import time
 import csv
 import sys
-from datetime import timedelta, datetime
+from datetime import datetime
 from geneticAlgorithm002 import select_jobs, select_prices, get_energy_cost
 
 def brute_force(range1, range2, start_time, job_dict, price_dict):
@@ -17,7 +18,7 @@ def brute_force(range1, range2, start_time, job_dict, price_dict):
         ind_cost = get_energy_cost(item, start_time, job_dict, price_dict)
         if  ind_cost <= optimal_cost:
             optimal_cost = ind_cost
-            optimal_schedule.append(list(item))
+            optimal_schedule.append(item)
     return {optimal_cost: optimal_schedule}
     
     
@@ -26,7 +27,7 @@ if __name__ == '__main__':
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
     start_time = datetime(2016, 2, 20, 15, 0)
-    end_time = datetime(2016, 2, 26, 0, 0)
+    end_time = datetime(2016, 2, 24, 0, 0)
     
     price_dict = {}
     job_dict = {}
@@ -63,22 +64,31 @@ if __name__ == '__main__':
     
     job_dict_new = select_jobs(start_time, end_time, job_dict)
     price_dict_new = select_prices(start_time, end_time, price_dict)
-    DNA_SIZE = len(job_dict_new)
+#     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
     
-    first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
-
-
-    print("Waiting jobs: ", waiting_jobs)
-    print("Prices: ", price_dict_new)
+    if not waiting_jobs:
+        raise ValueError("No waiting jobs!")
+    else:
+        first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule  
+        
     
+    sys.stdout = open('bruteForceOut.txt', 'w')
+
+    print("Waiting jobs: ", waiting_jobs) 
+    print("Prices: ", price_dict_new) 
+        
     print()
     original_schedule = waiting_jobs        
     print("Original schedule: ", original_schedule)
     print("Original schedule start time:", first_start_time)
-    print("DNA_SIZE: ", DNA_SIZE) 
     print("Original cost: ", get_energy_cost(original_schedule, first_start_time, job_dict, price_dict))
-
+    
+    start_stamp = time.time() 
     brute = brute_force(waiting_jobs[0], waiting_jobs[-1]+1, first_start_time, job_dict, price_dict)
+    end_stamp = time.time()
+    
     print("Optimal cost:", brute.keys())
     print("Optimal schedule:", brute.values())
+    print("Time consumption:", end_stamp-start_stamp)
+        
