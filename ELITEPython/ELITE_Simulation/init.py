@@ -25,3 +25,7 @@ try:
 except:
     print("Unexpected error when pre-processing job information:", sys.exc_info()[0]) 
     exit()
+    
+''' List of problem: 2016.3.27 2:00:00 no price
+                     2017.3.26 2:00:00 no price
+'''

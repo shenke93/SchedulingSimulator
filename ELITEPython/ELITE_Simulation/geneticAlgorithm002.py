@@ -1,13 +1,14 @@
 ''' Version 0.0.1
 Features: 1. Read all Soubry data and choose valuable data in time range
           2. Workable with Soubry data
-          2. Make plot of GA performance (Here or outside?)
+          3. Make plot of GA performance (Here or outside?)
+For future version: TODO:
+          1. Add context check for price dict
 '''
 
 import sys
 import numpy as np
 import csv
-import itertools
 import time
 from datetime import timedelta, datetime
 
@@ -36,7 +37,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
 #         print("Time start: " + str(t_now))
         unit = job_dict.get(item, -1)
         if unit == -1:
-            raise ValueError("No matching item in the job dict.")
+            raise ValueError("No matching item in the job dict for %d" % item)
         du = unit[0] # get job duration
         po = unit[3] # get job power profile
         t_end = t_start + timedelta(hours=du)
@@ -50,7 +51,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
 #         print("Ceil time start to the next hour:" + str(t_u))
 #         print("Floor time end to the previous hour:" + str(t_d))
         if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
-            raise ValueError("In boundary conditions, no matching item in the price dict.")
+            raise ValueError("In boundary conditions, no matching item in the price dict for %s or %s" % (t_sd, t_ed))
         tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) +  price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
 #         print("Head price: %f" % price_dict.get(floor_dt(t_now, timedelta(hours=1)), 0))
 #         print("Tail price: %f" % price_dict.get(t_d, 0))
@@ -58,7 +59,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
         step = timedelta(hours=1)
         while t_su < t_ed:
             if price_dict.get(t_su, 0) == 0:
-                raise ValueError("No matching item in the price dict.")
+                raise ValueError("No matching item in the price dict for %s" % t_su)
             energy_cost += price_dict.get(t_su, 0) * po
             t_su += step
         
@@ -158,8 +159,8 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
-    start_time = datetime(2016, 11, 7, 1, 0)
-    end_time = datetime(2016, 11, 20, 0, 0)
+    start_time = datetime(2016, 1, 19, 15, 0)
+    end_time = datetime(2017, 11, 15, 0, 0)
     
     price_dict = {}
     job_dict = {}
@@ -200,6 +201,7 @@ if __name__ == '__main__':
     waiting_jobs = [*job_dict_new]
 
     print("Waiting jobs: ", waiting_jobs)
+    print("Price: ", price_dict_new)
 
 #     print(price_dict_new) 
 
@@ -246,20 +248,18 @@ if __name__ == '__main__':
     te = time.time()
     print("Time consumed: ", te - ts)
     
-    exit()
-    
-    ''' Compare with the brute force method
-    '''
-    print()
-    r1 = waiting_jobs[0]
-    r2 = waiting_jobs[-1]
-    ts = time.time()
-    print("Brute force method: ")
-    space = list(itertools.permutations(range(r1, r2+1)))
-    costs = [get_energy_cost(item, start_time, job_dict, price_dict) for item in space]
-    print("Minimal cost: ", locate_min(costs)[0])
-    best_schedules = locate_min(costs)[1]   # print all possible schedules
-    for i in best_schedules:
-        print("Best schedule: ", space[i]) 
-    te = time.time()
-    print("Time consumed: ", te - ts)
+#     ''' Compare with the brute force method
+#     '''
+#     print()
+#     r1 = waiting_jobs[0]
+#     r2 = waiting_jobs[-1]
+#     ts = time.time()
+#     print("Brute force method: ")
+#     space = list(itertools.permutations(range(r1, r2+1)))
+#     costs = [get_energy_cost(item, start_time, job_dict, price_dict) for item in space]
+#     print("Minimal cost: ", locate_min(costs)[0])
+#     best_schedules = locate_min(costs)[1]   # print all possible schedules
+#     for i in best_schedules:
+#         print("Best schedule: ", space[i]) 
+#     te = time.time()
+#     print("Time consumed: ", te - ts)
