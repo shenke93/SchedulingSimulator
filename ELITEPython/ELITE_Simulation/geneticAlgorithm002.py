@@ -4,6 +4,7 @@ Features: 1. Read all Soubry data and choose valuable data in time range
           3. Make plot of GA performance (Here or outside?)
 For future version: TODO:
           1. Add context check for price dict
+          2. Modularize input procedure
 '''
 
 import sys
@@ -17,7 +18,7 @@ from datetime import timedelta, datetime
 POP_SIZE = 4   
 CROSS_RATE = 0.3
 MUTATION_RATE = 0.2
-N_GENERATIONS = 100
+N_GENERATIONS = 30
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -199,9 +200,11 @@ if __name__ == '__main__':
     price_dict_new = select_prices(start_time, end_time, price_dict)
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
-
+    
+    first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
+    
     print("Waiting jobs: ", waiting_jobs)
-    print("Price: ", price_dict_new)
+    print("Prices: ", price_dict_new)
 
 #     print(price_dict_new) 
 
@@ -222,7 +225,7 @@ if __name__ == '__main__':
     
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs)
     for generation in range(N_GENERATIONS):
-        cost = [get_energy_cost(i, start_time, job_dict_new, price_dict_new) for i in ga.pop]
+        cost = [get_energy_cost(i, first_start_time, job_dict_new, price_dict_new) for i in ga.pop]
         fitness = ga.get_fitness(cost)
     
         best_idx = np.argmax(fitness)
@@ -241,8 +244,9 @@ if __name__ == '__main__':
     print()
     original_schedule = waiting_jobs        
     print("Original schedule: ", original_schedule)
+    print("Original schedule start time:", first_start_time)
     print("DNA_SIZE: ", DNA_SIZE) 
-    print("Original cost: ", get_energy_cost(original_schedule, start_time, job_dict, price_dict))
+    print("Original cost: ", get_energy_cost(original_schedule, first_start_time, job_dict, price_dict))
     print("Elite schedule: ", elite_schedule)
     print("Elite cost:", elite_cost)
     te = time.time()
