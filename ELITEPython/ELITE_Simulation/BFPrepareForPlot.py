@@ -1,7 +1,6 @@
 ''' Idea: 
     1. Choose date range for 9 jobs: [69, 70, 71, 72, 73, 74, 75, 76, 77], from 2016.2.20 15:00:00 to 2016.2.26 00:00:00
     2. Run brute force method for size [3 - 9], monitoring execution time and result
-    3. Run GA as a comparison
 '''
 import time
 import csv
@@ -28,7 +27,7 @@ if __name__ == '__main__':
         
     print(waiting_jobs)
     
-    result_dict = {}
+    BFResult_dict = {}
     
     for i in range(3, 10):
         jobs = waiting_jobs[0:i]
@@ -40,10 +39,10 @@ if __name__ == '__main__':
         print("Optimal cost:", brute.keys())
         print("Optimal schedule:", brute.values())
         print("Time consumption:", end_stamp-start_stamp)
-        result_dict.update({i:(end_stamp-start_stamp)})
+        BFResult_dict.update({i:(end_stamp-start_stamp)})
     
     # write the result to csv for plot
     with open('bf_plot.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
-        for key, value in result_dict.items():
+        for key, value in BFResult_dict.items():
             writer.writerow([key, value])

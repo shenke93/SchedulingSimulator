@@ -159,10 +159,10 @@ class GA(object):
     def crossover(self, parent, pop):
         ''' Crossover uses two individuals to create their child. Avoid repeated jobs in each individual.
         '''
-        if np.random.rand() < CROSS_RATE:
-            i_ = np.random.randint(0, POP_SIZE,size=1) # select another individual from pop
+        if np.random.rand() < self.cross_rate:
+            i_ = np.random.randint(0, self.pop_size,size=1) # select another individual from pop
 #             print("i_: ", i_)
-            cross_points = np.random.randint(0, 2, DNA_SIZE).astype(np.bool) # choose crossover points
+            cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool) # choose crossover points
             keep_job = parent[~cross_points]
 #             print("keep_city: ", keep_city)
 #             print("pop[i_]: ", pop[i_])
@@ -174,9 +174,9 @@ class GA(object):
     def mutate(self, child):
         ''' Find two different points of DNA, change their order. 
         '''
-        for point in range(DNA_SIZE):
-            if np.random.rand() < MUTATION_RATE:
-                swap_point = np.random.randint(0, DNA_SIZE)
+        for point in range(self.dna_size):
+            if np.random.rand() < self.mutation_rate:
+                swap_point = np.random.randint(0, self.dna_size)
                 swap_A, swap_B = child[point], child[swap_point]
                 child[point], child[swap_point] = swap_B, swap_A
         return child

@@ -1,6 +1,7 @@
 '''This is the script for finding the optimal solution using brute force method in comparison with near-optimal methods.
-Features: 1. For permutation of size 9 
-          2. Output to tmp file.
+Features: 1. For permutation of size 9. 
+          2. Output to file.
+          3. Output all possible schedules with optimal cost.
 '''
 
 import itertools

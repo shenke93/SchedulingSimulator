@@ -6,4 +6,4 @@ Original schedule start time: 2016-02-21 22:30:36.397000
 Original cost:  33321.878148450356
 Optimal cost: dict_keys([32928.95814025838])
 Optimal schedule: dict_values([[(69, 70, 71, 72, 73), (69, 70, 71, 73, 72), (69, 71, 70, 73, 72), (69, 71, 72, 73, 70), (69, 72, 71, 73, 70)]])
-Time consumption: 0.008050680160522461
+Time consumption: 0.008021354675292969
