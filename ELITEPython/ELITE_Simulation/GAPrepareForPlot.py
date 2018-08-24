@@ -13,13 +13,13 @@ CROSS_RATE = 0.3
 MUTATION_RATE = 0.3
 N_GENERATIONS = 100
 
-def run_GA(dna_size, cross_rate, mutation_rate, pop_size, pop, n_generations):
+def run_GA(dna_size, cross_rate, mutation_rate, pop_size, pop, n_generations, start_time, job_dict, price_dict):
     elite_cost = float('inf')
     elite_schedule = []
         
     ga = GA(dna_size, cross_rate, mutation_rate, pop_size, pop)
     for _ in range(n_generations):
-        cost = [get_energy_cost(i, first_start_time, job_dict_new, price_dict_new) for i in ga.pop]
+        cost = [get_energy_cost(i, start_time, job_dict, price_dict) for i in ga.pop]
         fitness = ga.get_fitness(cost)
     
 #         best_idx = np.argmax(fitness)
@@ -62,7 +62,8 @@ if __name__ == '__main__':
         start_stamp = time.time() 
         # Running GA methond here
         ga = run_GA(dna_size=len(jobs), cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE,
-                    pop = jobs, n_generations = N_GENERATIONS)
+                    pop=jobs, n_generations=N_GENERATIONS, start_time=first_start_time, job_dict=job_dict_new,
+                    price_dict=price_dict_new)
         
         end_stamp = time.time()
         
