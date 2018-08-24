@@ -3,7 +3,7 @@ Prices:  {datetime.datetime(2016, 2, 20, 15, 0): 18.89, datetime.datetime(2016, 
 
 Original schedule:  [69, 70, 71, 72, 73]
 Original schedule start time: 2016-02-21 22:30:36.397000
-Original cost:  34672.02310041247
-Optimal cost: dict_keys([33177.91704023966])
-Optimal schedule: dict_values([[(69, 70, 71, 72, 73), (69, 70, 71, 73, 72), (69, 73, 71, 70, 72), (70, 69, 71, 72, 73), (70, 69, 71, 73, 72)]])
-Time consumption: 0.008021354675292969
+Original cost:  33321.878148450356
+Optimal cost: dict_keys([32928.95814025838])
+Optimal schedule: dict_values([[(69, 70, 71, 72, 73), (69, 70, 71, 73, 72), (69, 71, 70, 73, 72), (69, 71, 72, 73, 70), (69, 72, 71, 73, 70)]])
+Time consumption: 0.008050680160522461

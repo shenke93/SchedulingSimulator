@@ -2,9 +2,9 @@
 Features: 1. Read all Soubry data and choose valuable data in time range
           2. Workable with Soubry data
           3. Make plot of GA performance (Here or outside?)
+          4. Modularize input procedure
 For future version: TODO:
           1. Add context check for price dict
-          2. Modularize input procedure
 '''
 
 import sys
@@ -96,7 +96,42 @@ def select_prices(daterange1, daterange2, price_dict):
         if key >= daterange1 and key <= daterange2:
             dict.update({key:value})
     return dict
+
+def read_price(priceFile):
+    price_dict = {}
     
+    ''' Input: Energy price
+        Input file: price_ga.csv
+        format: date(date), price(float)
+    '''
+    try:
+        with open(priceFile, encoding='utf-8') as price_csv:
+            reader = csv.DictReader(price_csv)
+            for row in reader:
+                price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
+    except:
+        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+        exit()
+    return price_dict
+
+def read_job(jobFile):
+    job_dict = {}
+    
+    ''' Input: List of jobs (original schedule)
+        Input file: jobInfo_ga.csv
+        format: index(int), duration(float), power(float)
+    '''
+    try:
+        with open(jobFile, encoding='utf-8') as jobInfo_csv:
+            reader = csv.DictReader(jobInfo_csv)
+            for row in reader:
+                job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
+                                                 datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"), float(row['Power'])]})
+    except:
+        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        exit()
+    return job_dict 
+
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop):
         self.dna_size = dna_size
@@ -163,45 +198,48 @@ if __name__ == '__main__':
     start_time = datetime(2016, 2, 20, 15, 0)
     end_time = datetime(2016, 2, 24, 0, 0)
     
-    price_dict = {}
-    job_dict = {}
-    
-    ''' Input: Energy price
-        Input file: price_ga.csv
-        format: date(date), price(float)
-    '''
-    try:
-        with open('price.csv', encoding='utf-8') as price_csv:
-            reader = csv.DictReader(price_csv)
-            for row in reader:
-                price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
-    except:
-        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
-        exit()
-
-    ''' Input: List of jobs (original schedule)
-        Input file: jobInfo_ga.csv
-        format: index(int), duration(float), power(float)
-    '''
-    try:
-        with open('jobInfo.csv', encoding='utf-8') as jobInfo_csv:
-            reader = csv.DictReader(jobInfo_csv)
-            for row in reader:
-                job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
-                                                 datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"), float(row['Power'])]})
-    except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
+#     price_dict = {}
+#     job_dict = {}
+#     
+#     ''' Input: Energy price
+#         Input file: price_ga.csv
+#         format: date(date), price(float)
+#     '''
+#     try:
+#         with open('price.csv', encoding='utf-8') as price_csv:
+#             reader = csv.DictReader(price_csv)
+#             for row in reader:
+#                 price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
+#     except:
+#         print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+#         exit()
+# 
+#     ''' Input: List of jobs (original schedule)
+#         Input file: jobInfo_ga.csv
+#         format: index(int), duration(float), power(float)
+#     '''
+#     try:
+#         with open('jobInfo.csv', encoding='utf-8') as jobInfo_csv:
+#             reader = csv.DictReader(jobInfo_csv)
+#             for row in reader:
+#                 job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
+#                                                  datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"), float(row['Power'])]})
+#     except:
+#         print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+#         exit()
      
 #     print(price_dict)        
 #     print(job_dict)        
     
-    job_dict_new = select_jobs(start_time, end_time, job_dict)
-    price_dict_new = select_prices(start_time, end_time, price_dict)
+    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfo.csv"))
+    price_dict_new = select_prices(start_time, end_time, read_price("price.csv"))
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
     
-    first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
+    if not waiting_jobs:
+        raise ValueError("No waiting jobs!")
+    else:
+        first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
     
     print("Waiting jobs: ", waiting_jobs)
     print("Prices: ", price_dict_new)
@@ -246,7 +284,7 @@ if __name__ == '__main__':
     print("Original schedule: ", original_schedule)
     print("Original schedule start time:", first_start_time)
     print("DNA_SIZE: ", DNA_SIZE) 
-    print("Original cost: ", get_energy_cost(original_schedule, first_start_time, job_dict, price_dict))
+    print("Original cost: ", get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new))
     print("Elite schedule: ", elite_schedule)
     print("Elite cost:", elite_cost)
     te = time.time()

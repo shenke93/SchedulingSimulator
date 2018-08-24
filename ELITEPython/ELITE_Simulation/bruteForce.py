@@ -8,7 +8,7 @@ import time
 import csv
 import sys
 from datetime import datetime
-from geneticAlgorithm002 import select_jobs, select_prices, get_energy_cost
+from geneticAlgorithm002 import select_jobs, select_prices, get_energy_cost, read_job, read_price
 
 def brute_force(range1, range2, start_time, job_dict, price_dict):
     space = itertools.permutations(range(range1, range2))
@@ -29,41 +29,41 @@ if __name__ == '__main__':
     start_time = datetime(2016, 2, 20, 15, 0)
     end_time = datetime(2016, 2, 24, 0, 0)
     
-    price_dict = {}
-    job_dict = {}
-    
-    ''' Input: Energy price
-        Input file: price_ga.csv
-        format: date(date), price(float)
-    '''
-    try:
-        with open('price.csv', encoding='utf-8') as price_csv:
-            reader = csv.DictReader(price_csv)
-            for row in reader:
-                price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
-    except:
-        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
-        exit()
-
-    ''' Input: List of jobs (original schedule)
-        Input file: jobInfo_ga.csv
-        format: index(int), duration(float), power(float)
-    '''
-    try:
-        with open('jobInfo.csv', encoding='utf-8') as jobInfo_csv:
-            reader = csv.DictReader(jobInfo_csv)
-            for row in reader:
-                job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
-                                                 datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"), float(row['Power'])]})
-    except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
+#     price_dict = {}
+#     job_dict = {}
+#     
+#     ''' Input: Energy price
+#         Input file: price_ga.csv
+#         format: date(date), price(float)
+#     '''
+#     try:
+#         with open('price.csv', encoding='utf-8') as price_csv:
+#             reader = csv.DictReader(price_csv)
+#             for row in reader:
+#                 price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
+#     except:
+#         print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+#         exit()
+# 
+#     ''' Input: List of jobs (original schedule)
+#         Input file: jobInfo_ga.csv
+#         format: index(int), duration(float), power(float)
+#     '''
+#     try:
+#         with open('jobInfo.csv', encoding='utf-8') as jobInfo_csv:
+#             reader = csv.DictReader(jobInfo_csv)
+#             for row in reader:
+#                 job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
+#                                                  datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"), float(row['Power'])]})
+#     except:
+#         print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+#         exit()
      
 #     print(price_dict)        
 #     print(job_dict)        
     
-    job_dict_new = select_jobs(start_time, end_time, job_dict)
-    price_dict_new = select_prices(start_time, end_time, price_dict)
+    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfo.csv"))
+    price_dict_new = select_prices(start_time, end_time, read_price("price.csv"))
 #     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
     
@@ -82,10 +82,10 @@ if __name__ == '__main__':
     original_schedule = waiting_jobs        
     print("Original schedule: ", original_schedule)
     print("Original schedule start time:", first_start_time)
-    print("Original cost: ", get_energy_cost(original_schedule, first_start_time, job_dict, price_dict))
+    print("Original cost: ", get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new))
     
     start_stamp = time.time() 
-    brute = brute_force(waiting_jobs[0], waiting_jobs[-1]+1, first_start_time, job_dict, price_dict)
+    brute = brute_force(waiting_jobs[0], waiting_jobs[-1]+1, first_start_time, job_dict_new, price_dict_new)
     end_stamp = time.time()
     
     print("Optimal cost:", brute.keys())
