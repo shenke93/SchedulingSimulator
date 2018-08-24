@@ -1,6 +1,8 @@
-''' Plot the objective-generation plot for a GA method
+''' Plot the objective-generation plot for a GA method.
+    Help to analyse the performance of the GA.
 '''
 from datetime import datetime
+import time
 import numpy as np
 import csv
 from geneticAlgorithm002 import read_job, read_price, select_jobs, select_prices, GA, get_energy_cost
@@ -33,8 +35,9 @@ if __name__ == '__main__':
     analyse_dict = {}
     
     original_schedule = waiting_jobs 
-    analyse_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)})
+    analyse_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)}) # Add origin to index 0
     
+    start_stamp = time.time()
     ga = GA(dna_size=len(waiting_jobs), cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs)
     for generation in range(1, N_GENERATIONS+1):
         cost = [get_energy_cost(i, first_start_time, job_dict_new, price_dict_new) for i in ga.pop]
@@ -52,9 +55,12 @@ if __name__ == '__main__':
         
         ga.evolve(fitness)
 
+    end_stamp = time.time()
+    
     print()
     print("Optimal cost:", elite_cost)
     print("Optimal schedule:", elite_schedule)
+    print("Time consumption:", end_stamp-start_stamp)
     
     print()
           
