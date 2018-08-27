@@ -28,7 +28,7 @@ if __name__ == '__main__':
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
     start_time = datetime(2016, 2, 20, 15, 0)
-    end_time = datetime(2016, 2, 24, 0, 0)
+    end_time = datetime(2016, 2, 26, 0, 0)
     
 #     price_dict = {}
 #     job_dict = {}

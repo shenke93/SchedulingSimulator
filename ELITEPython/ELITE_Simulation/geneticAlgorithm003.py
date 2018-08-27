@@ -1,10 +1,7 @@
-''' Version 0.0.2
-Features: 1. Read all Soubry data and choose valuable data in time range
-          2. Workable with Soubry data
-          3. Make plot of GA performance (Here or outside?)
-          4. Modularize input procedure
-For future version: TODO:
-          1. Add context check for price dict
+''' Version 0.0.3
+Features: 1. Idea: make sure the next generation has better performance, keep the elitism
+          2. In function evolve(), we find the loser and winner from each selection:
+          crossover part of winner into loser (try to make loser better?), also mutate loser
 '''
 
 import sys
@@ -18,7 +15,7 @@ from datetime import timedelta, datetime
 POP_SIZE = 8   
 CROSS_RATE = 0.3
 MUTATION_RATE = 0.3
-N_GENERATIONS = 100
+N_GENERATIONS = 200
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -52,7 +49,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
 #         print("Ceil time start to the next hour:" + str(t_u))
 #         print("Floor time end to the previous hour:" + str(t_d))
         if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
-            raise ValueError("In boundary conditions, no matching item in the price dict for %s or %s" % (t_sd, t_ed))
+            raise ValueError("For item %d: In boundary conditions, no matching item in the price dict for %s or %s" % (item, t_sd, t_ed))
         tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) +  price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
 #         print("Head price: %f" % price_dict.get(floor_dt(t_now, timedelta(hours=1)), 0))
 #         print("Tail price: %f" % price_dict.get(t_d, 0))
@@ -60,7 +57,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
         step = timedelta(hours=1)
         while t_su < t_ed:
             if price_dict.get(t_su, 0) == 0:
-                raise ValueError("No matching item in the price dict for %s" % t_su)
+                raise ValueError("For item %d: No matching item in the price dict for %s" % (item, t_su))
             energy_cost += price_dict.get(t_su, 0) * po
             t_su += step
         
@@ -133,21 +130,22 @@ def read_job(jobFile):
     return job_dict 
 
 class GA(object):
-    def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop):
+    def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, start_time):
         self.dna_size = dna_size
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
         self.pop_size = pop_size
+        self.job_dict = job_dict
+        self.price_dict = price_dict
+        self.start_time = start_time
         
 #         self.pop = np.vstack([np.random.permutation(range(1, dna_size+1)) for _ in range(pop_size)]) # Job index start from 1 instead of 0
         self.pop = np.vstack([ np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
         
-    def get_fitness(self, pred):
+    def get_fitness(self, value):
         ''' Calculate the fitness of every individual in a generation.
-        Simple strategy: Since we want to find the schedule with minimum cost, find the distance between max value and current value
-        Possible alternative: TODO: using exponential function as possibility for selection
         '''
-        return np.max(pred) + 1e-3 - pred
+        return value
     
     def select(self, fitness):
         ''' Nature selection with individuals' fitnesses.
@@ -156,47 +154,54 @@ class GA(object):
 #         print("idx:", idx)
         return self.pop[idx] 
     
-    def crossover(self, parent, pop):
-        ''' Crossover uses two individuals to create their child. Avoid repeated jobs in each individual.
-        '''
+    def crossover(self, winner_loser): # crossover for loser
         if np.random.rand() < self.cross_rate:
-            i_ = np.random.randint(0, self.pop_size,size=1) # select another individual from pop
-#             print("i_: ", i_)
-            cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool) # choose crossover points
-            keep_job = parent[~cross_points]
-#             print("keep_city: ", keep_city)
-#             print("pop[i_]: ", pop[i_])
-#             print("choose: ", np.isin(pop[i_].ravel(), keep_city, invert=True))
-            swap_job = pop[i_, np.isin(pop[i_].ravel(), keep_job, invert=True)]
-            parent[:] = np.concatenate((keep_job, swap_job))
-        return parent
+            cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool)
+            keep_job =  winner_loser[1][~cross_points]
+#             print("keep_job: ", keep_job)
+#             print("choose: ", np.isin(winner_loser[0].ravel(), keep_job, invert=True))
+            swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
+            winner_loser[1][:] = np.concatenate((keep_job, swap_job))
+        return winner_loser
     
-    def mutate(self, child):
-        ''' Find two different points of DNA, change their order. 
-        '''
+    def mutate(self, winner_loser): # mutation for loser
         for point in range(self.dna_size):
             if np.random.rand() < self.mutation_rate:
                 swap_point = np.random.randint(0, self.dna_size)
-                swap_A, swap_B = child[point], child[swap_point]
-                child[point], child[swap_point] = swap_B, swap_A
-        return child
-    
-    def evolve(self, fitness):
-        pop = self.select(fitness)
-        pop_copy = pop.copy()
-        for parent in pop:
-            child = self.crossover(parent, pop_copy)
-            child = self.mutate(child)
-            parent[:] = child
-        self.pop = pop
+#                 print("swap_point: ", swap_point)
+                swap_A, swap_B = winner_loser[1][point], winner_loser[1][swap_point]
+                winner_loser[1][point], winner_loser[1][swap_point] = swap_B, swap_A 
+        return winner_loser
         
+    def evolve(self, n):
+        for _ in range(n): # randomly pick and compare n times
+            sub_pop_idx = np.random.choice(np.arange(0, self.pop_size), size=2, replace=False)
+            sub_pop = self.pop[sub_pop_idx] # pick 2 individuals from pop
+#             print('Sub_pop: ', sub_pop)
+            value = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
+            fitness = self.get_fitness(value)
+#             print('Fitness: ', fitness)
+            winner_loser_idx = np.argsort(fitness)
+            winner_loser = sub_pop[winner_loser_idx] # the first is winner and the second is loser
+#             print('Winner_loser: ', winner_loser)
+            winner_loser = self.crossover(winner_loser)
+            winner_loser = self.mutate(winner_loser)
+#             print('Winner_loser after crossover and mutate: ', winner_loser)
+            self.pop[sub_pop_idx] = winner_loser
+        
+        space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
+#         print(self.start_time)
+#         print(self.pop)
+#         print(space)
+        return self.pop, space
+    
 if __name__ == '__main__':
     
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
-    start_time = datetime(2016, 11, 7, 0, 0)
-    end_time = datetime(2016, 11, 20, 0, 0)
+    start_time = datetime(2016, 2, 20, 15, 0)
+    end_time = datetime(2016, 2, 26, 0, 0)
     
 #     price_dict = {}
 #     job_dict = {}
@@ -258,24 +263,18 @@ if __name__ == '__main__':
     ''' Optimization possibility 3: Job with different power profile.
     '''
     ts = time.time()
-    elite_cost = float('inf')
-    elite_schedule = []
+#     elite_cost = float('inf')
+#     elite_schedule = []
     
-    ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs)
+    ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
+            job_dict=job_dict_new, price_dict=price_dict_new, start_time=first_start_time)
     for generation in range(N_GENERATIONS):
-        cost = [get_energy_cost(i, first_start_time, job_dict_new, price_dict_new) for i in ga.pop]
-        fitness = ga.get_fitness(cost)
-    
-        best_idx = np.argmax(fitness)
-        print('Gen:', generation, '| best fit %.2f' % fitness[best_idx])
-        print("Most fitted DNA: ", ga.pop[np.argmax(fitness)])
-        print("Most fitted cost: ", cost[np.argmax(fitness)])
-        
-        if cost[np.argmax(fitness)] < elite_cost:
-            elite_cost = cost[np.argmax(fitness)]
-            elite_schedule = ga.pop[np.argmax(fitness)]
-        
-        ga.evolve(fitness)
+        print("Gen: ", generation)
+        pop, res = ga.evolve(8)          # natural selection, crossover and mutation
+        best_index = np.argmin(res)
+        print("Most fitted DNA: ", pop[best_index])
+        print("Most fitted cost: ", res[best_index])
+
     
 
      
@@ -285,8 +284,8 @@ if __name__ == '__main__':
     print("Original schedule start time:", first_start_time)
     print("DNA_SIZE: ", DNA_SIZE) 
     print("Original cost: ", get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new))
-    print("Elite schedule: ", elite_schedule)
-    print("Elite cost:", elite_cost)
+#     print("Elite schedule: ", elite_schedule)
+#     print("Elite cost:", elite_cost)
     te = time.time()
     print("Time consumed: ", te - ts)
     
