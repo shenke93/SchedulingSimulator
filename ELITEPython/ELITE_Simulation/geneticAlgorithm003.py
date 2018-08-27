@@ -13,8 +13,8 @@ from datetime import timedelta, datetime
 
 # DNA_SIZE = 5    
 POP_SIZE = 8   
-CROSS_RATE = 0.3
-MUTATION_RATE = 0.3
+CROSS_RATE = 0.5
+MUTATION_RATE = 0.8
 N_GENERATIONS = 200
 
 def ceil_dt(dt, delta):
