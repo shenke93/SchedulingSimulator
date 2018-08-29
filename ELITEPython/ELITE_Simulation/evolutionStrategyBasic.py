@@ -7,9 +7,9 @@ import csv
 import time
 from datetime import timedelta, datetime
 
-POP_SIZE = 8   
-N_KID = 50  # n kids per generation
-N_GENERATIONS = 200
+POP_SIZE = 20  
+N_KID = 10  # n kids per generation
+N_GENERATIONS = 150
 
 
 def ceil_dt(dt, delta):
@@ -122,30 +122,51 @@ def read_job(jobFile):
     except:
         print("Unexpected error when reading job information:", sys.exc_info()[0]) 
         exit()
-    return job_dict 
+    return job_dict
+def get_fitness(pred): return pred
 
-def make_kid(pop, n_kid):
+def make_kid(pop, n_kid): 
+    ''' Generate n kids from parents
+    '''
+#     print('Enter make_kid procedure:')
     kids = {'DNA': np.empty((n_kid, DNA_SIZE))}
     kids['mut_strength'] = np.empty_like(kids['DNA'])
     for kv, ks in zip(kids['DNA'], kids['mut_strength']):
-        p1, p2 = np.random.choice(np.arange(POP_SIZE), size=2, replace=False)   # crossover point
-        cp = np.random.randint(0, 2, DNA_SIZE, dtype=np.bool)
+        p1, p2 = np.random.choice(np.arange(POP_SIZE), size=2, replace=False)
+#         print('p1, p2:', p1, p2)
+        cp = np.random.randint(0, 2, DNA_SIZE, dtype=np.bool)   # crossover point
+#         print('cp:', cp)
+#         print('''pop['DNA'][p1]:''',pop['DNA'][p1])
         kv[cp] = pop['DNA'][p1, cp]
-        kv[~cp] = pop['DNA'][p2, ~cp]
+#         print('tmp:', kv[cp])
+#         print('''pop['DNA'][p2]:''',pop['DNA'][p2])        
+        kv[~cp] = pop['DNA'][p2, np.isin(pop['DNA'][p2], pop['DNA'][p1, cp], invert=True)]  # can not have repeated jobs
+#         print('New DNA after crossover:', kv)
         ks[cp] = pop['mut_strength'][p1, cp]
         ks[~cp] = pop['mut_strength'][p2, ~cp]
+#         print('New mut_strength after crossover:', ks)
         
-        # mutate (change DNA based on normal distribution) TODO: Need special mutation method
-        ks[:] = np.maximum(ks + (np.random.rand(*ks.shape) - 0.5), 0.)
-#         kv += ks * np.random.randn(*kv.shape)
-#         kv[:] = np.clip(kv, *DNA_BOUND)    # clip the mutated value
+        # mutate
+
     return kids
 
-def kill_bad(pop, kids):
+def kill_bad(pop, kids, start_time, job_dict, price_dict):
+#     print('Enter kill bad procedure:')
     for key in ['DNA', 'mut_strength']:
+#         print('key:', key)
         pop[key] = np.vstack((pop[key], kids[key]))
-        
-    fitness = get_fitness()
+#         print('pop[key]:', pop[key])
+
+    fitness = get_fitness([get_energy_cost(i, first_start_time, job_dict_new, price_dict_new) for i in pop['DNA']])    # calculate global fitness
+#     print('fitness:', fitness)
+    idx = np.arange(pop['DNA'].shape[0])
+#     print('idx:', idx)
+    good_idx = idx[np.array(fitness).argsort()]   # selected by fitness ranking (not value)
+#     print('good_idx:', good_idx)
+    for key in ['DNA', 'mut_strength']:
+        pop[key] = pop[key][good_idx]
+
+    return pop
     
 if __name__ == '__main__':
     
@@ -173,9 +194,17 @@ if __name__ == '__main__':
     pop = dict(DNA=np.vstack([np.random.choice(waiting_jobs, size=DNA_SIZE, replace=False) for _ in range(POP_SIZE)]),
            mut_strength=np.random.rand(POP_SIZE, DNA_SIZE))
     
-    print(pop)
+#     print("pop:", pop)
     
-    for _ in range(N_GENERATIONS):
+    for gen in range(N_GENERATIONS):
+        print('Generation:', gen)
         kids = make_kid(pop, N_KID)
-        pop = kill_bad(pop, kids)
+#         print("kids:", kids)
+        pop = kill_bad(pop, kids, first_start_time, job_dict_new, price_dict_new)
+#         print("pop:", pop)
+        print('Candidate schedule:', pop['DNA'][0])
+
+    
+    print('Optimal schedule:', pop['DNA'][0])
+    print("Optimal cost:", get_energy_cost(pop['DNA'][0], first_start_time, job_dict_new, price_dict_new))
         
