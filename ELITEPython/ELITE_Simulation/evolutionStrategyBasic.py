@@ -4,12 +4,11 @@
 import sys
 import numpy as np
 import csv
-import time
 from datetime import timedelta, datetime
 
 POP_SIZE = 20  
 N_KID = 10  # n kids per generation
-N_GENERATIONS = 150
+N_GENERATIONS = 100
 
 
 def ceil_dt(dt, delta):
@@ -147,7 +146,13 @@ def make_kid(pop, n_kid):
 #         print('New mut_strength after crossover:', ks)
         
         # mutate
-
+        for point in range(DNA_SIZE):
+            if np.random.rand() < ks[point]:
+                swap_point = np.random.randint(0, DNA_SIZE)
+                swap_A, swap_B = ks[point], ks[swap_point]
+                ks[point], ks[swap_point] = swap_B, swap_A
+#         print(ks)  
+#     print(kids)     
     return kids
 
 def kill_bad(pop, kids, start_time, job_dict, price_dict):
