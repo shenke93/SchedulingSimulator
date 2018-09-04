@@ -124,16 +124,16 @@ def read_job(jobFile):
     return job_dict
 def get_fitness(pred): return pred
 
-def make_kid(pop, n_kid): 
+def make_kid(pop, n_kid, dna_size, pop_size): 
     ''' Generate n kids from parents
     '''
 #     print('Enter make_kid procedure:')
-    kids = {'DNA': np.empty((n_kid, DNA_SIZE))}
+    kids = {'DNA': np.empty((n_kid, dna_size))}
     kids['mut_strength'] = np.empty_like(kids['DNA'])
     for kv, ks in zip(kids['DNA'], kids['mut_strength']):
-        p1, p2 = np.random.choice(np.arange(POP_SIZE), size=2, replace=False)
+        p1, p2 = np.random.choice(np.arange(pop_size), size=2, replace=False)
 #         print('p1, p2:', p1, p2)
-        cp = np.random.randint(0, 2, DNA_SIZE, dtype=np.bool)   # crossover point
+        cp = np.random.randint(0, 2, dna_size, dtype=np.bool)   # crossover point
 #         print('cp:', cp)
 #         print('''pop['DNA'][p1]:''',pop['DNA'][p1])
         kv[cp] = pop['DNA'][p1, cp]
@@ -145,12 +145,12 @@ def make_kid(pop, n_kid):
         ks[~cp] = pop['mut_strength'][p2, ~cp]
 #         print('New mut_strength after crossover:', ks)
         
-        # mutate
-        for point in range(DNA_SIZE):
-            if np.random.rand() < ks[point]:
-                swap_point = np.random.randint(0, DNA_SIZE)
-                swap_A, swap_B = ks[point], ks[swap_point]
-                ks[point], ks[swap_point] = swap_B, swap_A
+        # mutate (change the largest with smallest)
+        i1, i2 = np.argmax(ks), np.argmin(ks)
+        swap_1, swap_2 = kv[i1], kv[i2]
+        kv[i1], kv[i2] = swap_2, swap_1
+        ks[:] = np.maximum(ks + (np.random.rand(*ks.shape) - 0.5), 0.)
+
 #         print(ks)  
 #     print(kids)     
     return kids
@@ -162,7 +162,7 @@ def kill_bad(pop, kids, start_time, job_dict, price_dict):
         pop[key] = np.vstack((pop[key], kids[key]))
 #         print('pop[key]:', pop[key])
 
-    fitness = get_fitness([get_energy_cost(i, first_start_time, job_dict_new, price_dict_new) for i in pop['DNA']])    # calculate global fitness
+    fitness = get_fitness([get_energy_cost(i, start_time, job_dict, price_dict) for i in pop['DNA']])    # calculate global fitness
 #     print('fitness:', fitness)
     idx = np.arange(pop['DNA'].shape[0])
 #     print('idx:', idx)
@@ -201,15 +201,25 @@ if __name__ == '__main__':
     
 #     print("pop:", pop)
     
-    for gen in range(N_GENERATIONS):
-        print('Generation:', gen)
-        kids = make_kid(pop, N_KID)
+#     result_dict = {}
+#     original_schedule = waiting_jobs 
+#     result_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)})
+    for generation in range(1, N_GENERATIONS+1):
+        if (generation % 10) == 0:
+            print("Gen: ", generation)
+        kids = make_kid(pop, N_KID, DNA_SIZE, POP_SIZE)
 #         print("kids:", kids)
         pop = kill_bad(pop, kids, first_start_time, job_dict_new, price_dict_new)
 #         print("pop:", pop)
-        print('Candidate schedule:', pop['DNA'][0])
+#         print('Candidate schedule:', pop['DNA'][0])
+#         result_dict.update({generation:get_energy_cost(pop['DNA'][0], first_start_time, job_dict_new, price_dict_new)})
 
     
     print('Optimal schedule:', pop['DNA'][0])
     print("Optimal cost:", get_energy_cost(pop['DNA'][0], first_start_time, job_dict_new, price_dict_new))
-        
+    
+    # write the result to csv for plot
+#     with open('ga_004_analyse_plot.csv', 'w', newline='\n') as csv_file:
+#         writer = csv.writer(csv_file)
+#         for key, value in result_dict.items():
+#             writer.writerow([key, value])    

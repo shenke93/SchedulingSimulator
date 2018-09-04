@@ -19,7 +19,7 @@ def brute_force(range1, range2, start_time, job_dict, price_dict):
         ind_cost = get_energy_cost(item, start_time, job_dict, price_dict)
         if  ind_cost <= optimal_cost:
             optimal_cost = ind_cost
-            optimal_schedule.append(item)
+            optimal_schedule = item
     return {optimal_cost: optimal_schedule}
     
     
@@ -27,9 +27,11 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
-    start_time = datetime(2016, 2, 20, 15, 0)
-    end_time = datetime(2016, 2, 26, 0, 0)
+#     start_time = datetime(2016, 2, 20, 15, 0)
+#     end_time = datetime(2016, 2, 26, 0, 0)
     
+    start_time = datetime(2016, 11, 7, 1, 0)
+    end_time = datetime(2016, 11, 9, 23, 0)
 #     price_dict = {}
 #     job_dict = {}
 #     
