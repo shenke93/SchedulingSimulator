@@ -28,4 +28,6 @@ except:
     
 ''' List of problem: 2016.3.27 2:00:00 no price
                      2017.3.26 2:00:00 no price
+    For job records: there are gaps between jobs!
+                     there are some jobs start before its previous job ends!
 '''

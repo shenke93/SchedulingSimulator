@@ -16,10 +16,12 @@ try:
             all = []
             row = next(reader)
             row.append('Power')
+            row.append('Factor')
             all.append(row)
             
             for row in reader:
                 row.append(round(np.random.uniform(30, 50), 2))
+                row.append(round(np.random.uniform(100, 200), 2))
                 all.append(row)
             writer.writerows(all)
 except:

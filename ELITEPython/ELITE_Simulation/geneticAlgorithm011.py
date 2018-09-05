@@ -14,7 +14,7 @@ DNA_SIZE = 5
 POP_SIZE = 4   
 CROSS_RATE = 0.3
 MUTATION_RATE = 0.2
-N_GENERATIONS = 30
+N_GENERATIONS = 100
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -24,19 +24,142 @@ def floor_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
     return (datetime.min + (q)*delta) if r else dt
 
+def read_maintenance(maintenanceFile, price_dict):
+    ''' Input: List of maintenance events: timestamp when maintenance is evaluated
+        Output: health_dict: key = Date, value = health
+    '''
+    # Input maintenance influence
+    maintenance_influence = []
+    try:
+        with open(maintenanceFile, encoding='utf-8') as mainInf_csv:
+            reader = csv.DictReader(mainInf_csv)
+            for row in reader:
+                maintenance_influence.append(float(row['Influence']))
+    except:
+        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        exit()
+    
+#     print(maintenance_influence)
+    # Maintenance events: 
+    health_dict = {}
+    for key in price_dict:
+        health_dict.update({key:0})
+    for key in price_dict:
+        if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
+            for i in range(24):
+                health_dict.update({key+timedelta(hours=(i-12)):maintenance_influence[i]})  
+    
+    return health_dict
+
+def select_maintenance(daterange1, daterange2, health_dict):
+    dict = {}
+    for key, value in health_dict.items():
+        if key >= daterange1 and key <= daterange2:
+            dict.update({key:value})
+    return dict
+
+def read_price(priceFile):
+    price_dict = {}
+    
+    ''' Input: Energy price
+        Input file: price_ga.csv
+        format: date(date), price(float)
+    '''
+    try:
+        with open(priceFile, encoding='utf-8') as price_csv:
+            reader = csv.DictReader(price_csv)
+            for row in reader:
+                price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
+    except:
+        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+        exit()
+    return price_dict
+
+def select_prices(daterange1, daterange2, price_dict):
+    ''' Select prices between deterange1 and daterange2 form original price_dict and
+    return a new dict.
+    '''
+    dict = {}
+    for key, value in price_dict.items():
+        if key >= daterange1 and key <= daterange2:
+            dict.update({key:value})
+    return dict
+
+def read_job(jobFile):
+    job_dict = {}
+    
+    ''' Input: List of jobs (original schedule)
+        Input file: jobInfo_ga.csv
+        format: index(int), duration(float), power(float)
+    '''
+    try:
+        with open(jobFile, encoding='utf-8') as jobInfo_csv:
+            reader = csv.DictReader(jobInfo_csv)
+            for row in reader:
+                job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
+                                                 datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"), float(row['Power']),
+                                                 float(row['Factor'])]})
+    except:
+        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        exit()
+    return job_dict 
+
+def select_jobs(daterange1, daterange2, job_dict):
+    ''' Select jobs between daterange1 and daterange2 from original job_dict and
+    return a new dict.
+    '''
+    dict = {}
+    for key, value in job_dict.items():
+        if value[1] >= daterange1 and value[2] <= daterange2:
+            dict.update({key:value})
+    return dict
+
+def get_failure_cost(indiviaual, start_time, job_dict, health_dict):
+    ''' Given an individual (a possible schedule), calculate its failure cost '''
+    failure_cost = 0
+    t_now = start_time
+    for item in indiviaual:
+        t_start = t_now
+        unit = job_dict.get(item, -1)
+        if unit == -1:
+            raise ValueError("No matching item in health dict.")
+        du = unit[0]    # get job duration
+        fa = unit[4]
+        t_end = t_start + timedelta(hours=du)
+        
+        t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start up
+        t_ed = floor_dt(t_end, timedelta(hours=1)) #    t_end down
+        t_sd = floor_dt(t_now, timedelta(hours=1))
+        
+        if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
+            raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
+        
+        tmp = health_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) +  health_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
+        step = timedelta(hours=1)
+        while t_su < t_ed:
+            if health_dict.get(t_su, -1) == -1:
+                raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
+            failure_cost += health_dict.get(t_su, 0) * fa
+            t_su += step
+        
+        failure_cost += tmp * fa
+        t_now = t_end
+    
+    return failure_cost
+
 def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
     ''' Give an individual (a possible schedule in our case), calculate its energy cost '''
+#     print('Individual:', indiviaual)
     energy_cost = 0
     t_now = start_time # current timestamp
     for item in indiviaual:
-#         print("\nFor job: %d" % item)
         t_start = t_now
 #         print("Time start: " + str(t_now))
         unit = job_dict.get(item, -1)
         if unit == -1:
-            raise ValueError("No matching item in the job dict.")
+            raise ValueError("No matching item in the job dict for %d" % item)
         du = unit[0] # get job duration
-        po = unit[1] # get job power profile
+        po = unit[3] # get job power profile
         t_end = t_start + timedelta(hours=du)
 #         print("Time end: " + str(t_end))
         
@@ -48,7 +171,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
 #         print("Ceil time start to the next hour:" + str(t_u))
 #         print("Floor time end to the previous hour:" + str(t_d))
         if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
-            raise ValueError("In boundary conditions, no matching item in the price dict.")
+            raise ValueError("For item %d: In boundary conditions, no matching item in the price dict for %s or %s" % (item, t_sd, t_ed))
         tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) +  price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
 #         print("Head price: %f" % price_dict.get(floor_dt(t_now, timedelta(hours=1)), 0))
 #         print("Tail price: %f" % price_dict.get(t_d, 0))
@@ -56,7 +179,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict):
         step = timedelta(hours=1)
         while t_su < t_ed:
             if price_dict.get(t_su, 0) == 0:
-                raise ValueError("No matching item in the price dict.")
+                raise ValueError("For item %d: No matching item in the price dict for %s" % (item, t_su))
             energy_cost += price_dict.get(t_su, 0) * po
             t_su += step
         
@@ -73,20 +196,23 @@ def locate_min(a):
                       if smallest == element]
     
 class GA(object):
-    def __init__(self, dna_size, cross_rate, mutation_rate, pop_size):
+    def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, start_time):
         self.dna_size = dna_size
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
         self.pop_size = pop_size
+        self.job_dict = job_dict
+        self.price_dict = price_dict
+        self.failure_dict = failure_dict
+        self.start_time = start_time
         
-        self.pop = np.vstack([np.random.permutation(range(1, dna_size+1)) for _ in range(pop_size)]) # Job index start from 1 instead of 0
+#         self.pop = np.vstack([np.random.permutation(range(1, dna_size+1)) for _ in range(pop_size)]) # Job index start from 1 instead of 0
+        self.pop = np.vstack([ np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
         
-    def get_fitness(self, pred):
+    def get_fitness(self, value):
         ''' Calculate the fitness of every individual in a generation.
-        Simple strategy: Since we want to find the schedule with minimum cost, find the distance between max value and current value
-        Possible alternative: TODO: using exponential function as possibility for selection
         '''
-        return np.max(pred) + 1e-3 - pred
+        return value
     
     def select(self, fitness):
         ''' Nature selection with individuals' fitnesses.
@@ -95,156 +221,104 @@ class GA(object):
 #         print("idx:", idx)
         return self.pop[idx] 
     
-    def crossover(self, parent, pop):
-        ''' Crossover uses two individuals to create their child. Avoid repeated jobs in each individual.
-        '''
-        if np.random.rand() < CROSS_RATE:
-            i_ = np.random.randint(0, POP_SIZE,size=1) # select another individual from pop
-#             print("i_: ", i_)
-            cross_points = np.random.randint(0, 2, DNA_SIZE).astype(np.bool) # choose crossover points
-            keep_job = parent[~cross_points]
-#             print("keep_city: ", keep_city)
-#             print("pop[i_]: ", pop[i_])
-#             print("choose: ", np.isin(pop[i_].ravel(), keep_city, invert=True))
-            swap_job = pop[i_, np.isin(pop[i_].ravel(), keep_job, invert=True)]
-            parent[:] = np.concatenate((keep_job, swap_job))
-        return parent
+    def crossover(self, winner_loser): # crossover for loser
+        if np.random.rand() < self.cross_rate:
+            cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool)
+            keep_job =  winner_loser[1][~cross_points]
+#             print("keep_job: ", keep_job)
+#             print("choose: ", np.isin(winner_loser[0].ravel(), keep_job, invert=True))
+            swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
+            winner_loser[1][:] = np.concatenate((keep_job, swap_job))
+        return winner_loser
     
-    def mutate(self, child):
-        ''' Find two different points of DNA, change their order. 
-        '''
-        for point in range(DNA_SIZE):
-            if np.random.rand() < MUTATION_RATE:
-                swap_point = np.random.randint(0, DNA_SIZE)
-                swap_A, swap_B = child[point], child[swap_point]
-                child[point], child[swap_point] = swap_B, swap_A
-        return child
-    
-    def evolve(self, fitness):
-        pop = self.select(fitness)
-        pop_copy = pop.copy()
-        for parent in pop:
-            child = self.crossover(parent, pop_copy)
-            child = self.mutate(child)
-            parent[:] = child
-        self.pop = pop
+    def mutate(self, winner_loser): # mutation for loser
+        for point in range(self.dna_size):
+            if np.random.rand() < self.mutation_rate:
+                swap_point = np.random.randint(0, self.dna_size)
+#                 print("swap_point: ", swap_point)
+                swap_A, swap_B = winner_loser[1][point], winner_loser[1][swap_point]
+                winner_loser[1][point], winner_loser[1][swap_point] = swap_B, swap_A 
+        return winner_loser
+        
+    def evolve(self, n):
+        for _ in range(n): # randomly pick and compare n times
+            sub_pop_idx = np.random.choice(np.arange(0, self.pop_size), size=2, replace=False)
+            sub_pop = self.pop[sub_pop_idx] # pick 2 individuals from pop
+#             print('Start_time:', self.start_time)
+#             print('Sub_pop: ', sub_pop)
+#             value = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
+            value = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in sub_pop]
+            fitness = self.get_fitness(value)
+#             print('Fitness: ', fitness)
+            winner_loser_idx = np.argsort(fitness)
+            winner_loser = sub_pop[winner_loser_idx] # the first is winner and the second is loser
+#             print('Winner_loser: ', winner_loser)
+            winner_loser = self.crossover(winner_loser)
+            winner_loser = self.mutate(winner_loser)
+#             print('Winner_loser after crossover and mutate: ', winner_loser)
+            self.pop[sub_pop_idx] = winner_loser
+        
+#         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
+        space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in self.pop]
+        print(self.start_time)
+#         print(self.pop)
+#         print(space)
+        return self.pop, space
         
 if __name__ == '__main__':
-    
-    start_time = datetime(2016, 11, 7, 1, 0)
-    price_dict = {}
-    job_dict = {}
-    
-    ''' Input: Energy price
-        Input file: price_ga.csv
-        Format: date(date), price(float)
-        Output: price_dict: key = Date, value = Price
+    ''' Use start_time and end_time to determine a waiting job list from records
+        Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
     '''
-    try:
-        with open('price.csv', encoding='utf-8') as price_csv:
-            reader = csv.DictReader(price_csv)
-            for row in reader:
-                price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
-    except:
-        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
-        exit()
+    start_time = datetime(2016, 1, 23, 17, 0)
+    end_time = datetime(2017, 12, 29, 8, 0)
+    
+    price_dict_new = read_price("price.csv")
+    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoPack_ga.csv"))
+    failure_dict_new = read_maintenance("maintenanceInfluence.csv", price_dict_new)
+    
+    DNA_SIZE = len(job_dict_new)
+    waiting_jobs = [*job_dict_new]
+    
+    if not waiting_jobs:
+        raise ValueError("No waiting jobs!")
+    else:
+        first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
+    
+#     print("Waiting jobs: ", waiting_jobs)
+#     print("Prices: ", price_dict_new)
+#     print("Failures: ", failure_dict_new)
 
-    ''' Input: List of jobs (original schedule)
-        Input file: jobInfo_ga.csv
-        Format: index(int), duration(float), power(float)
-        Output: job_dict: key = JobID, value = [Duration, Power]
-    '''
-    try:
-        with open('jobInfoPack_ga.csv', encoding='utf-8') as jobInfo_csv:
-            reader = csv.DictReader(jobInfo_csv)
-            for row in reader:
-                job_dict.update({int(row['ID']):[float(row['Duration']), float(row['Power'])]})
-    except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
-     
-#     print(price_dict)        
-#     print(job_dict)        
- 
-    ''' Input: List of maintenance events: timestamp when maintenance is evaluated
-        Output: health_dict: key = Date, value = health
-    '''
-    # Input maintenance influence
-    maintenance_influence = []
-    try:
-        with open('maintenanceInfluence.csv', encoding='utf-8') as mainInf_csv:
-            reader = csv.DictReader(mainInf_csv)
-            for row in reader:
-                maintenance_influence.append(float(row['Influence']))
-    except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
+#     exit()
     
-#     print(maintenance_influence)
-  
-    # Maintenance events: 
-    health_dict = {}
-    for key in price_dict:
-        health_dict.update({key:0})
-    for key in price_dict:
-        if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
-            for i in range(24):
-                health_dict.update({key+timedelta(hours=(i-12)):maintenance_influence[i]})  
-    
-#     for key in health_dict:
-#         if health_dict.get(key) != 0:
-#             print(key)
-
-    exit()
     '''Optimization possibility 1: Add maintenance events.
-        Rules: 1. 
-    '''
-    
-    '''Optimization possibility 2: From Xu's paper, machine different power states.
-        Rules: 
-    '''
-    
-    ''' Optimization possibility 3: Job with different power profile.
+
+       Optimization possibility 2: Job with different power profile.
     '''
     ts = time.time()
-    elite_cost = float('inf')
-    elite_schedule = []
-    ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE)
+#     elite_cost = float('inf')
+#     elite_schedule = []
+    
+    ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
+            job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, start_time = first_start_time)
     for generation in range(N_GENERATIONS):
-        cost = [get_energy_cost(i, start_time, job_dict, price_dict) for i in ga.pop]
-        fitness = ga.get_fitness(cost)
+        print("Gen: ", generation)
+        pop, res = ga.evolve(8)          # natural selection, crossover and mutation
+        best_index = np.argmin(res)
+#         print("Most fitted DNA: ", pop[best_index])
+        print("Most fitted cost: ", res[best_index])
+
     
-        best_idx = np.argmax(fitness)
-        print('Gen:', generation, '| best fit %.2f' % fitness[best_idx])
-        print("Most fitted DNA: ", ga.pop[np.argmax(fitness)])
-        print("Most fitted cost: ", cost[np.argmax(fitness)])
-        
-        if cost[np.argmax(fitness)] < elite_cost:
-            elite_cost = cost[np.argmax(fitness)]
-            elite_schedule = ga.pop[np.argmax(fitness)]
-        
-        ga.evolve(fitness)
-    
+
+     
     print()
-    original_schedule = [1, 2, 3, 4, 5]        
+    original_schedule = waiting_jobs        
     print("Original schedule: ", original_schedule)
-    print("Original cost: ", get_energy_cost(original_schedule, start_time, job_dict, price_dict))
-    print("Elite schedule: ", elite_schedule)
-    print("Elite cost:", elite_cost)
+    print("Original schedule start time:", first_start_time)
+    print("DNA_SIZE: ", DNA_SIZE) 
+    print("Original energy cost: ", get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new))
+    print("Original failure cost: ", get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new))
+
+#     print("Elite schedule: ", elite_schedule)
+#     print("Elite cost:", elite_cost)
     te = time.time()
-    print("Time consumed: ", te - ts)
-    
-    ''' Compare with the brute force method
-    '''
-    print()
-    
-    ts = time.time()
-    print("Brute force method: ")
-    space = list(itertools.permutations(range(1, 6)))
-    costs = [get_energy_cost(item, start_time, job_dict, price_dict) for item in space]
-    print("Minimal cost: ", locate_min(costs)[0])
-    best_schedules = locate_min(costs)[1]   # print all possible schedules
-    for i in best_schedules:
-        print("Best schedule: ", space[i]) 
-    te = time.time()
-    print("Time consumed: ", te - ts)
+    print("Time consumed: ", te - ts)  
