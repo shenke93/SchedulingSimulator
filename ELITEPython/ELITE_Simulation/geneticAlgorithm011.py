@@ -1,19 +1,19 @@
 '''Version 0.1.1
-Features: 1. Add failure profile for each hour (like price)
+Features: 1. Add failure rate for each hour (like price)
+          2. Add failure cost profile for each job
           2. Choose job sequence of VL0601 as example
 '''
 
 import sys
 import numpy as np
 import csv
-import itertools
 import time
 from datetime import timedelta, datetime
+from operator import add
 
-DNA_SIZE = 5    
-POP_SIZE = 4   
-CROSS_RATE = 0.3
-MUTATION_RATE = 0.2
+POP_SIZE = 8   
+CROSS_RATE = 0.4
+MUTATION_RATE = 0.4
 N_GENERATIONS = 100
 
 def ceil_dt(dt, delta):
@@ -209,10 +209,10 @@ class GA(object):
 #         self.pop = np.vstack([np.random.permutation(range(1, dna_size+1)) for _ in range(pop_size)]) # Job index start from 1 instead of 0
         self.pop = np.vstack([ np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
         
-    def get_fitness(self, value):
+    def get_fitness(self, value1, value2):
         ''' Calculate the fitness of every individual in a generation.
         '''
-        return value
+        return list(map(add, value1, value2))
     
     def select(self, fitness):
         ''' Nature selection with individuals' fitnesses.
@@ -247,8 +247,10 @@ class GA(object):
 #             print('Start_time:', self.start_time)
 #             print('Sub_pop: ', sub_pop)
 #             value = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
-            value = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in sub_pop]
-            fitness = self.get_fitness(value)
+            failure_cost = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in sub_pop]
+            energy_cost = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
+#             fitness = self.get_fitness(value)
+            fitness = self.get_fitness(failure_cost, energy_cost)
 #             print('Fitness: ', fitness)
             winner_loser_idx = np.argsort(fitness)
             winner_loser = sub_pop[winner_loser_idx] # the first is winner and the second is loser
@@ -259,11 +261,12 @@ class GA(object):
             self.pop[sub_pop_idx] = winner_loser
         
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
-        space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in self.pop]
+        failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in self.pop]
+        energy_cost_space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         print(self.start_time)
 #         print(self.pop)
 #         print(space)
-        return self.pop, space
+        return self.pop, list(map(add, failure_cost_space, energy_cost_space))
         
 if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
@@ -315,8 +318,11 @@ if __name__ == '__main__':
     print("Original schedule: ", original_schedule)
     print("Original schedule start time:", first_start_time)
     print("DNA_SIZE: ", DNA_SIZE) 
-    print("Original energy cost: ", get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new))
-    print("Original failure cost: ", get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new))
+    original_energy_cost = get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)
+    original_failure_cost = get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new)
+    print("Original energy cost: ", original_energy_cost)
+    print("Original failure cost: ", original_failure_cost)
+    print("Original total cost:", original_energy_cost+original_failure_cost)
 
 #     print("Elite schedule: ", elite_schedule)
 #     print("Elite cost:", elite_cost)
