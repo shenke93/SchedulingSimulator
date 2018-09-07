@@ -1,6 +1,5 @@
-'''Version 0.1.1
-Features: 1. Add failure rate for each hour (like price)
-          2. Add failure cost profile for each job
+'''Version 0.1.2
+Features: 1. Add calculation of job failure cost
           2. Choose job sequence of VL0601 as example
 '''
 
@@ -12,8 +11,8 @@ from datetime import timedelta, datetime
 from operator import add
 
 POP_SIZE = 8   
-CROSS_RATE = 0.4
-MUTATION_RATE = 0.4
+CROSS_RATE = 0.6
+MUTATION_RATE = 0.8
 N_GENERATIONS = 100
 
 def ceil_dt(dt, delta):
@@ -23,6 +22,19 @@ def ceil_dt(dt, delta):
 def floor_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
     return (datetime.min + (q)*delta) if r else dt
+
+def read_material_price(productFile):
+    raw_material_unit_price_dict = {}
+    try:
+        with open(productFile, encoding='utf-8') as jobInfo_csv:
+            reader = csv.DictReader(jobInfo_csv)
+            for row in reader:
+                # raw material price is between [1, 2] euro/kg
+                raw_material_unit_price_dict.update({row['Product']:round(np.random.uniform(1, 2), 2)})
+    except:
+        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        exit()
+    return raw_material_unit_price_dict
 
 def read_maintenance(maintenanceFile, price_dict):
     ''' Input: List of maintenance events: timestamp when maintenance is evaluated
@@ -98,7 +110,7 @@ def read_job(jobFile):
             for row in reader:
                 job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
                                                  datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"), float(row['Power']),
-                                                 float(row['Factor'])]})
+                                                 row['Product'], float(row['Quantity'])]})
     except:
         print("Unexpected error when reading job information:", sys.exc_info()[0]) 
         exit()
@@ -114,7 +126,7 @@ def select_jobs(daterange1, daterange2, job_dict):
             dict.update({key:value})
     return dict
 
-def get_failure_cost(indiviaual, start_time, job_dict, health_dict):
+def get_failure_cost(indiviaual, start_time, job_dict, health_dict, raw_material_unit_price_dict):
     ''' Given an individual (a possible schedule), calculate its failure cost '''
     failure_cost = 0
     t_now = start_time
@@ -122,27 +134,35 @@ def get_failure_cost(indiviaual, start_time, job_dict, health_dict):
         t_start = t_now
         unit = job_dict.get(item, -1)
         if unit == -1:
-            raise ValueError("No matching item in health dict.")
+            raise ValueError("No matching item in health dict: ", item)
         du = unit[0]    # get job duration
-        fa = unit[4]    # get job failure cost factor
-        t_end = t_start + timedelta(hours=du)
+        product_type = unit[4]    # get job product type
+        quantity = unit[5]  # get job quantity
         
-        t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start up
-        t_ed = floor_dt(t_end, timedelta(hours=1)) #    t_end down
-        t_sd = floor_dt(t_now, timedelta(hours=1))
+        if du <= 1: # safe period of 1 hour (no failure cost)
+            continue;
+        
+        t_start = t_start+timedelta(hours=1) # exclude safe period, find start of sensitive period
+        t_end = t_start + timedelta(hours=(du-1)) # end of sensitive period
+        
+        t_su = ceil_dt(t_start, timedelta(hours=1)) #    t_start right border
+        t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
+        t_sd = floor_dt(t_now, timedelta(hours=1))  #    t_start left border
         
         if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
             raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
         
-        tmp = health_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) +  health_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
+        tmp = health_dict.get(t_sd, 0) +  health_dict.get(t_ed, 0)
         step = timedelta(hours=1)
         while t_su < t_ed:
             if health_dict.get(t_su, -1) == -1:
                 raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
-            failure_cost += health_dict.get(t_su, 0) * fa
+            tmp += health_dict.get(t_su, 0) 
             t_su += step
         
-        failure_cost += tmp * fa
+        if raw_material_unit_price_dict.get(product_type, -1) == -1:
+            raise ValueError("For item %d: No matching item in the raw material unit price dict for %s" % (item, product_type))
+        failure_cost += tmp * quantity * raw_material_unit_price_dict.get(product_type, 0)
         t_now = t_end
     
     return failure_cost
@@ -196,7 +216,8 @@ def locate_min(a):
                       if smallest == element]
     
 class GA(object):
-    def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, start_time):
+    def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
+                 raw_material_unit_price_dict, start_time):
         self.dna_size = dna_size
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
@@ -204,6 +225,7 @@ class GA(object):
         self.job_dict = job_dict
         self.price_dict = price_dict
         self.failure_dict = failure_dict
+        self.raw_material_unit_price_dict = raw_material_unit_price_dict
         self.start_time = start_time
         
 #         self.pop = np.vstack([np.random.permutation(range(1, dna_size+1)) for _ in range(pop_size)]) # Job index start from 1 instead of 0
@@ -247,7 +269,7 @@ class GA(object):
 #             print('Start_time:', self.start_time)
 #             print('Sub_pop: ', sub_pop)
 #             value = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
-            failure_cost = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in sub_pop]
+            failure_cost = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.raw_material_unit_price_dict) for i in sub_pop]
             energy_cost = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
 #             fitness = self.get_fitness(value)
             fitness = self.get_fitness(failure_cost, energy_cost)
@@ -261,7 +283,7 @@ class GA(object):
             self.pop[sub_pop_idx] = winner_loser
         
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
-        failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict) for i in self.pop]
+        failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.raw_material_unit_price_dict) for i in self.pop]
         energy_cost_space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         print(self.start_time)
 #         print(self.pop)
@@ -275,8 +297,18 @@ if __name__ == '__main__':
     start_time = datetime(2016, 1, 23, 17, 0)
     end_time = datetime(2017, 12, 29, 8, 0)
     
+    # Generate raw material unit price
+    raw_material_unit_price_dict = read_material_price("productPack.csv")
+    
+#     print(raw_material_unit_price_dict)
+#     exit()
+    
     price_dict_new = read_price("price.csv")
-    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoPack_ga.csv"))
+    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoPack_ga_012.csv"))
+
+#     print(job_dict_new)
+#     exit()
+
     failure_dict_new = read_maintenance("maintenanceInfluence.csv", price_dict_new)
     
     DNA_SIZE = len(job_dict_new)
@@ -303,9 +335,11 @@ if __name__ == '__main__':
     result_dict = {}
     original_schedule = waiting_jobs  
     result_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)+
-                        get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new)})
+                        get_failure_cost(original_schedule, first_start_time, job_dict_new, 
+                                         failure_dict_new, raw_material_unit_price_dict)})
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
-            job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, start_time = first_start_time)
+            job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
+            raw_material_unit_price_dict = raw_material_unit_price_dict, start_time = first_start_time)
     
     for generation in range(1, N_GENERATIONS+1):
         print("Gen: ", generation)
@@ -322,7 +356,8 @@ if __name__ == '__main__':
     print("Original schedule start time:", first_start_time)
     print("DNA_SIZE: ", DNA_SIZE) 
     original_energy_cost = get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)
-    original_failure_cost = get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new)
+    original_failure_cost = get_failure_cost(original_schedule, first_start_time, job_dict_new, 
+                                             failure_dict_new, raw_material_unit_price_dict)
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
     print("Original total cost:", original_energy_cost+original_failure_cost)
@@ -333,7 +368,7 @@ if __name__ == '__main__':
 #     print("Time consumed: ", te - ts)  
 
 # write the result to csv for plot
-    with open('ga_011_analyse_plot.csv', 'w', newline='\n') as csv_file:
+    with open('ga_012_analyse_plot.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict.items():
             writer.writerow([key, value])
