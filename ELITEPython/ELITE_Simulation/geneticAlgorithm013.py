@@ -1,6 +1,8 @@
-'''Version 0.1.2
-Features: 1. Add calculation of job failure cost
-          2. Choose job sequence of VL0601 as example
+'''Version 0.1.3
+Features: 1. Add memory features
+          2. Change mutation process
+          3. Reuse all inputs of version 0.1.2, output in the new file
+          4. Make unit production cost static
 '''
 
 import sys
@@ -30,7 +32,7 @@ def read_material_price(productFile):
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
                 # raw material price is between [1, 2] euro/kg
-                raw_material_unit_price_dict.update({row['Product']:round(np.random.uniform(1, 2), 2)})
+                raw_material_unit_price_dict.update({row['Product']:float(row['UnitPrice'])})
     except:
         print("Unexpected error when reading job information:", sys.exc_info()[0]) 
         exit()
@@ -254,12 +256,14 @@ class GA(object):
         return winner_loser
     
     def mutate(self, winner_loser): # mutation for loser
-        for point in range(self.dna_size):
-            if np.random.rand() < self.mutation_rate:
-                swap_point = np.random.randint(0, self.dna_size)
-#                 print("swap_point: ", swap_point)
-                swap_A, swap_B = winner_loser[1][point], winner_loser[1][swap_point]
-                winner_loser[1][point], winner_loser[1][swap_point] = swap_B, swap_A 
+#         for point in range(self.dna_size):
+        if np.random.rand() < self.mutation_rate:
+            point, swap_point = np.random.randint(0, self.dna_size, size=2)
+#             print("swap_point: ", swap_point)
+#             print("point: ", point)
+            swap_A, swap_B = winner_loser[1][point], winner_loser[1][swap_point]
+            winner_loser[1][point], winner_loser[1][swap_point] = swap_B, swap_A 
+        
         return winner_loser
         
     def evolve(self, n):
@@ -298,7 +302,7 @@ if __name__ == '__main__':
     end_time = datetime(2017, 12, 29, 8, 0)
     
     # Generate raw material unit price
-    raw_material_unit_price_dict = read_material_price("productPack.csv")
+    raw_material_unit_price_dict = read_material_price("productPack_ga_013.csv")
     
 #     print(raw_material_unit_price_dict)
 #     exit()
@@ -337,17 +341,17 @@ if __name__ == '__main__':
     result_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)+
                         get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                          failure_dict_new, raw_material_unit_price_dict)})
-    ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
-            job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
-            raw_material_unit_price_dict = raw_material_unit_price_dict, start_time = first_start_time)
-     
-    for generation in range(1, N_GENERATIONS+1):
-        print("Gen: ", generation)
-        pop, res = ga.evolve(8)          # natural selection, crossover and mutation
-        best_index = np.argmin(res)
-#         print("Most fitted DNA: ", pop[best_index])
-        print("Most fitted cost: ", res[best_index])
-        result_dict.update({generation:res[best_index]})
+#     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
+#             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
+#             raw_material_unit_price_dict = raw_material_unit_price_dict, start_time = first_start_time)
+#      
+#     for generation in range(1, N_GENERATIONS+1):
+#         print("Gen: ", generation)
+#         pop, res = ga.evolve(8)          # natural selection, crossover and mutation
+#         best_index = np.argmin(res)
+# #         print("Most fitted DNA: ", pop[best_index])
+#         print("Most fitted cost: ", res[best_index])
+#         result_dict.update({generation:res[best_index]})
     
 
      
@@ -368,7 +372,7 @@ if __name__ == '__main__':
 #     print("Time consumed: ", te - ts)  
 
 # write the result to csv for plot
-    with open('ga_012_analyse_plot.csv', 'w', newline='\n') as csv_file:
+    with open('ga_013_analyse_plot.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict.items():
             writer.writerow([key, value])
