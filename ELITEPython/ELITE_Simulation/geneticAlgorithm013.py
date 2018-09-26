@@ -1,5 +1,5 @@
 '''Version 0.1.3
-Features: 1. Add memory features
+Features: 1. Add memory features: memory is an empty list without limited size
           2. Change mutation process
           3. Reuse all inputs of version 0.1.2, output in the new file
           4. Make unit production cost static
@@ -9,13 +9,14 @@ import sys
 import numpy as np
 import csv
 import time
+import queue
 from datetime import timedelta, datetime
 from operator import add
 
 POP_SIZE = 8   
 CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
-N_GENERATIONS = 100
+N_GENERATIONS = 200
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -216,7 +217,7 @@ def locate_min(a):
     smallest = min(a)
     return smallest, [index for index, element in enumerate(a) 
                       if smallest == element]
-    
+            
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
                  raw_material_unit_price_dict, start_time):
@@ -231,19 +232,22 @@ class GA(object):
         self.start_time = start_time
         
 #         self.pop = np.vstack([np.random.permutation(range(1, dna_size+1)) for _ in range(pop_size)]) # Job index start from 1 instead of 0
-        self.pop = np.vstack([ np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
+        self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
+        
+        self.memory = []
+        
         
     def get_fitness(self, value1, value2):
         ''' Calculate the fitness of every individual in a generation.
         '''
         return list(map(add, value1, value2))
     
-    def select(self, fitness):
-        ''' Nature selection with individuals' fitnesses.
-        '''
-        idx = np.random.choice(np.arange(self.pop_size), size=self.pop_size, replace=True, p = fitness/fitness.sum())
-#         print("idx:", idx)
-        return self.pop[idx] 
+#     def select(self, fitness):
+#         ''' Nature selection with individuals' fitnesses.
+#         '''
+#         idx = np.random.choice(np.arange(self.pop_size), size=self.pop_size, replace=True, p = fitness/fitness.sum())
+# #         print("idx:", idx)
+#         return self.pop[idx] 
     
     def crossover(self, winner_loser): # crossover for loser
         if np.random.rand() < self.cross_rate:
@@ -267,7 +271,8 @@ class GA(object):
         return winner_loser
         
     def evolve(self, n):
-        for _ in range(n): # randomly pick and compare n times
+        i = 1
+        while i <= n:
             sub_pop_idx = np.random.choice(np.arange(0, self.pop_size), size=2, replace=False)
             sub_pop = self.pop[sub_pop_idx] # pick 2 individuals from pop
 #             print('Start_time:', self.start_time)
@@ -278,14 +283,39 @@ class GA(object):
 #             fitness = self.get_fitness(value)
             fitness = self.get_fitness(failure_cost, energy_cost)
 #             print('Fitness: ', fitness)
+            # Elitism Selection
             winner_loser_idx = np.argsort(fitness)
             winner_loser = sub_pop[winner_loser_idx] # the first is winner and the second is loser
 #             print('Winner_loser: ', winner_loser)
+            
+            # Crossover (of the winner and the loser)
             winner_loser = self.crossover(winner_loser)
+            
+            # Mutation (only on the child)
             winner_loser = self.mutate(winner_loser)
 #             print('Winner_loser after crossover and mutate: ', winner_loser)
-            self.pop[sub_pop_idx] = winner_loser
-        
+#             print('Winner', winner_loser[0])
+#             print('Loser', winner_loser[1])
+            
+            # Memory search：
+            child = winner_loser[1]
+#             print("Child:", child)
+#           
+#             print("Current memory:", self.memory)            
+            flag = 0 # 0 means not in  
+            for item in self.memory:
+                if (item == child).all():
+#                     print("In memory!")
+                    flag = 1
+                    break
+                
+            if flag == 0:
+#                 print("Not in memory!")
+                self.memory.append(child)
+            
+                self.pop[sub_pop_idx] = winner_loser
+                i = i + 1
+                
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.raw_material_unit_price_dict) for i in self.pop]
         energy_cost_space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
@@ -341,17 +371,17 @@ if __name__ == '__main__':
     result_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)+
                         get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                          failure_dict_new, raw_material_unit_price_dict)})
-#     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
-#             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
-#             raw_material_unit_price_dict = raw_material_unit_price_dict, start_time = first_start_time)
-#      
-#     for generation in range(1, N_GENERATIONS+1):
-#         print("Gen: ", generation)
-#         pop, res = ga.evolve(8)          # natural selection, crossover and mutation
-#         best_index = np.argmin(res)
-# #         print("Most fitted DNA: ", pop[best_index])
-#         print("Most fitted cost: ", res[best_index])
-#         result_dict.update({generation:res[best_index]})
+    ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
+            job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
+            raw_material_unit_price_dict = raw_material_unit_price_dict, start_time = first_start_time)
+      
+    for generation in range(1, N_GENERATIONS+1):
+        print("Gen: ", generation)
+        pop, res = ga.evolve(8)          # natural selection, crossover and mutation
+        best_index = np.argmin(res)
+#         print("Most fitted DNA: ", pop[best_index])
+        print("Most fitted cost: ", res[best_index])
+        result_dict.update({generation:res[best_index]})
     
 
      
