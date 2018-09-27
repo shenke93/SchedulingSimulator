@@ -3,6 +3,7 @@ Features: 1. Add memory features: memory is an empty list without limited size
           2. Change mutation process
           3. Reuse all inputs of version 0.1.2, output in the new file
           4. Make unit production cost static
+          5. TODO: Add distance calculation
 '''
 
 import sys
@@ -217,7 +218,11 @@ def locate_min(a):
     smallest = min(a)
     return smallest, [index for index, element in enumerate(a) 
                       if smallest == element]
-            
+
+def hamming_distance(s1, s2):
+    assert len(s1) == len(s2)
+    return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
+                
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
                  raw_material_unit_price_dict, start_time):
@@ -288,6 +293,9 @@ class GA(object):
             winner_loser = sub_pop[winner_loser_idx] # the first is winner and the second is loser
 #             print('Winner_loser: ', winner_loser)
             
+            origin = sub_pop[winner_loser_idx][1]
+#             print('Origin1:', origin)
+
             # Crossover (of the winner and the loser)
             winner_loser = self.crossover(winner_loser)
             
@@ -296,25 +304,29 @@ class GA(object):
 #             print('Winner_loser after crossover and mutate: ', winner_loser)
 #             print('Winner', winner_loser[0])
 #             print('Loser', winner_loser[1])
+#             print('Origin2:', origin)
             
+#             print(hamming_distance(origin, winner_loser[1]))
+            # Distance evaluation:
+            if hamming_distance(origin, winner_loser[1]) > (self.dna_size / 5):
             # Memory search：
-            child = winner_loser[1]
+                child = winner_loser[1]
 #             print("Child:", child)
 #           
 #             print("Current memory:", self.memory)            
-            flag = 0 # 0 means not in  
-            for item in self.memory:
-                if (item == child).all():
+                flag = 0 # 0 means not in  
+                for item in self.memory:
+                    if (item == child).all():
 #                     print("In memory!")
-                    flag = 1
-                    break
+                        flag = 1
+                        break
                 
-            if flag == 0:
-#                 print("Not in memory!")
-                self.memory.append(child)
+                if flag == 0:
+#                     print("Not in memory!")
+                    self.memory.append(child)
             
-                self.pop[sub_pop_idx] = winner_loser
-                i = i + 1
+                    self.pop[sub_pop_idx] = winner_loser
+                    i = i + 1
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.raw_material_unit_price_dict) for i in self.pop]
