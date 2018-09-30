@@ -3,7 +3,7 @@ Features: 1. Add memory features: memory is an empty list without limited size
           2. Change mutation process
           3. Reuse all inputs of version 0.1.2, output in the new file
           4. Make unit production cost static
-          5. TODO: Add distance calculation
+          5. Add distance calculation
 '''
 
 import sys
@@ -58,13 +58,31 @@ def read_maintenance(maintenanceFile, price_dict):
 #     print(maintenance_influence)
     # Maintenance events: 
     health_dict = {}
-    for key in price_dict:
-        health_dict.update({key:0})
+#     for key in price_dict:
+#         health_dict.update({key:0})
     for key in price_dict:
         if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
-            for i in range(24):
-                health_dict.update({key+timedelta(hours=(i-12)):maintenance_influence[i]})  
+#             print("key", key)
+            for i in range(192):
+                key1 = key+timedelta(hours=(i-96))
+                health_dict.update({key1:0})
+#                 print("key1", key1)
+#                 tmp = health_dict.get(key1, 0)
+#                 print("tmp:", tmp)
+#                 health_dict.update({key1:((maintenance_influence[i]+tmp)/2)})  
     
+    for key in price_dict:
+        if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
+            for i in range(192):
+                key1 = key+timedelta(hours=(i-96))
+#                 print("key1", key1)
+                tmp = health_dict.get(key1, 0)
+#                 print("tmp:", tmp)
+                if tmp == 0:
+                    health_dict.update({key1:maintenance_influence[i]}) 
+                else:
+                    health_dict.update({key1:((maintenance_influence[i]+tmp)/2)})  
+                       
     return health_dict
 
 def select_maintenance(daterange1, daterange2, health_dict):
@@ -355,7 +373,10 @@ if __name__ == '__main__':
 #     print(job_dict_new)
 #     exit()
 
-    failure_dict_new = read_maintenance("maintenanceInfluence.csv", price_dict_new)
+    failure_dict_new = read_maintenance("maintenanceInfluenceb4a4.csv", price_dict_new)
+    
+#     print("Failures: ", failure_dict_new)
+#     exit()
     
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
