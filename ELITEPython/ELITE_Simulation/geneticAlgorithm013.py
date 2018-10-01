@@ -342,10 +342,16 @@ class GA(object):
                 
                 if flag == 0:
 #                     print("Not in memory!")
+                    if (len(self.memory) >= self.pop_size * 5):
+                        self.memory.pop()
                     self.memory.append(child)
             
                     self.pop[sub_pop_idx] = winner_loser
                     i = i + 1
+                else:
+                    print("In memory, start genetic operation again!")
+            else:
+                print("Distance too small, start genetic operation again!")
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.raw_material_unit_price_dict) for i in self.pop]
@@ -359,8 +365,8 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
     '''
-    start_time = datetime(2016, 1, 23, 17, 0)
-    end_time = datetime(2017, 12, 29, 8, 0)
+    start_time = datetime(2016, 11, 7, 0, 0)
+    end_time = datetime(2016, 11, 16, 0, 0)
     
     # Generate raw material unit price
     raw_material_unit_price_dict = read_material_price("productPack_ga_013.csv")
