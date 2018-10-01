@@ -4,7 +4,6 @@ Features: 1. Add memory features: memory is an empty list without limited size
           3. Reuse all inputs of version 0.1.2, output in the new file
           4. Make unit production cost static
           5. Add distance calculation
-          6. Adapt to algo's used in paper
 '''
 
 import sys
