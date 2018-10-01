@@ -81,7 +81,8 @@ def read_maintenance(maintenanceFile, price_dict):
                 if tmp == 0:
                     health_dict.update({key1:maintenance_influence[i]}) 
                 else:
-                    health_dict.update({key1:((maintenance_influence[i]+tmp)/2)})  
+#                     health_dict.update({key1:((maintenance_influence[i]+tmp)/2)})  
+                    health_dict.update({key1:max(tmp, maintenance_influence[i])}) 
                        
     return health_dict
 
@@ -174,17 +175,17 @@ def get_failure_cost(indiviaual, start_time, job_dict, health_dict, raw_material
         if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
             raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
         
-        tmp = health_dict.get(t_sd, 0) +  health_dict.get(t_ed, 0)
+        tmp = (1 - health_dict.get(t_sd, 0)) * (1 - health_dict.get(t_ed, 0))
         step = timedelta(hours=1)
         while t_su < t_ed:
             if health_dict.get(t_su, -1) == -1:
                 raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
-            tmp += health_dict.get(t_su, 0) 
+            tmp *= (1-health_dict.get(t_su, 0)) 
             t_su += step
         
         if raw_material_unit_price_dict.get(product_type, -1) == -1:
             raise ValueError("For item %d: No matching item in the raw material unit price dict for %s" % (item, product_type))
-        failure_cost += tmp * quantity * raw_material_unit_price_dict.get(product_type, 0)
+        failure_cost += (1-tmp) * quantity * raw_material_unit_price_dict.get(product_type, 0)
         t_now = t_end
     
     return failure_cost
@@ -389,7 +390,7 @@ if __name__ == '__main__':
 #     print("Waiting jobs: ", waiting_jobs)
 #     print("Prices: ", price_dict_new)
 #     print("Failures: ", failure_dict_new)
-
+# 
 #     exit()
     
     '''Optimization possibility 1: Add maintenance events.
