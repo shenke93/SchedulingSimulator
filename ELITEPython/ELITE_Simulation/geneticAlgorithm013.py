@@ -367,16 +367,16 @@ if __name__ == '__main__':
         Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
     '''
     start_time = datetime(2016, 11, 7, 0, 0)
-    end_time = datetime(2016, 11, 16, 0, 0)
+    end_time = datetime(2016, 11, 12, 0, 0)
     
     # Generate raw material unit price
-    raw_material_unit_price_dict = read_material_price("productPack_ga_013.csv")
+    raw_material_unit_price_dict = read_material_price("productProd_ga_013.csv")
     
 #     print(raw_material_unit_price_dict)
 #     exit()
     
     price_dict_new = read_price("price.csv")
-    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoPack_ga_012.csv"))
+    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))
 
 #     print(job_dict_new)
 #     exit()
