@@ -11,8 +11,7 @@ from geneticAlgorithm013 import get_energy_cost, get_failure_cost, GA
 POP_SIZE = 8   
 CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
-N_GENERATIONS = 800
-
+N_GENERATIONS = 200
 
 if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
@@ -41,6 +40,8 @@ if __name__ == '__main__':
 #     elite_cost = float('inf')
 #     elite_schedule = []
     analyse_dict = {}
+    best_schedule = []
+    best_cost = []
     
     original_schedule = waiting_jobs 
     analyse_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new)+
@@ -50,17 +51,22 @@ if __name__ == '__main__':
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=failure_dict_new,
             raw_material_unit_price_dict=raw_material_unit_price_dict, start_time=first_start_time)
-
+ 
     for generation in range(1, N_GENERATIONS+1):
-        if (generation % 20) == 0:
-            print("Gen: ", generation)
+#         if (generation % 20) == 0:
+#             print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
         best_index = np.argmin(res)
-        print("Most fitted DNA: ", pop[best_index])
-        print("Most fitted cost: ", res[best_index])
+#         print("Most fitted DNA: ", pop[best_index])
+#         print("Most fitted cost: ", res[best_index])
+        best_schedule = pop[best_index]
+        best_cost = res[best_index]
         analyse_dict.update({generation:res[best_index]})
-        
+         
     end_stamp = time.time()
+
+    print("Most fitted DNA:", best_schedule)
+    print("Most fitted cost:", best_cost)
     
     print()
 #     print("Optimal cost:", elite_cost)
