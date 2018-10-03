@@ -357,7 +357,7 @@ class GA(object):
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.raw_material_unit_price_dict) for i in self.pop]
         energy_cost_space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
-        print(self.start_time)
+#         print(self.start_time)
 #         print(self.pop)
 #         print(space)
         return self.pop, list(map(add, failure_cost_space, energy_cost_space))
@@ -418,7 +418,8 @@ if __name__ == '__main__':
       
     for generation in range(1, N_GENERATIONS+1):
         print("Gen: ", generation)
-        pop, res = ga.evolve(8)          # natural selection, crossover and mutation
+        pop, res = ga.evolve(1)          # natural selection, crossover and mutation
+#         print(res)
         best_index = np.argmin(res)
 #         print("Most fitted DNA: ", pop[best_index])
         print("Most fitted cost: ", res[best_index])

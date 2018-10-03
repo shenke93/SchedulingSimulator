@@ -20,6 +20,7 @@ if __name__ == '__main__':
     
     job_dict_new = select_jobs(start_time, end_time, read_job("jobInfo.csv"))
     price_dict_new = select_prices(start_time, end_time, read_price("price.csv"))
+    
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
     
