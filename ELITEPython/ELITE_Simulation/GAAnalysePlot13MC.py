@@ -95,7 +95,7 @@ def run_GA():
 
 x = 0
 
-while x < 10:
+while x < 100:
     run_GA()
     print("x:", x)
     x += 1
