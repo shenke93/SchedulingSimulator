@@ -274,7 +274,7 @@ class GA(object):
     def get_fitness(self, value1, value2):
         ''' Calculate the fitness of every individual in a generation.
         '''
-        return list(map(add, self.w1*value1, self.w2*value2))
+        return list(map(add, value1, value2))
     
 #     def select(self, fitness):
 #         ''' Nature selection with individuals' fitnesses.
@@ -312,9 +312,11 @@ class GA(object):
 #             print('Start_time:', self.start_time)
 #             print('Sub_pop: ', sub_pop)
 #             value = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
-            failure_cost = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in sub_pop]
-            energy_cost = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in sub_pop]
+            failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in sub_pop]
+            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in sub_pop]
 #             fitness = self.get_fitness(value)
+#             print("failure cost:", failure_cost)
+#             print("energy cost:", energy_cost)
             fitness = self.get_fitness(failure_cost, energy_cost)
 #             print('Fitness: ', fitness)
             # Elitism Selection
@@ -366,11 +368,13 @@ class GA(object):
 #                 print("Distance too small, start genetic operation again!")
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
-        failure_cost_space = [get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in self.pop]
-        energy_cost_space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in self.pop]
+        failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in self.pop]
+        energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in self.pop]
 #         print(self.start_time)
 #         print(self.pop)
 #         print(space)
+#         print("failure_cost_space:", failure_cost_space)
+#         print("energy_cost_space:", energy_cost_space)
         return self.pop, list(map(add, failure_cost_space, energy_cost_space))
         
 if __name__ == '__main__':
@@ -424,13 +428,14 @@ if __name__ == '__main__':
 #     ts = time.time()
 #     elite_cost = float('inf')
 #     elite_schedule = []
+    weight1 = 1
+    weight2 = 0
     result_dict = {}
     original_schedule = waiting_jobs  
-    result_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)+
-                        get_failure_cost(original_schedule, first_start_time, job_dict_new, 
+    result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)+
+                        weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                          failure_dict_new, product_related_characteristics_dict)})
-    weight1 = 1
-    weight2 = 1
+ 
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
             product_related_characteristics_dict = product_related_characteristics_dict, start_time = first_start_time,
@@ -439,7 +444,7 @@ if __name__ == '__main__':
     for generation in range(1, N_GENERATIONS+1):
         print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
-#         print(res)
+#         print("res:", res)
         best_index = np.argmin(res)
 #         print("Most fitted DNA: ", pop[best_index])
         print("Most fitted cost: ", res[best_index])
@@ -451,8 +456,8 @@ if __name__ == '__main__':
     print("Original schedule: ", original_schedule)
     print("Original schedule start time:", first_start_time)
     print("DNA_SIZE: ", DNA_SIZE) 
-    original_energy_cost = get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
-    original_failure_cost = get_failure_cost(original_schedule, first_start_time, job_dict_new, 
+    original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
+    original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                              failure_dict_new, product_related_characteristics_dict)
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
