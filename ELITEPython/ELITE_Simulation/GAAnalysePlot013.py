@@ -47,14 +47,17 @@ if __name__ == '__main__':
     analyse_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
                          get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)}) # Add origin to index 0
     
+    weight1 = 1
+    weight2 = 1
     start_stamp = time.time()
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=failure_dict_new,
-            product_related_characteristics_dict=raw_material_unit_price_dict, start_time=first_start_time)
+            product_related_characteristics_dict=raw_material_unit_price_dict, start_time=first_start_time,
+            weight1=weight1, weight2=weight2)
  
     for generation in range(1, N_GENERATIONS+1):
-#         if (generation % 20) == 0:
-#             print("Gen: ", generation)
+        if (generation % 20) == 0:
+            print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
         best_index = np.argmin(res)
 #         print("Most fitted DNA: ", pop[best_index])

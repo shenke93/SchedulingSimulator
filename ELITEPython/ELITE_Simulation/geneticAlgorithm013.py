@@ -5,6 +5,7 @@ Features: 1. Add memory features: memory is an empty list without limited size
           4. Make unit production cost static
           5. Add distance calculation
           6. Power profile and unit raw material cost are decided by product type
+          7. Add objective weights
 '''
 
 import sys
@@ -251,7 +252,7 @@ def hamming_distance(s1, s2):
                 
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
-                 product_related_characteristics_dict, start_time):
+                 product_related_characteristics_dict, start_time, weight1, weight2):
         self.dna_size = dna_size
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
@@ -261,6 +262,8 @@ class GA(object):
         self.failure_dict = failure_dict
         self.product_related_characteristics_dict = product_related_characteristics_dict
         self.start_time = start_time
+        self.w1 = weight1
+        self.w2 = weight2
         
 #         self.pop = np.vstack([np.random.permutation(range(1, dna_size+1)) for _ in range(pop_size)]) # Job index start from 1 instead of 0
         self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
@@ -271,7 +274,7 @@ class GA(object):
     def get_fitness(self, value1, value2):
         ''' Calculate the fitness of every individual in a generation.
         '''
-        return list(map(add, value1, value2))
+        return list(map(add, self.w1*value1, self.w2*value2))
     
 #     def select(self, fitness):
 #         ''' Nature selection with individuals' fitnesses.
@@ -426,9 +429,12 @@ if __name__ == '__main__':
     result_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)+
                         get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                          failure_dict_new, product_related_characteristics_dict)})
+    weight1 = 1
+    weight2 = 1
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
-            product_related_characteristics_dict = product_related_characteristics_dict, start_time = first_start_time)
+            product_related_characteristics_dict = product_related_characteristics_dict, start_time = first_start_time,
+            weight1=weight1, weight2=weight2)
       
     for generation in range(1, N_GENERATIONS+1):
         print("Gen: ", generation)

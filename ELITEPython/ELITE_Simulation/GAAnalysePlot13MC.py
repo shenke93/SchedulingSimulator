@@ -18,12 +18,51 @@ CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
 N_GENERATIONS = 200
 
+
+def run_GA():
+    global best_cost 
+    x = [0]
+    y = [get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
+                        get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)]
+    
+    for generation in range(1, N_GENERATIONS+1):
+#         print("generation:", generation)
+        popu, res = ga.evolve(1)          # natural selection, crossover and mutation
+        best_index = np.argmin(res)
+#         print("Most fitted DNA: ", pop[best_index])
+#         print("Most fitted cost: ", res[best_index])
+        
+        # TODO: check best_schedule
+          
+        t = best_cost
+        if (res[best_index] < t):
+#             print("Yes")     
+#             print("cond1:", res[best_index])
+#             print("cond2:", t)
+            best_cost =  res[best_index]   
+            
+#             print("Best_schedule:", popu[best_index])
+             
+        x.append(generation)
+        y.append(res[best_index])
+#         print("Best_schedule place3:", candidate_schedule)    
+#     print("Test:", popu[best_index])
+    plt.plot(x, y)
+    return popu[best_index]
+    
+#     print("Best_schedule place5:", candidate_schedule)
+
 if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
+#     case 1
     start_time = datetime(2016, 11, 3, 6, 0)
     end_time = datetime(2016, 11, 8, 0, 0)
+    
+#     case 2
+#     start_time = datetime(2016, 11, 7, 0, 0)
+#     end_time = datetime(2016, 11, 12, 0, 0)
     
     price_dict_new = read_price("price.csv")
     job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))
@@ -43,10 +82,11 @@ if __name__ == '__main__':
 
 #     print(waiting_jobs) 
 #     elite_cost = float('inf')
-#     elite_schedule = []
-#     analyse_dict = {}
-    best_schedule = []
+    candidate_schedule = []
     best_cost = 1e10
+    
+    weight1 = 1
+    weight2 = 1
     
     original_schedule = waiting_jobs 
 #     analyse_dict.update({0:get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
@@ -55,7 +95,8 @@ if __name__ == '__main__':
 #     start_stamp = time.time()
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=failure_dict_new,
-            product_related_characteristics_dict=raw_material_unit_price_dict, start_time=first_start_time)
+            product_related_characteristics_dict=raw_material_unit_price_dict, start_time=first_start_time,
+            weight1 = weight1, weight2 = weight2)
  
 #     for generation in range(1, N_GENERATIONS+1):
 # #         if (generation % 20) == 0:
@@ -69,43 +110,20 @@ if __name__ == '__main__':
 #         analyse_dict.update({generation:res[best_index]})
          
 #     end_stamp = time.time()
-
-def run_GA():
-    x = [0]
-    y = [get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
-                        get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)]
+    x = 0
     
-    for generation in range(1, N_GENERATIONS+1):
-        pop, res = ga.evolve(1)          # natural selection, crossover and mutation
-        best_index = np.argmin(res)
-#         print("Most fitted DNA: ", pop[best_index])
-#         print("Most fitted cost: ", res[best_index])
-        
-        global best_cost
-        global best_schedule
-        if (res[best_index] < best_cost):
-            best_cost =  res[best_index]        
-            best_schedule = pop[best_index]
-        
-        x.append(generation)
-        y.append(res[best_index])
-        
-    plt.plot(x, y)
-    return best_cost
-
-x = 0
-
-while x < 100:
-    run_GA()
-    print("x:", x)
-    x += 1
+    while x < 50:
+        candidate_schedule = run_GA()
+        print("x:", x)
+        x += 1
+       
     
-plt.xlabel("GA Generation")
-plt.ylabel("Total Cost (€)")
-print("Most fitted cost:", best_cost)
-print("Most fitted schedule:", best_schedule)
-
-plt.show()
+    plt.xlabel("GA Generation")
+    plt.ylabel("Total Cost (€)")
+    print("Most fitted cost:", best_cost)
+    print("Most fitted schedule:", candidate_schedule)
+    
+    plt.show()
 
 #     print("Most fitted DNA:", best_schedule)
 
