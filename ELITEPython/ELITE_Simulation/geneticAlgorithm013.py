@@ -428,8 +428,8 @@ if __name__ == '__main__':
 #     ts = time.time()
 #     elite_cost = float('inf')
 #     elite_schedule = []
-    weight1 = 1
-    weight2 = 0
+    weight1 = 0
+    weight2 = 1
     result_dict = {}
     original_schedule = waiting_jobs  
     result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)+

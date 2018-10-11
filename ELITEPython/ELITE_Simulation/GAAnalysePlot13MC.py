@@ -112,7 +112,7 @@ if __name__ == '__main__':
 #     end_stamp = time.time()
     x = 0
     
-    while x < 50:
+    while x < 100:
         candidate_schedule = run_GA()
         print("x:", x)
         x += 1
