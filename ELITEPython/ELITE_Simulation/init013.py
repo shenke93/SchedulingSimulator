@@ -42,8 +42,8 @@ try:
             all.append(row)
              
             for row in reader:
-                row.append(round(np.random.uniform(0.1, 0.3), 2))   # unit price 
-                row.append(round(np.random.uniform(0.08, 0.12), 2))   # power profile
+                row.append(round(np.random.uniform(0.05, 0.10), 3))   # unit price 
+                row.append(round(np.random.uniform(0.08, 0.15), 2))   # power profile
                 all.append(row)
             writer.writerows(all)
 except:

@@ -17,8 +17,8 @@ POP_SIZE = 8
 CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
 N_GENERATIONS = 200
-weight1 = 0 # weight of failure cost
-weight2 = 1 # weight of energy cost
+weight1 = 1 # weight of failure cost
+weight2 = 0 # weight of energy cost
 
 def run_GA():
     global best_cost 
