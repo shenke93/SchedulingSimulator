@@ -24,11 +24,18 @@ else:
 
 # original_schedule = [515, 512, 516, 514, 517, 513, 511, 510]    # C2 optimal / minimizing failure cost
 # original_schedule = [513, 517, 512, 515, 514, 516, 511, 510]
-# original_schedule = [510, 511, 512, 513, 514, 515, 516, 517] # C1 original
+original_schedule = [510, 511, 512, 513, 514, 515, 516, 517] # C1 original
 # original_schedule = [510, 512, 517, 511, 514, 513, 515, 516] # C3 shortest job first
-original_schedule = [515, 510, 512, 513, 514, 516, 517, 511]    # C4 minimizing energy cost
+# original_schedule = [515, 510, 512, 513, 514, 516, 517, 511]    # C4 minimizing energy cost
 
-energy_cost = get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
+# original_schedule = [512, 513, 515, 516, 514, 510, 517, 511] # case2 C2 optimal
+# original_schedule = [515, 512, 516, 514, 517, 513, 511, 510]    # case2 C5 minimizing failure cost
+# original_schedule = [515, 510, 512, 513, 514, 516, 517, 511]    # case 2 C4 minimizing energy cost
+# original_schedule = [510, 512, 517, 511, 514, 513, 515, 516] # case2 C3 shortest job first
+
+
+# energy_cost = get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
+energy_cost = 15 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
 failure_cost = get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                              failure_dict_new, product_related_characteristics_dict)
 print("Energy_cost:", energy_cost)

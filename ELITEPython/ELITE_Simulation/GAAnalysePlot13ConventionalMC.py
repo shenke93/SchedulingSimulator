@@ -10,8 +10,8 @@ import csv
 import matplotlib
 import matplotlib.pyplot as plt
 
-from geneticAlgorithm013 import select_jobs, read_job, select_prices, read_price, read_maintenance, read_product_related_characteristics
-from geneticAlgorithm013 import get_energy_cost, get_failure_cost, GA
+from geneticAlgorithm013Conventional import select_jobs, read_job, select_prices, read_price, read_maintenance, read_product_related_characteristics
+from geneticAlgorithm013Conventional import get_energy_cost, get_failure_cost, GA
 
 POP_SIZE = 8   
 CROSS_RATE = 0.6
@@ -20,36 +20,49 @@ N_GENERATIONS = 200
 weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
 
-def run_GA():
+def run_GA(ax):
     global best_cost 
     x = [0]
     y = [weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)]
     
-    for generation in range(1, N_GENERATIONS+1):
-#         print("generation:", generation)
-        popu, res = ga.evolve(1)          # natural selection, crossover and mutation
-        best_index = np.argmin(res)
-#         print("Most fitted DNA: ", pop[best_index])
-#         print("Most fitted cost: ", res[best_index])
+    for generation in range(1, N_GENERATIONS+1): 
+        failure_cost = [weight1*get_failure_cost(i, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict) for i in ga.pop]
+        energy_cost = [weight2*get_energy_cost(i, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict) for i in ga.pop]
+        fitness = np.array(ga.get_fitness(failure_cost, energy_cost))
+#         print("Fitness:", fitness)
+
+        best_index = np.argmin(fitness)
         
-        # TODO: check best_schedule
-          
-        t = best_cost
-        if (res[best_index] < t):
-#             print("Yes")     
-#             print("cond1:", res[best_index])
-#             print("cond2:", t)
-            best_cost =  res[best_index]   
+        if fitness[best_index] < best_cost:
+            best_cost = fitness[best_index]
             
-#             print("Best_schedule:", popu[best_index])
-             
+        ga.evolve(fitness)
         x.append(generation)
-        y.append(res[best_index])
+        y.append(best_cost)
+# #         print("generation:", generation)
+#         popu, res = ga.evolve(1)          # natural selection, crossover and mutation
+#         best_index = np.argmin(res)
+# #         print("Most fitted DNA: ", pop[best_index])
+# #         print("Most fitted cost: ", res[best_index])
+#           
+#         t = best_cost
+#         if (res[best_index] < t):
+# #             print("Yes")     
+# #             print("cond1:", res[best_index])
+# #             print("cond2:", t)
+#             best_cost =  res[best_index]   
+#             
+# #             print("Best_schedule:", popu[best_index])
+#              
+#         x.append(generation)
+#         y.append(res[best_index])
+
+
 #         print("Best_schedule place3:", candidate_schedule)    
 #     print("Test:", popu[best_index])
-    plt.plot(x, y, marker='o', markevery=10)
-    return popu[best_index]
+    ax.plot(x, y, marker='o', markevery=10)
+    return ga.pop[best_index]
     
 #     print("Best_schedule place5:", candidate_schedule)
 
@@ -112,17 +125,21 @@ if __name__ == '__main__':
 #     end_stamp = time.time()
     x = 0
     
-    while x < 5:
-        candidate_schedule = run_GA()
+    fig = plt.figure(figsize=(7, 5))
+    ax = fig.add_subplot(111)
+
+    while x < 50:
+        candidate_schedule = run_GA(ax)
         print("x:", x)
         x += 1
        
+    
     plt.xlabel("GA Generation", fontsize='xx-large')
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
-    plt.text(90, 13000, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
-   
+    plt.text(100, 13750, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
+    
     print("Most fitted cost:", best_cost)
     print("Most fitted schedule:", candidate_schedule)
     
