@@ -21,11 +21,12 @@ weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
 
 def run_GA(ax):
-    global best_cost 
+#     global best_cost 
     x = [0]
     y = [weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)]
     
+    best_cost = float('inf')
     for generation in range(1, N_GENERATIONS+1): 
         failure_cost = [weight1*get_failure_cost(i, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict) for i in ga.pop]
         energy_cost = [weight2*get_energy_cost(i, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict) for i in ga.pop]
@@ -33,7 +34,7 @@ def run_GA(ax):
 #         print("Fitness:", fitness)
 
         best_index = np.argmin(fitness)
-        
+#         best_cost = fitness[best_index]
         if fitness[best_index] < best_cost:
             best_cost = fitness[best_index]
             
