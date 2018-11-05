@@ -147,6 +147,7 @@ if __name__ == '__main__':
     print(x_ax)
     print(y_ax)
     
+    # Calculate avg of simulation results.
     avg = [0] * 8
     for i in range(len(y_ax)):
         if (i % 8 == 0):
@@ -168,10 +169,54 @@ if __name__ == '__main__':
     
     avg = [e / 50 for e in avg]
     print(avg)
+    
+    # Calculate min of simulation results.
+    t = [float('inf')] * 8
+    for i in range(len(y_ax)):
+        if (i % 8 == 0):
+            t[0] = min(t[0], y_ax[i])
+        if (i % 8 == 1):
+            t[1] = min(t[1], y_ax[i])
+        if (i % 8 == 2):
+            t[2] = min(t[2], y_ax[i])
+        if (i % 8 == 3):
+            t[3] = min(t[3], y_ax[i])
+        if (i % 8 == 4):
+            t[4] = min(t[4], y_ax[i])
+        if (i % 8 == 5):
+            t[5] = min(t[5], y_ax[i])
+        if (i % 8 == 6):
+            t[6] = min(t[6], y_ax[i])
+        if (i % 8 == 7):
+            t[7] = min(t[7], y_ax[i])
+            
+    # Calculate max of simulation results.
+    u = [0] * 8
+    for i in range(len(y_ax)):
+        if (i % 8 == 0):
+            u[0] = max(u[0], y_ax[i])
+        if (i % 8 == 1):
+            u[1] = max(u[1], y_ax[i])
+        if (i % 8 == 2):
+            u[2] = max(u[2], y_ax[i])
+        if (i % 8 == 3):
+            u[3] = max(u[3], y_ax[i])
+        if (i % 8 == 4):
+            u[4] = max(u[4], y_ax[i])
+        if (i % 8 == 5):
+            u[5] = max(u[5], y_ax[i])
+        if (i % 8 == 6):
+            u[6] = max(u[6], y_ax[i])
+        if (i % 8 == 7):
+            u[7] = max(u[7], y_ax[i])
+
+
     x = [25, 50, 75, 100, 125, 150, 175, 200]
-    plt.plot(x, avg, marker='o')   
+    plt.plot(x, t, marker='^', label='MIN')
+    plt.plot(x, u, marker='^', label='MAX')
+    plt.plot(x, avg, marker='^', label='AVG')
     plt.xlabel("GA Generation", fontsize='xx-large')
-    plt.ylabel("Total Cost (€)", fontsize='xx-large')
+    plt.ylabel("Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
 #     plt.text(90, 13700, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
