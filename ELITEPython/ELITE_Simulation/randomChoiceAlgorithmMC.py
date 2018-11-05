@@ -10,6 +10,9 @@ from geneticAlgorithm013 import get_energy_cost, get_failure_cost
 weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
 
+np.random.seed(1234)
+
+
 def run_randomSelection(ax):
     x = [0]
     y = [weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
@@ -62,7 +65,7 @@ if __name__ == '__main__':
         d = run_randomSelection(ax)
 
     plt.xlabel("Iteration", fontsize='xx-large')
-    plt.ylabel("Cost (€)", fontsize='xx-large')
+    plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
     

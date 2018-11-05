@@ -19,9 +19,8 @@ MUTATION_RATE = 0.8
 N_GENERATIONS = 200
 weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
-np.random.seed(1234)
 
-def run_GA(x_ax, y_ax):
+def run_IGA(y_ax):
 #     global best_cost 
     
     best_cost = float('inf')
@@ -38,8 +37,7 @@ def run_GA(x_ax, y_ax):
             
         ga.evolve(fitness)
         
-        if (generation % 25 == 0) :
-            x_ax.append(generation)
+        if (generation == N_GENERATIONS):
             y_ax.append(best_cost)
 # #         print("generation:", generation)
 #         popu, res = ga.evolve(1)          # natural selection, crossover and mutation
@@ -66,6 +64,66 @@ def run_GA(x_ax, y_ax):
     return ga.pop[best_index]
     
 #     print("Best_schedule place5:", candidate_schedule)
+
+def run_CGA(y_ax):
+#     global best_cost 
+    
+    best_cost = float('inf')
+    for generation in range(1, N_GENERATIONS+1): 
+        failure_cost = [weight1*get_failure_cost(i, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict) for i in ga.pop]
+        energy_cost = [weight2*get_energy_cost(i, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict) for i in ga.pop]
+        fitness = np.array(ga.get_fitness(failure_cost, energy_cost))
+#         print("Fitness:", fitness)
+
+        best_index = np.argmin(fitness)
+#         best_cost = fitness[best_index]
+        if fitness[best_index] < best_cost:
+            best_cost = fitness[best_index]
+            
+        ga.evolve(fitness)
+        
+        if (generation == N_GENERATIONS) :
+            y_ax.append(best_cost)
+# #         print("generation:", generation)
+#         popu, res = ga.evolve(1)          # natural selection, crossover and mutation
+#         best_index = np.argmin(res)
+# #         print("Most fitted DNA: ", pop[best_index])
+# #         print("Most fitted cost: ", res[best_index])
+#           
+#         t = best_cost
+#         if (res[best_index] < t):
+# #             print("Yes")     
+# #             print("cond1:", res[best_index])
+# #             print("cond2:", t)
+#             best_cost =  res[best_index]   
+#             
+# #             print("Best_schedule:", popu[best_index])
+#              
+#         x.append(generation)
+#         y.append(res[best_index])
+
+
+#         print("Best_schedule place3:", candidate_schedule)    
+#     print("Test:", popu[best_index])
+#     ax.plot(x, y, marker='o')
+    return ga.pop[best_index]
+
+def run_randomSelection(y_ax):
+#     candidate = []
+#     cost = float('inf')
+    for i in range(1, 208): 
+        s = np.random.permutation(waiting_jobs)
+        energy_cost = get_energy_cost(s, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)
+        failure_cost = get_failure_cost(s, first_start_time, job_dict_new, 
+                                             failure_dict_new, raw_material_unit_price_dict)
+        
+        if (((i-7) % 25 == 0) & (i != 7)):
+#             print(i)
+            y_ax.append(energy_cost + failure_cost)
+        
+#         if ((energy_cost + failure_cost) < cost):
+#             cost = energy_cost + failure_cost
+#             candidate = s
 
 if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
@@ -129,110 +187,108 @@ if __name__ == '__main__':
     fig = plt.figure(figsize=(7, 5))
 #     ax = fig.add_subplot(111)
     
-    x_ax = []
-    y_ax = []
+    y_ax1 = []
+    y_ax2 = []
     while x < 50:
-        candidate_schedule = run_GA(x_ax, y_ax)
+        run_IGA(y_ax1)
+        run_CGA(y_ax2)
         print("x:", x)
         x += 1
     
-#     print(x_ax)
-#     print(y_ax)
-
-# Calculate average of simlation results.
-    avg = [0] * 8
-    for i in range(len(y_ax)):
-        if (i % 8 == 0):
-            avg[0] += y_ax[i]
-        if (i % 8 == 1):
-            avg[1] += y_ax[i]
-        if (i % 8 == 2):
-            avg[2] += y_ax[i]
-        if (i % 8 == 3):
-            avg[3] += y_ax[i]
-        if (i % 8 == 4):
-            avg[4] += y_ax[i]
-        if (i % 8 == 5):
-            avg[5] += y_ax[i]
-        if (i % 8 == 6):
-            avg[6] += y_ax[i]
-        if (i % 8 == 7):
-            avg[7] += y_ax[i]
+    print(y_ax1)
+    print(y_ax2)
     
-    avg = [e / 50 for e in avg]
-    
-# Calculate min of simulation results.
-    t = [float('inf')] * 8
-    for i in range(len(y_ax)):
-        if (i % 8 == 0):
-            t[0] = min(t[0], y_ax[i])
-        if (i % 8 == 1):
-            t[1] = min(t[1], y_ax[i])
-        if (i % 8 == 2):
-            t[2] = min(t[2], y_ax[i])
-        if (i % 8 == 3):
-            t[3] = min(t[3], y_ax[i])
-        if (i % 8 == 4):
-            t[4] = min(t[4], y_ax[i])
-        if (i % 8 == 5):
-            t[5] = min(t[5], y_ax[i])
-        if (i % 8 == 6):
-            t[6] = min(t[6], y_ax[i])
-        if (i % 8 == 7):
-            t[7] = min(t[7], y_ax[i])
-            
-# Calculate max of simulation results.
-    u = [0] * 8
-    for i in range(len(y_ax)):
-        if (i % 8 == 0):
-            u[0] = max(u[0], y_ax[i])
-        if (i % 8 == 1):
-            u[1] = max(u[1], y_ax[i])
-        if (i % 8 == 2):
-            u[2] = max(u[2], y_ax[i])
-        if (i % 8 == 3):
-            u[3] = max(u[3], y_ax[i])
-        if (i % 8 == 4):
-            u[4] = max(u[4], y_ax[i])
-        if (i % 8 == 5):
-            u[5] = max(u[5], y_ax[i])
-        if (i % 8 == 6):
-            u[6] = max(u[6], y_ax[i])
-        if (i % 8 == 7):
-            u[7] = max(u[7], y_ax[i])
 
-#     print(avg)     
-# Add data of other methods.
-# Avg
-    avg2 = [12307.449632234158, 12307.076903676216, 12306.605784207028, 12305.479748722608, 12305.258742725251, 12305.164824177187, 12305.164824177187, 12305.164824177187]
-    avg3 = [12437.135670158877, 12414.661925801749, 12402.35273327789, 12396.688985588959, 12386.207600604188, 12376.88925281844, 12374.225627897365, 12369.219419320727]
-
-
-# Min
-# Max
-
-    x = [25, 50, 75, 100, 125, 150, 175, 200]
-    # plot of CGA
+# # Calculate average of simlation results.
+#     avg = [0] * 8
+#     for i in range(len(y_ax)):
+#         if (i % 8 == 0):
+#             avg[0] += y_ax[i]
+#         if (i % 8 == 1):
+#             avg[1] += y_ax[i]
+#         if (i % 8 == 2):
+#             avg[2] += y_ax[i]
+#         if (i % 8 == 3):
+#             avg[3] += y_ax[i]
+#         if (i % 8 == 4):
+#             avg[4] += y_ax[i]
+#         if (i % 8 == 5):
+#             avg[5] += y_ax[i]
+#         if (i % 8 == 6):
+#             avg[6] += y_ax[i]
+#         if (i % 8 == 7):
+#             avg[7] += y_ax[i]
+#     
+#     avg = [e / 50 for e in avg]
+#     
+# # Calculate min of simulation results.
+#     t = [float('inf')] * 8
+#     for i in range(len(y_ax)):
+#         if (i % 8 == 0):
+#             t[0] = min(t[0], y_ax[i])
+#         if (i % 8 == 1):
+#             t[1] = min(t[1], y_ax[i])
+#         if (i % 8 == 2):
+#             t[2] = min(t[2], y_ax[i])
+#         if (i % 8 == 3):
+#             t[3] = min(t[3], y_ax[i])
+#         if (i % 8 == 4):
+#             t[4] = min(t[4], y_ax[i])
+#         if (i % 8 == 5):
+#             t[5] = min(t[5], y_ax[i])
+#         if (i % 8 == 6):
+#             t[6] = min(t[6], y_ax[i])
+#         if (i % 8 == 7):
+#             t[7] = min(t[7], y_ax[i])
+#             
+# # Calculate max of simulation results.
+#     u = [0] * 8
+#     for i in range(len(y_ax)):
+#         if (i % 8 == 0):
+#             u[0] = max(u[0], y_ax[i])
+#         if (i % 8 == 1):
+#             u[1] = max(u[1], y_ax[i])
+#         if (i % 8 == 2):
+#             u[2] = max(u[2], y_ax[i])
+#         if (i % 8 == 3):
+#             u[3] = max(u[3], y_ax[i])
+#         if (i % 8 == 4):
+#             u[4] = max(u[4], y_ax[i])
+#         if (i % 8 == 5):
+#             u[5] = max(u[5], y_ax[i])
+#         if (i % 8 == 6):
+#             u[6] = max(u[6], y_ax[i])
+#         if (i % 8 == 7):
+#             u[7] = max(u[7], y_ax[i])
+# 
+# #     print(avg)     
+# # Add data of other methods.
+# # Avg
+# #     avg2 = [12310.473759458153, 12309.918693662166, 12309.217362086078, 12309.217362086078, 12309.071228887069, 12309.041775716567, 12308.720202884926, 12308.720202884926]
+# #     avg3 = [13510.247495874377, 13421.143581355014, 13510.009394722294, 13393.547880957962, 13614.693493175668, 13421.621106683828, 13585.140896015942, 13478.93352650872]
+# # Min
+# # Max
+# 
+#     x = [25, 50, 75, 100, 125, 150, 175, 200]
 #     plt.plot(x, t, marker='o', label='MIN')
 #     plt.plot(x, u, marker='o', label='MAX')
 #     plt.plot(x, avg, marker='o', label='AVG')
-#     plt.xlabel("GA Generation", fontsize='xx-large')
-#     plt.ylabel("Cost (€)", fontsize='xx-large')
-#     plt.xticks(fontsize='xx-large')
-#     plt.yticks(fontsize='xx-large')
-#     plt.legend()
-#     plt.show()
-    
-    plt.plot(x, avg, marker='o', label='CGA')
-    plt.plot(x, avg2, marker='^', label='IGA')
-    plt.plot(x, avg3, marker='s', label='RCA')
+
+
+#     plt.plot(x, avg2, marker='^', label='IGA')
+#     plt.plot(x, avg3, marker='s', label='RCA')
+
     plt.xlabel("GA Generation", fontsize='xx-large')
-    plt.ylabel("Total Cost (€)", fontsize='xx-large')
+    plt.ylabel("Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
     plt.legend()
     plt.show()
-
+#     
+#     plt.xlabel("GA Generation", fontsize='xx-large')
+#     plt.ylabel("Total Cost (€)", fontsize='xx-large')
+#     plt.xticks(fontsize='xx-large')
+#     plt.yticks(fontsize='xx-large')
 #     plt.text(100, 13750, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
     
 #     print("Most fitted cost:", best_cost)

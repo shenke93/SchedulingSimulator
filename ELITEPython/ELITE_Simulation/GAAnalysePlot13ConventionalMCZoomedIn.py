@@ -20,6 +20,9 @@ N_GENERATIONS = 200
 weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
 
+np.random.seed(1234)
+
+
 def run_GA(ax):
 #     global best_cost 
     x = []

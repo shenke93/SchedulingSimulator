@@ -20,6 +20,7 @@ N_GENERATIONS = 200
 weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
 
+np.random.seed(1234)
 # def run_GA():
 #     global best_cost 
 #     x = [0]
@@ -219,13 +220,13 @@ if __name__ == '__main__':
     plt.ylabel("Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
+    plt.legend()
 #     plt.text(90, 13700, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
    
 #     print("Most fitted cost:", best_cost)
 #     print("Most fitted schedule:", candidate_schedule)
     
     plt.show()
-
 #     print("Most fitted DNA:", best_schedule)
 
     

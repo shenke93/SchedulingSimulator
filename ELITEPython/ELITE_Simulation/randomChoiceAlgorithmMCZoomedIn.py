@@ -11,6 +11,8 @@ weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
 N_GENERATIONS = 200
 
+np.random.seed(1234)
+
 def run_randomSelection(ax):
     x = []
     y = []
@@ -66,7 +68,7 @@ if __name__ == '__main__':
         d = run_randomSelection(ax)
 
     plt.xlabel("Iteration", fontsize='xx-large')
-    plt.ylabel("Cost (€)", fontsize='xx-large')
+    plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
     
