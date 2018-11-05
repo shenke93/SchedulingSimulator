@@ -9,12 +9,13 @@ from geneticAlgorithm013 import get_energy_cost, get_failure_cost
 
 weight1 = 1 # weight of failure cost
 weight2 = 1 # weight of energy cost
+N_GENERATIONS = 200
 
 def run_randomSelection(ax):
-    x = [0]
-    y = [weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
-                        weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)]
-    cost = y[0]
+    x = []
+    y = []
+    
+    cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)
     for i in range(1, 208): 
         s = np.random.permutation(waiting_jobs)
         energy_cost = get_energy_cost(s, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)
@@ -25,10 +26,13 @@ def run_randomSelection(ax):
         
         if ((energy_cost + failure_cost) < cost):
             cost = energy_cost + failure_cost
-        
-        x.append(i)
-        y.append(cost)
-    ax.plot(x, y, marker='o', markevery=10)
+#         
+        if (((i-7) % 25 == 0) & (i != 7)):
+#             print(i)
+            x.append(i)
+            y.append(cost)
+            
+    ax.plot(x, y, marker='o')
     
     
 if __name__ == '__main__':
