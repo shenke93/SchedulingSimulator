@@ -158,11 +158,14 @@ if __name__ == '__main__':
     
     avg = [e / 50 for e in avg]
 #     print(avg)     
+# Add data of other methods.
     avg2 = [12310.473759458153, 12309.918693662166, 12309.217362086078, 12309.217362086078, 12309.071228887069, 12309.041775716567, 12308.720202884926, 12308.720202884926]
+    avg3 = [13510.247495874377, 13421.143581355014, 13510.009394722294, 13393.547880957962, 13614.693493175668, 13421.621106683828, 13585.140896015942, 13478.93352650872]
 
     x = [25, 50, 75, 100, 125, 150, 175, 200]
     plt.plot(x, avg, marker='o', label='CGA')
     plt.plot(x, avg2, marker='^', label='IGA')
+    plt.plot(x, avg3, marker='s', label='RCA')
 
     plt.xlabel("GA Generation", fontsize='xx-large')
     plt.ylabel("Average Cost (€)", fontsize='xx-large')
