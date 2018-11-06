@@ -111,16 +111,18 @@ def run_CGA(y_ax):
 def run_randomSelection(y_ax):
 #     candidate = []
 #     cost = float('inf')
+    cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)
     for i in range(1, 208): 
         s = np.random.permutation(waiting_jobs)
         energy_cost = get_energy_cost(s, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)
         failure_cost = get_failure_cost(s, first_start_time, job_dict_new, 
                                              failure_dict_new, raw_material_unit_price_dict)
         
-        if (((i-7) % 25 == 0) & (i != 7)):
-#             print(i)
-            y_ax.append(energy_cost + failure_cost)
+        if ((energy_cost + failure_cost) < cost):
+            cost = energy_cost + failure_cost
         
+        if (i == 207):
+            y_ax.append(cost)
 #         if ((energy_cost + failure_cost) < cost):
 #             cost = energy_cost + failure_cost
 #             candidate = s
@@ -189,14 +191,17 @@ if __name__ == '__main__':
     
     y_ax1 = []
     y_ax2 = []
+    y_ax3 = []
     while x < 50:
         run_IGA(y_ax1)
         run_CGA(y_ax2)
+        run_randomSelection(y_ax3)
         print("x:", x)
         x += 1
     
     print(y_ax1)
     print(y_ax2)
+    print(y_ax3)
     
 
 # # Calculate average of simlation results.

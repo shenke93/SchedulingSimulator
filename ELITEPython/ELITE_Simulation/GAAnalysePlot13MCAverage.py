@@ -90,6 +90,11 @@ if __name__ == '__main__':
 #     case 2
 #     start_time = datetime(2016, 11, 7, 0, 0)
 #     end_time = datetime(2016, 11, 12, 0, 0)
+
+# case 1 year
+#     start_time = datetime(2016, 1, 19, 14, 0)
+#     end_time = datetime(2016, 12, 24, 0, 0)
+    
     
     price_dict_new = read_price("price.csv")
     job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))

@@ -22,13 +22,14 @@ weight2 = 1 # weight of energy cost
 
 np.random.seed(1234)
 
-def run_GA(ax):
+def run_GA():
 #     global best_cost 
     x = [0]
     y = [weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)]
     
-    best_cost = float('inf')
+    s = []
+    best_cost_local = float('inf')
     for generation in range(1, N_GENERATIONS+1): 
         failure_cost = [weight1*get_failure_cost(i, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict) for i in ga.pop]
         energy_cost = [weight2*get_energy_cost(i, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict) for i in ga.pop]
@@ -37,12 +38,13 @@ def run_GA(ax):
 
         best_index = np.argmin(fitness)
 #         best_cost = fitness[best_index]
-        if fitness[best_index] < best_cost:
-            best_cost = fitness[best_index]
+        if fitness[best_index] < best_cost_local:
+            best_cost_local = fitness[best_index]
+            s = ga.pop[best_index]
             
         ga.evolve(fitness)
         x.append(generation)
-        y.append(best_cost)
+        y.append(best_cost_local)
 # #         print("generation:", generation)
 #         popu, res = ga.evolve(1)          # natural selection, crossover and mutation
 #         best_index = np.argmin(res)
@@ -64,8 +66,13 @@ def run_GA(ax):
 
 #         print("Best_schedule place3:", candidate_schedule)    
 #     print("Test:", popu[best_index])
-    ax.plot(x, y, marker='o', markevery=10)
-    return ga.pop[best_index]
+    global best_cost
+    global candidate_schedule
+    if best_cost_local < best_cost:
+        best_cost = best_cost_local
+        candidate_schedule = s
+        
+    plt.plot(x, y, marker='o', markevery=10)
     
 #     print("Best_schedule place5:", candidate_schedule)
 
@@ -128,11 +135,11 @@ if __name__ == '__main__':
 #     end_stamp = time.time()
     x = 0
     
-    fig = plt.figure(figsize=(7, 5))
-    ax = fig.add_subplot(111)
+    plt.figure(figsize=(10, 6))
+ 
 
     while x < 50:
-        candidate_schedule = run_GA(ax)
+        run_GA()
         print("x:", x)
         x += 1
        
@@ -141,7 +148,7 @@ if __name__ == '__main__':
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
-    plt.text(120, 13750, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
+    plt.text(120, 14500, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
     
     print("Most fitted cost:", best_cost)
     print("Most fitted schedule:", candidate_schedule)

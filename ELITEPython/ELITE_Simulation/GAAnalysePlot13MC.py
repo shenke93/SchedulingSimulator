@@ -79,8 +79,13 @@ def run_GA():
         y.append(res[best_index])
 #         print("Best_schedule place3:", candidate_schedule)    
 #     print("Test:", popu[best_index])
+    global best_cost
+    global candidate_schedule
+    if (res[best_index]) < best_cost:
+        best_cost = res[best_index]
+        candidate_schedule = popu[best_index]
     plt.plot(x, y, marker='o', markevery=10)
-    return popu[best_index]
+
 
 if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
@@ -113,7 +118,7 @@ if __name__ == '__main__':
 #     print(waiting_jobs) 
 #     elite_cost = float('inf')
     candidate_schedule = []
-    best_cost = 1e10
+    best_cost = float('inf')
     
    
     
@@ -141,16 +146,17 @@ if __name__ == '__main__':
 #     end_stamp = time.time()
     x = 0
     
+    plt.figure(figsize=(10, 6))   
     while x < 50:
-        candidate_schedule = run_GA()
+        run_GA()
         print("x:", x)
         x += 1
-       
+        
     plt.xlabel("GA Generation", fontsize='xx-large')
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
-    plt.text(120, 13700, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
+    plt.text(120, 14500, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
    
     print("Most fitted cost:", best_cost)
     print("Most fitted schedule:", candidate_schedule)

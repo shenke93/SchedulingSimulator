@@ -141,6 +141,8 @@ if __name__ == '__main__':
 #     end_stamp = time.time()
     x = 0
     
+    plt.figure(figsize=(10, 6))   
+
     while x < 50:
         candidate_schedule = run_GA()
         print("x:", x)
@@ -150,7 +152,7 @@ if __name__ == '__main__':
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
-    plt.text(90, 13700, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
+#     plt.text(90, 13700, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
    
     print("Most fitted cost:", best_cost)
     print("Most fitted schedule:", candidate_schedule)

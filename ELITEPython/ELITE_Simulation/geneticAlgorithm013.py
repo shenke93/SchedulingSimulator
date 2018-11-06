@@ -63,7 +63,7 @@ def read_maintenance(maintenanceFile, price_dict):
     for key in price_dict:
         if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
 #             print("key", key)
-            for i in range(192):
+            for i in range(216):
                 key1 = key+timedelta(hours=(i-96))
                 health_dict.update({key1:0})
 #                 print("key1", key1)
@@ -73,7 +73,7 @@ def read_maintenance(maintenanceFile, price_dict):
     
     for key in price_dict:
         if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
-            for i in range(192):
+            for i in range(216):
                 key1 = key+timedelta(hours=(i-96))
 #                 print("key1", key1)
                 tmp = health_dict.get(key1, 0)
@@ -381,8 +381,8 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
     '''
-    start_time = datetime(2016, 11, 7, 0, 0)
-    end_time = datetime(2016, 11, 12, 0, 0)
+    start_time = datetime(2016, 11, 3, 6, 0)
+    end_time = datetime(2016, 11, 8, 0, 0)
     
     # Generate raw material unit price
     product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013.csv")
@@ -397,6 +397,9 @@ if __name__ == '__main__':
 #     exit()
 
     failure_dict_new = read_maintenance("maintenanceInfluenceb4a4.csv", price_dict_new)
+#     print(failure_dict_new)
+    
+
     
     # write corresponding failure dict into file
     with open('ga_013_failure_plot.csv', 'w', newline='\n') as csv_file:
@@ -428,7 +431,7 @@ if __name__ == '__main__':
 #     ts = time.time()
 #     elite_cost = float('inf')
 #     elite_schedule = []
-    weight1 = 0
+    weight1 = 1
     weight2 = 1
     result_dict = {}
     original_schedule = waiting_jobs  
