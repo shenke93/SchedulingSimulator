@@ -212,6 +212,8 @@ if __name__ == '__main__':
 # Max
 
     x = [25, 50, 75, 100, 125, 150, 175, 200]
+    plt.figure(figsize=(10, 6))
+
     # plot of CGA
 #     plt.plot(x, t, marker='o', label='MIN')
 #     plt.plot(x, u, marker='o', label='MAX')

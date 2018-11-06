@@ -23,7 +23,7 @@ weight2 = 1 # weight of energy cost
 np.random.seed(1234)
 
 
-def run_GA(ax):
+def run_GA():
 #     global best_cost 
     x = []
     y = []
@@ -66,7 +66,7 @@ def run_GA(ax):
 
 #         print("Best_schedule place3:", candidate_schedule)    
 #     print("Test:", popu[best_index])
-    ax.plot(x, y, marker='o')
+    plt.plot(x, y, marker='o')
     return ga.pop[best_index]
     
 #     print("Best_schedule place5:", candidate_schedule)
@@ -130,11 +130,10 @@ if __name__ == '__main__':
 #     end_stamp = time.time()
     x = 0
     
-    fig = plt.figure(figsize=(7, 5))
-    ax = fig.add_subplot(111)
+    fig = plt.figure(figsize=(10, 6))
 
     while x < 50:
-        candidate_schedule = run_GA(ax)
+        run_GA()
         print("x:", x)
         x += 1
        

@@ -22,13 +22,13 @@ if not waiting_jobs:
 else:
     first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule  
 
-# original_schedule = [515, 512, 516, 514, 517, 513, 511, 510]    # C2 optimal / minimizing failure cost
+# original_schedule = [517, 512, 515, 516, 514, 513, 511, 510]    # C2 optimal / minimizing failure cost
 # original_schedule = [513, 517, 512, 515, 514, 516, 511, 510]
-original_schedule = [510, 511, 512, 513, 514, 515, 516, 517] # C1 original
+# original_schedule = [510, 511, 512, 513, 514, 515, 516, 517] # C1 original
 # original_schedule = [510, 512, 517, 511, 514, 513, 515, 516] # C3 shortest job first
 # original_schedule = [515, 510, 512, 513, 514, 516, 517, 511]    # C4 minimizing energy cost
 
-# original_schedule = [512, 513, 515, 516, 514, 510, 517, 511] # case2 C2 optimal
+original_schedule = [512, 511, 515, 516, 517, 514, 510, 513] # case2 C2 optimal
 # original_schedule = [515, 512, 516, 514, 517, 513, 511, 510]    # case2 C5 minimizing failure cost
 # original_schedule = [515, 510, 512, 513, 514, 516, 517, 511]    # case 2 C4 minimizing energy cost
 # original_schedule = [510, 512, 517, 511, 514, 513, 515, 516] # case2 C3 shortest job first

@@ -13,7 +13,7 @@ weight2 = 1 # weight of energy cost
 np.random.seed(1234)
 
 
-def run_randomSelection(ax):
+def run_randomSelection():
     x = [0]
     y = [weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, raw_material_unit_price_dict)+
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, failure_dict_new, raw_material_unit_price_dict)]
@@ -31,7 +31,8 @@ def run_randomSelection(ax):
         
         x.append(i)
         y.append(cost)
-    ax.plot(x, y, marker='o', markevery=10)
+      
+    plt.plot(x, y, marker='o', markevery=10)
     
     
 if __name__ == '__main__':
@@ -57,12 +58,11 @@ if __name__ == '__main__':
     
 
     
-    fig = plt.figure(figsize=(7, 5))
-    ax = fig.add_subplot(111)
+    fig = plt.figure(figsize=(10, 6))
     
     for x in range(0, 50):
         print("x:", x)
-        d = run_randomSelection(ax)
+        d = run_randomSelection()
 
     plt.xlabel("Iteration", fontsize='xx-large')
     plt.ylabel("Total Cost (€)", fontsize='xx-large')

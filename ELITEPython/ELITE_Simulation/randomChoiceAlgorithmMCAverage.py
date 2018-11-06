@@ -129,11 +129,12 @@ if __name__ == '__main__':
 
     
     x = [25, 50, 75, 100, 125, 150, 175, 200]
+    plt.figure(figsize=(10, 6))
     plt.plot(x, t, marker='s', label='MIN')
     plt.plot(x, u, marker='s', label='MAX')
     plt.plot(x, avg, marker='s', label='AVG')
-    plt.xlabel("GA Generation", fontsize='xx-large')
-    plt.ylabel("Cost (€)", fontsize='xx-large')
+    plt.xlabel("Iteration", fontsize='xx-large')
+    plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
     

@@ -18,7 +18,7 @@ CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
 N_GENERATIONS = 200
 weight1 = 1 # weight of failure cost
-weight2 = 1 # weight of energy cost
+weight2 = 15 # weight of energy cost
 
 np.random.seed(1234)
 
@@ -83,7 +83,9 @@ def run_GA():
     global candidate_schedule
     if (res[best_index]) < best_cost:
         best_cost = res[best_index]
+        print('best_cost:', best_cost)
         candidate_schedule = popu[best_index]
+        print('candidate_schedule:', candidate_schedule)
     plt.plot(x, y, marker='o', markevery=10)
 
 

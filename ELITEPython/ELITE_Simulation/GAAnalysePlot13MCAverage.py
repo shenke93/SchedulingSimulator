@@ -218,6 +218,7 @@ if __name__ == '__main__':
 
 
     x = [25, 50, 75, 100, 125, 150, 175, 200]
+    plt.figure(figsize=(10, 6))
     plt.plot(x, t, marker='^', label='MIN')
     plt.plot(x, u, marker='^', label='MAX')
     plt.plot(x, avg, marker='^', label='AVG')
