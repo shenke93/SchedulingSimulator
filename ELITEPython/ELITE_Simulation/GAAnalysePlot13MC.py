@@ -18,7 +18,7 @@ CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
 N_GENERATIONS = 200
 weight1 = 1 # weight of failure cost
-weight2 = 15 # weight of energy cost
+weight2 = 1 # weight of energy cost
 
 np.random.seed(1234)
 

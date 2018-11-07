@@ -160,6 +160,7 @@ if __name__ == '__main__':
             avg[7] += y_ax[i]
     
     avg = [e / 50 for e in avg]
+    print(avg)
     
 # Calculate min of simulation results.
     t = [float('inf')] * 8
@@ -204,9 +205,8 @@ if __name__ == '__main__':
 #     print(avg)     
 # Add data of other methods.
 # Avg
-    avg2 = [12307.449632234158, 12307.076903676216, 12306.605784207028, 12305.479748722608, 12305.258742725251, 12305.164824177187, 12305.164824177187, 12305.164824177187]
-    avg3 = [12437.135670158877, 12414.661925801749, 12402.35273327789, 12396.688985588959, 12386.207600604188, 12376.88925281844, 12374.225627897365, 12369.219419320727]
-
+    avg2 = [13157.97590413798, 13155.521408102797, 13151.403914008893, 13151.403914008893, 13151.403914008893, 13150.658432392827, 13150.658432392827, 13150.658432392827]
+    avg3 = [13383.887594665128, 13341.49179331051, 13295.763989051662, 13280.795637199175, 13267.845003441857, 13259.659599082659, 13250.442074666591, 13247.691797849622]
 
 # Min
 # Max
@@ -215,9 +215,9 @@ if __name__ == '__main__':
     plt.figure(figsize=(10, 6))
 
     # plot of CGA
-#     plt.plot(x, t, marker='o', label='MIN')
-#     plt.plot(x, u, marker='o', label='MAX')
-#     plt.plot(x, avg, marker='o', label='AVG')
+#     plt.plot(x, t, marker='s', label='MIN', color='limegreen')
+#     plt.plot(x, u, marker='o', label='MAX', color='darkgreen')
+#     plt.plot(x, avg, marker='^', label='AVG', color='green')
 #     plt.xlabel("GA Generation", fontsize='xx-large')
 #     plt.ylabel("Cost (€)", fontsize='xx-large')
 #     plt.xticks(fontsize='xx-large')
@@ -225,9 +225,9 @@ if __name__ == '__main__':
 #     plt.legend()
 #     plt.show()
     
-    plt.plot(x, avg, marker='o', label='CGA')
-    plt.plot(x, avg2, marker='^', label='IGA')
-    plt.plot(x, avg3, marker='s', label='RCA')
+    plt.plot(x, avg, marker='^', color='green', label='CGA')
+    plt.plot(x, avg2, marker='^', color='orange',label='IGA')
+    plt.plot(x, avg3, marker='^', color = 'mediumblue', label='RCA')
     plt.xlabel("GA Generation", fontsize='xx-large')
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')

@@ -219,9 +219,9 @@ if __name__ == '__main__':
 
     x = [25, 50, 75, 100, 125, 150, 175, 200]
     plt.figure(figsize=(10, 6))
-    plt.plot(x, t, marker='^', label='MIN')
-    plt.plot(x, u, marker='^', label='MAX')
-    plt.plot(x, avg, marker='^', label='AVG')
+    plt.plot(x, t, marker='s', label='MIN', color='bisque')
+    plt.plot(x, u, marker='o', label='MAX', color='darkorange')
+    plt.plot(x, avg, marker='^', label='AVG', color='orange')
     plt.xlabel("GA Generation", fontsize='xx-large')
     plt.ylabel("Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
