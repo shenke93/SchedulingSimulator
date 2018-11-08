@@ -4,6 +4,7 @@
 '''
 
 from datetime import datetime
+import pickle
 import time
 import numpy as np
 import csv
@@ -139,6 +140,10 @@ if __name__ == '__main__':
 #     print(x_ax)
 #     print(y_ax)
 
+# save y_ax
+    with open('y_ax_CGA.pkl', 'wb') as f:
+        pickle.dump(y_ax, f)
+        
 # Calculate average of simlation results.
     avg = [0] * 8
     for i in range(len(y_ax)):
@@ -219,7 +224,7 @@ if __name__ == '__main__':
 #     plt.plot(x, u, marker='o', label='MAX', color='darkgreen')
 #     plt.plot(x, avg, marker='^', label='AVG', color='green')
 #     plt.xlabel("GA Generation", fontsize='xx-large')
-#     plt.ylabel("Cost (€)", fontsize='xx-large')
+#     plt.ylabel("Total Cost (€)", fontsize='xx-large')
 #     plt.xticks(fontsize='xx-large')
 #     plt.yticks(fontsize='xx-large')
 #     plt.legend()
@@ -228,7 +233,7 @@ if __name__ == '__main__':
     plt.plot(x, avg, marker='^', color='green', label='CGA')
     plt.plot(x, avg2, marker='^', color='orange',label='IGA')
     plt.plot(x, avg3, marker='^', color = 'mediumblue', label='RCA')
-    plt.xlabel("GA Generation", fontsize='xx-large')
+    plt.xlabel("GA Generation (Iteration)", fontsize='xx-large')
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')

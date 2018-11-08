@@ -2,6 +2,7 @@
 '''
 
 from datetime import datetime
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from geneticAlgorithm013 import read_price, select_jobs, read_job, read_maintenance, read_product_related_characteristics
@@ -64,7 +65,10 @@ if __name__ == '__main__':
         print("x:", x)
         d = run_randomSelection(y_ax)
     
-
+    # save y_ax
+    with open('y_ax_RCA.pkl', 'wb') as f:
+        pickle.dump(y_ax, f)
+        
     # Calculate avg of simulation results.
     avg = [0] * 8
     for i in range(len(y_ax)):

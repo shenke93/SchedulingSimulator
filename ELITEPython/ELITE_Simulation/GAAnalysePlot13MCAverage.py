@@ -4,6 +4,7 @@
 '''
 
 from datetime import datetime
+import pickle
 import time
 import numpy as np
 import csv
@@ -91,9 +92,9 @@ if __name__ == '__main__':
 #     start_time = datetime(2016, 11, 7, 0, 0)
 #     end_time = datetime(2016, 11, 12, 0, 0)
 
-# case 1 year
+# case 2 years
 #     start_time = datetime(2016, 1, 19, 14, 0)
-#     end_time = datetime(2016, 12, 24, 0, 0)
+#     end_time = datetime(2017, 11, 15, 0, 0)
     
     
     price_dict_new = read_price("price.csv")
@@ -104,6 +105,8 @@ if __name__ == '__main__':
     
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
+    
+    print(len(waiting_jobs))
     
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
@@ -150,8 +153,12 @@ if __name__ == '__main__':
         print("x:", x)
         x += 1
     
-    print(x_ax)
-    print(y_ax)
+#     print(x_ax)
+#     print(y_ax)
+    
+    # save y_ax
+    with open('y_ax_IGA.pkl', 'wb') as f:
+        pickle.dump(y_ax, f)
     
     # Calculate avg of simulation results.
     avg = [0] * 8
@@ -174,7 +181,7 @@ if __name__ == '__main__':
             avg[7] += y_ax[i]
     
     avg = [e / 50 for e in avg]
-    print(avg)
+#     print(avg)
     
     # Calculate min of simulation results.
     t = [float('inf')] * 8
@@ -223,7 +230,7 @@ if __name__ == '__main__':
     plt.plot(x, u, marker='o', label='MAX', color='darkorange')
     plt.plot(x, avg, marker='^', label='AVG', color='orange')
     plt.xlabel("GA Generation", fontsize='xx-large')
-    plt.ylabel("Cost (€)", fontsize='xx-large')
+    plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
     plt.legend()
