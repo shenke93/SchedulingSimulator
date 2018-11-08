@@ -94,16 +94,16 @@ if __name__ == '__main__':
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
 #     case 1
-#     start_time = datetime(2016, 11, 3, 6, 0)
-#     end_time = datetime(2016, 11, 8, 0, 0)
+    start_time = datetime(2016, 11, 3, 6, 0)
+    end_time = datetime(2016, 11, 8, 0, 0)
     
 #     case 2
 #     start_time = datetime(2016, 11, 7, 0, 0)
 #     end_time = datetime(2016, 11, 12, 0, 0)
 
 # case 2 years
-    start_time = datetime(2016, 1, 19, 14, 0)
-    end_time = datetime(2017, 11, 15, 0, 0)
+#     start_time = datetime(2016, 1, 19, 14, 0)
+#     end_time = datetime(2017, 11, 15, 0, 0)
     
     price_dict_new = read_price("price.csv")
     job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))

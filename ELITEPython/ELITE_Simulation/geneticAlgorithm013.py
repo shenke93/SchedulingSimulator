@@ -13,11 +13,13 @@ import numpy as np
 import csv
 from datetime import timedelta, datetime
 from operator import add
+import pickle
 
 POP_SIZE = 8   
 CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
 N_GENERATIONS = 200
+# np.random.seed(1234)
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -381,9 +383,14 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
     '''
-    start_time = datetime(2016, 11, 3, 6, 0)
-    end_time = datetime(2016, 11, 8, 0, 0)
-    
+#     start_time = datetime(2016, 11, 3, 6, 0)
+#     end_time = datetime(2016, 11, 8, 0, 0)
+#     
+
+# case 2 years
+    start_time = datetime(2016, 1, 19, 14, 0)
+    end_time = datetime(2017, 11, 15, 0, 0)
+
     # Generate raw material unit price
     product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013.csv")
     
@@ -450,12 +457,17 @@ if __name__ == '__main__':
 #         print("res:", res)
         best_index = np.argmin(res)
 #         print("Most fitted DNA: ", pop[best_index])
-        print("Most fitted cost: ", res[best_index])
-        result_dict.update({generation:res[best_index]})
+#         print("Most fitted cost: ", res[best_index])
+#         result_dict.update({generation:res[best_index]})
     
+    with open('IGAlarge.pkl', 'wb') as f:
+        pickle.dump(pop[best_index], f)
 
      
     print()      
+    print("Candidate schedule", pop[best_index])
+    print("Most fitted cost: ", res[best_index])
+
     print("Original schedule: ", original_schedule)
     print("Original schedule start time:", first_start_time)
     print("DNA_SIZE: ", DNA_SIZE) 
