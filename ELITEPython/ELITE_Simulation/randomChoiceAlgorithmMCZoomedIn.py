@@ -31,7 +31,7 @@ def run_randomSelection():
 #         
         if (((i-7) % 25 == 0) & (i != 7)):
 #             print(i)
-            x.append(i)
+            x.append(i-7)
             y.append(cost)
             
     plt.plot(x, y, marker='o')

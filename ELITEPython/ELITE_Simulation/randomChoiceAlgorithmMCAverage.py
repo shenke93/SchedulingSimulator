@@ -2,9 +2,9 @@
 '''
 
 from datetime import datetime
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 from geneticAlgorithm013 import read_price, select_jobs, read_job, read_maintenance, read_product_related_characteristics
 from geneticAlgorithm013 import get_energy_cost, get_failure_cost
 
@@ -65,10 +65,7 @@ if __name__ == '__main__':
         print("x:", x)
         d = run_randomSelection(y_ax)
     
-    # save y_ax
-    with open('y_ax_RCA.pkl', 'wb') as f:
-        pickle.dump(y_ax, f)
-        
+
     # Calculate avg of simulation results.
     avg = [0] * 8
     for i in range(len(y_ax)):
@@ -132,6 +129,10 @@ if __name__ == '__main__':
             u[7] = max(u[7], y_ax[i])
 
     
+    # save data
+    with open('data_RCA.pkl', 'wb') as f:
+        pickle.dump([y_ax, avg, t, u], f)
+        
     x = [25, 50, 75, 100, 125, 150, 175, 200]
     plt.figure(figsize=(10, 6))
     plt.plot(x, t, marker='s', label='MIN', color = 'blue')

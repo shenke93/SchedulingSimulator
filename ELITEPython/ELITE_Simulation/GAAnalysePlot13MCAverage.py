@@ -85,16 +85,16 @@ if __name__ == '__main__':
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
 #     case 1
-#     start_time = datetime(2016, 11, 3, 6, 0)
-#     end_time = datetime(2016, 11, 8, 0, 0)
+    start_time = datetime(2016, 11, 3, 6, 0)
+    end_time = datetime(2016, 11, 8, 0, 0)
     
 #     case 2
 #     start_time = datetime(2016, 11, 7, 0, 0)
 #     end_time = datetime(2016, 11, 12, 0, 0)
 
 # case 2 years
-    start_time = datetime(2016, 1, 19, 14, 0)
-    end_time = datetime(2017, 11, 15, 0, 0)
+#     start_time = datetime(2016, 1, 19, 14, 0)
+#     end_time = datetime(2017, 11, 15, 0, 0)
     
     
     price_dict_new = read_price("price.csv")
@@ -155,10 +155,6 @@ if __name__ == '__main__':
     
 #     print(x_ax)
 #     print(y_ax)
-    
-    # save y_ax
-    with open('y_ax_IGA.pkl', 'wb') as f:
-        pickle.dump(y_ax, f)
     
     # Calculate avg of simulation results.
     avg = [0] * 8
@@ -224,6 +220,10 @@ if __name__ == '__main__':
             u[7] = max(u[7], y_ax[i])
 
 
+    # save data
+    with open('data_IGA.pkl', 'wb') as f:
+        pickle.dump([y_ax, avg, t, u], f)
+        
     x = [25, 50, 75, 100, 125, 150, 175, 200]
     plt.figure(figsize=(10, 6))
     plt.plot(x, t, marker='s', label='MIN', color='bisque')

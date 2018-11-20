@@ -207,6 +207,11 @@ if __name__ == '__main__':
         if (i % 8 == 7):
             u[7] = max(u[7], y_ax[i])
 
+
+    # save data
+    with open('data_CGA.pkl', 'wb') as f:
+        pickle.dump([y_ax, avg, t, u], f)
+        
 #     print(avg)     
 # Add data of other methods.
 # Avg
@@ -220,25 +225,25 @@ if __name__ == '__main__':
     plt.figure(figsize=(10, 6))
 
     # plot of CGA
-#     plt.plot(x, t, marker='s', label='MIN', color='limegreen')
-#     plt.plot(x, u, marker='o', label='MAX', color='darkgreen')
-#     plt.plot(x, avg, marker='^', label='AVG', color='green')
-#     plt.xlabel("GA Generation", fontsize='xx-large')
-#     plt.ylabel("Total Cost (€)", fontsize='xx-large')
-#     plt.xticks(fontsize='xx-large')
-#     plt.yticks(fontsize='xx-large')
-#     plt.legend()
-#     plt.show()
-    
-    plt.plot(x, avg, marker='^', color='green', label='CGA')
-    plt.plot(x, avg2, marker='^', color='orange',label='IGA')
-    plt.plot(x, avg3, marker='^', color = 'mediumblue', label='RCA')
-    plt.xlabel("GA Generation (Iteration)", fontsize='xx-large')
+    plt.plot(x, t, marker='s', label='MIN', color='limegreen')
+    plt.plot(x, u, marker='o', label='MAX', color='darkgreen')
+    plt.plot(x, avg, marker='^', label='AVG', color='green')
+    plt.xlabel("GA Generation", fontsize='xx-large')
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
     plt.legend()
     plt.show()
+    
+#     plt.plot(x, avg, marker='^', color='green', label='CGA')
+#     plt.plot(x, avg2, marker='^', color='orange',label='IGA')
+#     plt.plot(x, avg3, marker='^', color = 'mediumblue', label='RCA')
+#     plt.xlabel("GA Generation (Iteration)", fontsize='xx-large')
+#     plt.ylabel("Total Cost (€)", fontsize='xx-large')
+#     plt.xticks(fontsize='xx-large')
+#     plt.yticks(fontsize='xx-large')
+#     plt.legend()
+#     plt.show()
 
 #     plt.text(100, 13750, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
     
