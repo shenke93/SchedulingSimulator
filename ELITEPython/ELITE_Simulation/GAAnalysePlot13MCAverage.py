@@ -85,16 +85,16 @@ if __name__ == '__main__':
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
 #     case 1
-    start_time = datetime(2016, 11, 3, 6, 0)
-    end_time = datetime(2016, 11, 8, 0, 0)
+#     start_time = datetime(2016, 11, 3, 6, 0)
+#     end_time = datetime(2016, 11, 8, 0, 0)
     
 #     case 2
 #     start_time = datetime(2016, 11, 7, 0, 0)
 #     end_time = datetime(2016, 11, 12, 0, 0)
 
 # case 2 years
-#     start_time = datetime(2016, 1, 19, 14, 0)
-#     end_time = datetime(2017, 11, 15, 0, 0)
+    start_time = datetime(2016, 1, 19, 14, 0)
+    end_time = datetime(2017, 11, 15, 0, 0)
     
     
     price_dict_new = read_price("price.csv")
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
     
-    print(len(waiting_jobs))
+#     print(len(waiting_jobs))
     
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
@@ -233,7 +233,7 @@ if __name__ == '__main__':
     plt.ylabel("Total Cost (€)", fontsize='xx-large')
     plt.xticks(fontsize='xx-large')
     plt.yticks(fontsize='xx-large')
-    plt.legend()
+    plt.legend(prop={'size': 'xx-large'})
 #     plt.text(90, 13700, 'Population size: 8\nCrossover rate: 0.6\nMutation rate: 0.8\nMaximal iteration: 200', fontdict={'size': 'xx-large', 'color': 'black'})
    
 #     print("Most fitted cost:", best_cost)

@@ -7,17 +7,17 @@ from geneticAlgorithm013 import read_product_related_characteristics, read_job
 import pickle
 
 weight1 = 1 # failure
-weight2 = 15 # energy
+weight2 = 1 # energy
 
 with open('IGAlarge.pkl', 'rb') as f:
     candidate = pickle.load(f)
             
-start_time = datetime(2016, 11, 3, 6, 0)
-end_time = datetime(2016, 11, 8, 0, 0)
+# start_time = datetime(2016, 11, 3, 6, 0)
+# end_time = datetime(2016, 11, 8, 0, 0)
 
 # case 2 years
-# start_time = datetime(2016, 1, 19, 14, 0)
-# end_time = datetime(2017, 11, 15, 0, 0)
+start_time = datetime(2016, 1, 19, 14, 0)
+end_time = datetime(2017, 11, 15, 0, 0)
     
 price_dict_new = read_price("price.csv")
 job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))
@@ -41,12 +41,11 @@ else:
 # original_schedule = [515, 512, 516, 517, 514, 513, 511, 510]   # C5  minimizing failure cost
 
 # original_schedule = [515, 517, 512, 516, 514, 510, 513, 511] # case2 C2 optimal
-original_schedule = [515, 512, 516, 517, 514, 513, 511, 510]     # case2 C5 minimizing failure cost
+# original_schedule = [515, 512, 516, 517, 514, 513, 511, 510]     # case2 C5 minimizing failure cost
 # original_schedule = [515, 510, 512, 513, 514, 516, 517, 511]    # case 2 C4 minimizing energy cost
 # original_schedule = [510, 512, 517, 511, 514, 513, 515, 516] # case2 C3 shortest job first
-# original_schedule = candidate
+original_schedule = candidate
 
-(original_schedule)
 # energy_cost = get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
 energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
 failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
