@@ -1,53 +1,106 @@
-'''Version 0.1.3 used for paper
-Features: 1. Add memory features: memory is an empty list without limited size
-          2. Change mutation process
-          3. Reuse all inputs of version 0.1.2, output in the new file
-          4. Make unit production cost static
-          5. Add distance calculation
-          6. Power profile and unit raw material cost are decided by product type
-          7. Add objective weights
+'''An Improved Genetic Algorithm (IGA) is implemented in this file.
+    Features: 
 '''
-
+# Core modules
 import sys
-import numpy as np
 import csv
 from datetime import timedelta, datetime
 from operator import add
 import pickle
-import time
 
+# 3rd-party modules
+import numpy as np
+
+# Global variables
 POP_SIZE = 8   
 CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
 N_GENERATIONS = 200
-# np.random.seed(1234)
+
 
 def ceil_dt(dt, delta):
+    ''' 
+    Ceil a data time dt according to the measurement delta.
+
+    Parameters
+    ----------
+    dt : datatime
+        Objective date time to ceil.
+    delta : timedelta
+        Measurement precision.
+
+    Returns
+    -------
+    Ceiled date time
+
+    '''
     q, r = divmod(dt - datetime.min, delta)
     return (datetime.min + (q+1)*delta) if r else dt
 
+
 def floor_dt(dt, delta):
+    ''' 
+    Floor a data time dt according to the measurement delta.
+
+    Parameters
+    ----------
+    dt : datatime
+        Objective date time to floor.
+    delta : timedelta
+        Measurement precision.
+
+    Returns
+    -------
+    Floored date time
+    '''
     q, r = divmod(dt - datetime.min, delta)
     return (datetime.min + (q)*delta) if r else dt
 
+
 def read_product_related_characteristics(productFile):
+    ''' 
+    Create a dictionary to store product related characteristics from productFile.
+
+    Parameters
+    ----------
+    productFile : string
+        Name of file containing job information. Columns contained: Product, UnitPrice, Power.
+
+    Returns
+    -------
+    Dictionary containing product related characteristics.
+    '''
     product_related_characteristics_dict = {}
     try:
         with open(productFile, encoding='utf-8') as jobInfo_csv:
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
-                # raw material price is between [1, 2] euro/kg
                 product_related_characteristics_dict.update({row['Product']:[float(row['UnitPrice']), float(row['Power'])]})
     except:
         print("Unexpected error when reading job information:", sys.exc_info()[0]) 
         exit()
     return product_related_characteristics_dict
 
+
 def read_maintenance(maintenanceFile, price_dict):
-    ''' Input: List of maintenance events: timestamp when maintenance is evaluated
-        Output: health_dict: key = Date, value = health
+    ''' 
+    Create a dictionary to store hourly dependent failure rate. 
+    Time range is the same as that in the dictionary of hourly dependent energy price.
+    Maintenances are held every Saturday.
+
+    Parameters
+    ----------
+    maintenanceFile: string
+        Name of file containing maintenance records.
+    
+    price_dict: dictionary
+        Dictionary of hourly dependent energy price.
+    Returns
+    -------
+    Dictionary containing hourly dependent failure rate.
     '''
-    # Input maintenance influence
+    
+    # Retrieve all records of maintenance effects form the maintenance file
     maintenance_influence = []
     try:
         with open(maintenanceFile, encoding='utf-8') as mainInf_csv:
@@ -55,46 +108,37 @@ def read_maintenance(maintenanceFile, price_dict):
             for row in reader:
                 maintenance_influence.append(float(row['Influence']))
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        print("Unexpected error when reading maintenance information:", sys.exc_info()[0]) 
         exit()
     
-#     print(maintenance_influence)
-    # Maintenance events: 
+    # Create the health dict, failure rates are based on data.
     health_dict = {}
-#     for key in price_dict:
-#         health_dict.update({key:0})
+
     for key in price_dict:
-        if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
-#             print("key", key)
+        if key.weekday() == 5 and key.hour == 0:    #    Find all Saturday 00:00:00
             for i in range(216):
                 key1 = key+timedelta(hours=(i-96))
-                health_dict.update({key1:0})
-#                 print("key1", key1)
-#                 tmp = health_dict.get(key1, 0)
-#                 print("tmp:", tmp)
-#                 health_dict.update({key1:((maintenance_influence[i]+tmp)/2)})  
+                health_dict.update({key1:maintenance_influence[i]})
     
     for key in price_dict:
-        if key.weekday() == 5 and key.hour == 0:    #    Find all Saturdays
+        if key.weekday() == 5 and key.hour == 0:    #    Find all Saturday 00:00:00
             for i in range(216):
                 key1 = key+timedelta(hours=(i-96))
-#                 print("key1", key1)
                 tmp = health_dict.get(key1, 0)
-#                 print("tmp:", tmp)
                 if tmp == 0:
                     health_dict.update({key1:maintenance_influence[i]}) 
                 else:
-#                     health_dict.update({key1:((maintenance_influence[i]+tmp)/2)})  
                     health_dict.update({key1:max(tmp, maintenance_influence[i])}) 
                        
     return health_dict
 
-def select_maintenance(daterange1, daterange2, health_dict):
-    dict = {}
-    for key, value in health_dict.items():
-        if key >= daterange1 and key <= daterange2:
-            dict.update({key:value})
-    return dict
+# Possible to use for machine with low RAM.
+# def select_maintenance(daterange1, daterange2, health_dict):
+#     dict = {}
+#     for key, value in health_dict.items():
+#         if key >= daterange1 and key <= daterange2:
+#             dict.update({key:value})
+#     return dict
 
 def read_price(priceFile):
     price_dict = {}
@@ -112,16 +156,6 @@ def read_price(priceFile):
         print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
         exit()
     return price_dict
-
-def select_prices(daterange1, daterange2, price_dict):
-    ''' Select prices between deterange1 and daterange2 form original price_dict and
-    return a new dict.
-    '''
-    dict = {}
-    for key, value in price_dict.items():
-        if key >= daterange1 and key <= daterange2:
-            dict.update({key:value})
-    return dict
 
 def read_job(jobFile):
     job_dict = {}
@@ -405,8 +439,8 @@ if __name__ == '__main__':
 #     exit()
 
     failure_dict_new = read_maintenance("maintenanceInfluenceb4a4.csv", price_dict_new)
-#     print(failure_dict_new)
-    
+    print(failure_dict_new)
+    exit()
 
     
     # write corresponding failure dict into file
@@ -447,13 +481,11 @@ if __name__ == '__main__':
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                          failure_dict_new, product_related_characteristics_dict)})
  
- 
-    start_stamp = time.time()
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
             product_related_characteristics_dict = product_related_characteristics_dict, start_time = first_start_time,
             weight1=weight1, weight2=weight2)
-    
+      
     for generation in range(1, N_GENERATIONS+1):
         print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
@@ -463,12 +495,10 @@ if __name__ == '__main__':
 #         print("Most fitted cost: ", res[best_index])
 #         result_dict.update({generation:res[best_index]})
     
-    end_stamp = time.time()
-
     with open('IGAlarge.pkl', 'wb') as f:
         pickle.dump(pop[best_index], f)
 
-    print("Time consumption:", end_stamp-start_stamp)
+     
     print()      
     print("Candidate schedule", pop[best_index])
     print("Most fitted cost: ", res[best_index])

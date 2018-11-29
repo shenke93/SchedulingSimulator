@@ -73,12 +73,16 @@ if __name__ == '__main__':
         Available range: 2016-01-19 14:21:43.910 to 2017-11-15 07:45:24.243
     '''
 #     case 1
-    start_time = datetime(2016, 11, 3, 6, 0)
-    end_time = datetime(2016, 11, 8, 0, 0)
+#     start_time = datetime(2016, 11, 3, 6, 0)
+#     end_time = datetime(2016, 11, 8, 0, 0)
     
 #     case 2
 #     start_time = datetime(2016, 11, 7, 0, 0)
 #     end_time = datetime(2016, 11, 12, 0, 0)
+    
+    # case 2 years
+    start_time = datetime(2016, 1, 19, 14, 0)
+    end_time = datetime(2017, 11, 15, 0, 0)
     
     price_dict_new = read_price("price.csv")
     job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))
@@ -141,8 +145,8 @@ if __name__ == '__main__':
 #     print(y_ax)
 
 # save y_ax
-    with open('y_ax_CGA.pkl', 'wb') as f:
-        pickle.dump(y_ax, f)
+#     with open('y_ax_CGA.pkl', 'wb') as f:
+#         pickle.dump(y_ax, f)
         
 # Calculate average of simlation results.
     avg = [0] * 8
@@ -211,6 +215,9 @@ if __name__ == '__main__':
     # save data
     with open('data_CGA.pkl', 'wb') as f:
         pickle.dump([y_ax, avg, t, u], f)
+    
+    print("CGA MC finish.")
+    exit()
         
 #     print(avg)     
 # Add data of other methods.

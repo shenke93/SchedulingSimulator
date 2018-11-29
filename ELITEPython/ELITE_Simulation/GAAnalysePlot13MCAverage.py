@@ -224,6 +224,10 @@ if __name__ == '__main__':
     with open('data_IGA.pkl', 'wb') as f:
         pickle.dump([y_ax, avg, t, u], f)
         
+    
+    print("IGA MC finish.")
+    exit()
+    
     x = [25, 50, 75, 100, 125, 150, 175, 200]
     plt.figure(figsize=(10, 6))
     plt.plot(x, t, marker='s', label='MIN', color='bisque')
