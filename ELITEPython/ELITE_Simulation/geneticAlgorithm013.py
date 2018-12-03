@@ -250,7 +250,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
         
         task_energy_cost += tmp * po
 
-        energy_cost += task_energy_cost
+        energy_cost = energy_cost + task_energy_cost
         t_now = t_end
     
     return energy_cost
