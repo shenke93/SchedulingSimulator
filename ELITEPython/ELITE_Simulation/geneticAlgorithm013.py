@@ -15,6 +15,11 @@ from datetime import timedelta, datetime
 from operator import add
 import pickle
 import time
+import os, path
+
+subdir = 'files'
+filedir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(filedir)
 
 POP_SIZE = 8   
 CROSS_RATE = 0.6
@@ -39,7 +44,8 @@ def read_product_related_characteristics(productFile):
                 # raw material price is between [1, 2] euro/kg
                 product_related_characteristics_dict.update({row['Product']:[float(row['UnitPrice']), float(row['Power'])]})
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        print("Unexpected error when reading job information:") 
+        raise
         exit()
     return product_related_characteristics_dict
 
@@ -109,7 +115,8 @@ def read_price(priceFile):
             for row in reader:
                 price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
     except:
-        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+        print("Unexpected error when reading energy price:")
+        raise
         exit()
     return price_dict
 
@@ -166,7 +173,7 @@ def get_failure_cost(indiviaual, start_time, job_dict, health_dict, product_rela
         quantity = unit[3]  # get job quantity
         
         if du <= 1: # safe period of 1 hour (no failure cost)
-            continue;
+            continue
         
         t_start = t_start+timedelta(hours=1) # exclude safe period, find start of sensitive period
         t_end = t_start + timedelta(hours=(du-1)) # end of sensitive period
@@ -393,24 +400,24 @@ if __name__ == '__main__':
     end_time = datetime(2017, 11, 15, 0, 0)
 
     # Generate raw material unit price
-    product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013.csv")
+    product_related_characteristics_dict = read_product_related_characteristics(os.path.join(subdir, "productProd_ga_013.csv"))
     
 #     print(product_related_characteristics_dict)
 #     exit()
     
-    price_dict_new = read_price("price.csv")
-    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))
+    price_dict_new = read_price(os.path.join(subdir, "price.csv"))
+    job_dict_new = select_jobs(start_time, end_time, read_job(os.path.join(subdir, "jobInfoProd_ga_013.csv")))
 
 #     print(job_dict_new)
 #     exit()
 
-    failure_dict_new = read_maintenance("maintenanceInfluenceb4a4.csv", price_dict_new)
+    failure_dict_new = read_maintenance(os.path.join(subdir, "maintenanceInfluenceb4a4.csv"), price_dict_new)
 #     print(failure_dict_new)
     
 
     
     # write corresponding failure dict into file
-    with open('ga_013_failure_plot.csv', 'w', newline='\n') as csv_file:
+    with open(os.path.join(subdir, 'ga_013_failure_plot.csv'), 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in failure_dict_new.items():
             writer.writerow([key, value])
@@ -449,6 +456,7 @@ if __name__ == '__main__':
  
  
     start_stamp = time.time()
+
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
             product_related_characteristics_dict = product_related_characteristics_dict, start_time = first_start_time,
@@ -489,7 +497,7 @@ if __name__ == '__main__':
 #     print("Time consumed: ", te - ts)  
 
 # write the result to csv for plot
-    with open('ga_013_analyse_plot.csv', 'w', newline='\n') as csv_file:
+    with open(os.path.join(subdir, 'ga_013_analyse_plot.csv'), 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict.items():
             writer.writerow([key, value])
