@@ -46,7 +46,6 @@ def read_product_related_characteristics(productFile):
     except:
         print("Unexpected error when reading job information:") 
         raise
-        exit()
     return product_related_characteristics_dict
 
 def read_maintenance(maintenanceFile, price_dict):
@@ -61,8 +60,8 @@ def read_maintenance(maintenanceFile, price_dict):
             for row in reader:
                 maintenance_influence.append(float(row['Influence']))
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
+        print("Unexpected error when reading job information:") 
+        raise
     
 #     print(maintenance_influence)
     # Maintenance events: 
@@ -117,7 +116,6 @@ def read_price(priceFile):
     except:
         print("Unexpected error when reading energy price:")
         raise
-        exit()
     return price_dict
 
 def select_prices(daterange1, daterange2, price_dict):
@@ -145,8 +143,8 @@ def read_job(jobFile):
                                                  datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"),
                                                  float(row['Quantity']), row['Product']]})
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
+        print("Unexpected error when reading job information:")
+        raise
     return job_dict 
 
 def select_jobs(daterange1, daterange2, job_dict):
@@ -395,35 +393,27 @@ if __name__ == '__main__':
 #     end_time = datetime(2016, 11, 8, 0, 0)
 #     
 
-# case 2 years
+    # case 2 years
     start_time = datetime(2016, 1, 19, 14, 0)
-    end_time = datetime(2017, 11, 15, 0, 0)
+    end_time = datetime(2016, 1, 29, 0, 0)
 
+    # DEFINE THE FILES
+
+
+    # READ IN FILES
     # Generate raw material unit price
     product_related_characteristics_dict = read_product_related_characteristics(os.path.join(subdir, "productProd_ga_013.csv"))
-    
-#     print(product_related_characteristics_dict)
-#     exit()
     
     price_dict_new = read_price(os.path.join(subdir, "price.csv"))
     job_dict_new = select_jobs(start_time, end_time, read_job(os.path.join(subdir, "jobInfoProd_ga_013.csv")))
 
-#     print(job_dict_new)
-#     exit()
-
     failure_dict_new = read_maintenance(os.path.join(subdir, "maintenanceInfluenceb4a4.csv"), price_dict_new)
-#     print(failure_dict_new)
-    
-
     
     # write corresponding failure dict into file
     with open(os.path.join(subdir, 'ga_013_failure_plot.csv'), 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in failure_dict_new.items():
             writer.writerow([key, value])
-    
-#     print("Failures: ", failure_dict_new)
-#     exit()
     
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
@@ -432,12 +422,6 @@ if __name__ == '__main__':
         raise ValueError("No waiting jobs!")
     else:
         first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
-    
-#     print("Waiting jobs: ", waiting_jobs)
-#     print("Prices: ", price_dict_new)
-#     print("Failures: ", failure_dict_new)
-# 
-#     exit()
     
     '''Optimization possibility 1: Add maintenance events.
 
@@ -454,7 +438,7 @@ if __name__ == '__main__':
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                          failure_dict_new, product_related_characteristics_dict)})
  
- 
+    # THE GENERATIC ALGORITHM RUNNING
     start_stamp = time.time()
 
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
@@ -476,20 +460,23 @@ if __name__ == '__main__':
     with open('IGAlarge.pkl', 'wb') as f:
         pickle.dump(pop[best_index], f)
 
-    print("Time consumption:", end_stamp-start_stamp)
-    print()      
-    print("Candidate schedule", pop[best_index])
-    print("Most fitted cost: ", res[best_index])
-
-    print("Original schedule: ", original_schedule)
-    print("Original schedule start time:", first_start_time)
-    print("DNA_SIZE: ", DNA_SIZE) 
+    #print("Original schedule: ", original_schedule)
+    #print("Original schedule start time:", first_start_time)
+    #print("DNA_SIZE: ", DNA_SIZE) 
     original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
     original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                              failure_dict_new, product_related_characteristics_dict)
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
     print("Original total cost:", original_energy_cost+original_failure_cost)
+    print()
+    print("Time consumption:", end_stamp-start_stamp)   
+    print("Candidate schedule", pop[best_index])
+    print("Most fitted cost: ", res[best_index])
+    perc = res[best_index] / (original_energy_cost+original_failure_cost)
+    print("Saving rate: {:.3}% of the original price".format(perc))
+
+
 
 #     print("Elite schedule: ", elite_schedule)
 #     print("Elite cost:", elite_cost)
