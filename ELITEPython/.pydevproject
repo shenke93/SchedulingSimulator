@@ -5,5 +5,6 @@
 <pydev_pathproperty name="org.python.pydev.PROJECT_SOURCE_PATH">
 <path>/${PROJECT_DIR_NAME}/ELITE_Simulation</path>
 <path>/${PROJECT_DIR_NAME}/Revised</path>
+<path>/${PROJECT_DIR_NAME}/NaturalEvolutionStrategy</path>
 </pydev_pathproperty>
 </pydev_project>
