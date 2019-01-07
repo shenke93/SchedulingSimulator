@@ -1,3 +1,8 @@
+''' Apply 1-1 ES to the scheduler.
+    Possible improvements: 1. Make sure each iteration can lead to a better solution.
+                           2. Check if MUT_STRENGTH goes too low, is it possible to stop the iterations.
+                           3. Considering the measuremets, compare with the IGA (from Sensor paper).
+'''
 import sys
 import csv
 import numpy as np
@@ -400,13 +405,15 @@ class OneOneES(object):
             point, swap_point = np.random.randint(0, DNA_SIZE, size=2)
             swap_A, swap_B = kid[point], kid[swap_point]
             kid[point], kid[swap_point] = swap_B, swap_A
-            return kid
+        return kid
 
     def kill_bad(self, parent, kid):
         ''' From a parent and a kid, choose the better one
         '''
         global MUT_STRENGTH
+#         print("Line 409, parent:", parent)
         fp = self.get_fitness(parent)
+#         print("Line 411, kid:", kid)
         fk = self.get_fitness(kid)
         p_target = 1 / 5
         if fk < fp: # kid better than parent
@@ -416,10 +423,27 @@ class OneOneES(object):
             ps = 0
         # adjust global mutation strength
         MUT_STRENGTH *= np.exp(1/np.sqrt(DNA_SIZE+1) * (ps-p_target) / (1-p_target))
-        print(MUT_STRENGTH)
+        print("MUT_STRENGTH:", MUT_STRENGTH)
         return parent
 
-
+    def evolve(self, n):
+        print("self.pop:", self.pop)
+        i = 1
+        while i <= n:
+            candidate_index = np.random.choice(np.arange(0, self.pop_size)) 
+            print("candidate_index:", candidate_index)
+            candidate = self.pop[candidate_index] # randomly pick one individual from pop
+            print("original candidate:", candidate)
+            kid = self.make_kid(candidate)
+#             py, ky = self.get_fitness(candidate), self.get_fitness(kid)
+            candidate = self.kill_bad(candidate, kid)
+            print("new candidate:", candidate)
+            self.pop[candidate_index] = candidate           
+            i = i + 1
+            
+        costs = [self.get_fitness(i) for i in self.pop]  
+        return self.pop, costs
+        
 if __name__ == '__main__':
     ''' Use jobs_start_time and jobs_end_time to determine the set of waiting jobs.
         Available range: 2016-01-23 17:03:58 to 2017-11-15 07:15:20
@@ -457,3 +481,11 @@ if __name__ == '__main__':
                  failure_dict=failure_dict, prc_dict=prc_dict, start_time=first_start_time, weight1=w1, weight2=w2)
     
 #     print(ga.get_fitness(original_schedule))
+    for generation in range(1, N_GENERATIONS):
+        print("Gen: ", generation)
+        pop, costs = ga.evolve(1)
+        best_index = np.argmin(costs)
+        
+    print()
+    print("Candidate schedule", pop[best_index])
+    print("Most fitted cost: ", costs[best_index])
