@@ -57,6 +57,58 @@ def floor_dt(dt, delta):
     return (datetime.min + (q)*delta) if r else dt
 
 
+def read_down_durations(downDurationFile):
+    ''' 
+    Create a dictionary to restore down duration information.
+
+    Parameters
+    ----------
+    downDurationFile: string
+        Name of file containing job information.
+    
+    Returns
+    -------
+    A dictionary containing downtime duration indexes, startTime and endTime, key: int, value: list.
+    '''
+    down_duration_dict = {}
+    try:
+        with open(downDurationFile, encoding='utf-8') as downDurationInfo_csv:
+            reader = csv.DictReader(downDurationInfo_csv)
+            for row in reader:
+                down_duration_dict.update({row['ID']:[datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f"), 
+                                                 datetime.strptime(row['EndDateUTC'], "%Y-%m-%d %H:%M:%S.%f")]})
+    except:
+        print("Unexpected error when reading down duration information:", sys.exc_info()[0])
+        exit()
+    return down_duration_dict
+
+
+def select_down_durations(daterange1, daterange2, down_duration_dict):
+    ''' 
+    Create a dictionary to restore selected job information in a time range.
+
+    Parameters
+    ----------
+    daterange1: Date
+        Start datestamp of selected jobs.
+    
+    daterange2: Date
+        End datestemp of selected jobs.
+        
+    job_dict: dict
+        Dictionary of jobs
+    
+    Returns
+    -------
+    A dictionary containing jobs in the selected date range.
+    '''
+    res_dict = {}
+    for key, value in down_duration_dict.items():
+        if value[0] >= daterange1 and value[1] <= daterange2:
+            res_dict.update({key:value})
+    return res_dict
+
+
 def read_product_related_characteristics(productFile):
     ''' 
     Create a dictionary to store product related characteristics from productFile.
@@ -75,9 +127,10 @@ def read_product_related_characteristics(productFile):
         with open(productFile, encoding='utf-8') as jobInfo_csv:
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
-                product_related_characteristics_dict.update({row['Product']:[float(row['UnitPrice']), float(row['Power'])]})
+                product_related_characteristics_dict.update({row['Product']:[float(row['UnitPrice']), float(row['Power']), 
+                                                                             int(row['ProductionSpeed'])]})
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        print("Unexpected error when reading product related information:", sys.exc_info()[0]) 
         exit()
     return product_related_characteristics_dict
 
@@ -201,7 +254,7 @@ def read_price(priceFile):
     return price_dict
 
 
-def read_job(jobFile):
+def read_jobs(jobFile):
     ''' 
     Create a dictionary to restore job information.
 
@@ -353,15 +406,18 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
         if unit1 == -1:
             raise ValueError("No matching item in the job dict for %d" % item)
        
-        du = unit1[0] # get job duration
         product_type = unit1[4] # get job product type
+        quantity = unit1[3]
         
         unit2 = product_related_characteristics_dict.get(product_type, -1)
         if unit2 == -1:
             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-        
+       
+        du = quantity / unit2[2] # get job duration
         po = unit2[1] # get job power profile
         
+#         print("Job", item)
+#         print('Line 416, du:', du)
         t_end = t_start + timedelta(hours=du)
 #         print("Time end: " + str(t_end))
         
@@ -572,10 +628,13 @@ if __name__ == '__main__':
 #     end_time = datetime(2017, 11, 15, 0, 0)
 
     # Generate raw material unit price
-    product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013.csv")
+    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations("downDurations.csv"))
+#     print("down_duration_dict", down_duration_dict)
+#     exit()
+    product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013_new.csv")
     
-    price_dict_new = read_price("price.csv")
-    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))
+    price_dict_new = read_price("price.csv") # File from EnergyConsumption/InputOutput
+    job_dict_new = select_jobs(start_time, end_time, read_jobs("jobInfoProd_ga_013.csv")) # File from EnergyConsumption/InputOutput
 
     failure_dict_new = read_failure("maintenanceInfluenceb4a4.csv", price_dict_new)
     
