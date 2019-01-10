@@ -4,6 +4,7 @@
 # Core modules
 import sys
 import csv
+import collections
 from datetime import timedelta, datetime
 from operator import add
 # import pickle
@@ -102,7 +103,7 @@ def select_down_durations(daterange1, daterange2, down_duration_dict):
     -------
     A dictionary containing jobs in the selected date range.
     '''
-    res_dict = {}
+    res_dict = collections.OrderedDict()
     for key, value in down_duration_dict.items():
         if value[0] >= daterange1 and value[1] <= daterange2:
             res_dict.update({key:value})
@@ -136,7 +137,7 @@ def read_product_related_characteristics(productFile):
 
 
 # TODO: Depend on context of maintenance file
-def read_maintenance(maintenanceFile):
+def read_failure_data(maintenanceFile):
     ''' 
     Create a list to store influences of maintenances. 
 
@@ -180,44 +181,44 @@ def read_maintenance(maintenanceFile):
     return maintenance_influence
 
 
-def read_failure(maintenanceFile, price_dict):
-    ''' 
-    Create a list to store influences of maintenances. 
-
-    Parameters
-    ----------
-    maintenanceFile: string
-        Name of file containing maintenance records.
-        
-    price_dict: dictionary
-        Dict of hourly dependent energy price whose time range will be used in the dict for failure rate.
-    
-    Returns
-    -------
-    A dictionary of hourly dependent failure rate, key: Date, value: float.
-    '''
-    maintenance_influence = read_maintenance(maintenanceFile)
-    # Given a timestamp -> time before maintenance -> time after maintenance -> pick the max
-    health_dict = {}
-    for key in price_dict:
-        d = key.weekday()
-        h = key.hour
-        if d == 5: # Saturday, 0 day
-            health_dict.update({key:maintenance_influence[96+h]})
-        if d == 6: # Sunday, 1 day after
-            health_dict.update({key:maintenance_influence[120+h]})
-        if d == 4: # Friday, 1 day before
-            health_dict.update({key:maintenance_influence[72+h]})
-        if d == 3: # Thursday, 2 days before
-            health_dict.update({key:maintenance_influence[48+h]}) 
-        if d == 0: # Monday, 2 days after    
-            health_dict.update({key:maintenance_influence[144+h]})
-        if d == 1: # Tuesday, 4 days before, 3 days after
-            health_dict.update({key:max(maintenance_influence[168+h], maintenance_influence[h])})            
-        if d == 2: # Wednesday, 3 days before, 4 days after
-            health_dict.update({key:max(maintenance_influence[24+h], maintenance_influence[192+h])})
-    
-    return health_dict   
+# def read_failure(maintenanceFile, price_dict):
+#     ''' 
+#     Create a list to store influences of maintenances. 
+# 
+#     Parameters
+#     ----------
+#     maintenanceFile: string
+#         Name of file containing maintenance records.
+#         
+#     price_dict: dictionary
+#         Dict of hourly dependent energy price whose time range will be used in the dict for failure rate.
+#     
+#     Returns
+#     -------
+#     A dictionary of hourly dependent failure rate, key: Date, value: float.
+#     '''
+#     maintenance_influence = read_failure_data(maintenanceFile)
+#     # Given a timestamp -> time before maintenance -> time after maintenance -> pick the max
+#     health_dict = {}
+#     for key in price_dict:
+#         d = key.weekday()
+#         h = key.hour
+#         if d == 5: # Saturday, 0 day
+#             health_dict.update({key:maintenance_influence[96+h]})
+#         if d == 6: # Sunday, 1 day after
+#             health_dict.update({key:maintenance_influence[120+h]})
+#         if d == 4: # Friday, 1 day before
+#             health_dict.update({key:maintenance_influence[72+h]})
+#         if d == 3: # Thursday, 2 days before
+#             health_dict.update({key:maintenance_influence[48+h]}) 
+#         if d == 0: # Monday, 2 days after    
+#             health_dict.update({key:maintenance_influence[144+h]})
+#         if d == 1: # Tuesday, 4 days before, 3 days after
+#             health_dict.update({key:max(maintenance_influence[168+h], maintenance_influence[h])})            
+#         if d == 2: # Wednesday, 3 days before, 4 days after
+#             health_dict.update({key:max(maintenance_influence[24+h], maintenance_influence[192+h])})
+#     
+#     return health_dict   
 
 
 # Possible to use for machine with low RAM.
@@ -307,7 +308,7 @@ def select_jobs(daterange1, daterange2, job_dict):
     return res_dict
 
 
-def get_failure_cost(indiviaual, start_time, job_dict, health_dict, product_related_characteristics_dict):
+def get_failure_cost(indiviaual, start_time, job_dict, health_dict, product_related_characteristics_dict, down_duration_dict, failure_dict):
     ''' 
     Calculate the falure cost of an individual.
 
@@ -336,15 +337,22 @@ def get_failure_cost(indiviaual, start_time, job_dict, health_dict, product_rela
     t_now = start_time
     for item in indiviaual:
         t_start = t_now
-        unit = job_dict.get(item, -1)
-        if unit == -1:
+        unit1 = job_dict.get(item, -1)
+        if unit1 == -1:
             raise ValueError("No matching item in job dict: ", item)
-        du = unit[0]    # get job duration
-        product_type = unit[4]    # get job product type
-        quantity = unit[3]  # get job quantity
+    
+        product_type = unit1[4]    # get job product type
+        quantity = unit1[3]  # get job quantity
         
-        if du <= 1: # safe period of 1 hour (no failure cost)
-            continue;
+#         if du <= 1: # safe period of 1 hour (no failure cost)
+#             continue;
+        unit2 = product_related_characteristics_dict.get(product_type, -1)
+        if unit2 == -1:
+            raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+       
+        du = quantity / unit2[2] # get job duration
+#         print("Duration:", du)
+        uc = unit2[0] # get job raw material unit price
         
         t_start = t_start+timedelta(hours=1) # exclude safe period, find start of sensitive period
         t_end = t_start + timedelta(hours=(du-1)) # end of sensitive period
@@ -372,7 +380,7 @@ def get_failure_cost(indiviaual, start_time, job_dict, health_dict, product_rela
     return failure_cost
 
 
-def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict):
+def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict):
     ''' 
     Calculate the energy cost of an individual.
 
@@ -397,9 +405,12 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
     -------
     The energy cost of an individual.
     '''
+    downDurationIndex = 0
+#     print("Line 401, downDurationIndex:", downDurationIndex)
     energy_cost = 0
     t_now = start_time # current timestamp
     for item in indiviaual:
+#         print("For job:", item)
         t_start = t_now
 #         print("Time start: " + str(t_now))
         unit1 = job_dict.get(item, -1)
@@ -414,11 +425,32 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
        
         du = quantity / unit2[2] # get job duration
+#         print("Duration:", du)
         po = unit2[1] # get job power profile
         
+        t_o = t_start + timedelta(hours=du) # Without downtime duration
+#         print("t_o:", t_o)
+        t_end = t_o
+        
+        for key, value in down_duration_dict.items():
+#             print(key, value)
+            # Condition: down_start < require_run_end
+            if downDurationIndex >= int(key):
+                continue
+            
+            if value[0] < t_end and downDurationIndex < int(key):
+                index = int(key)
+                t_end = t_end + (value[1]-value[0])
+#                 print("Line 429, t_end:", t_end)
+            else:
+                break
+        
+        downDurationIndex = index
+            
+#         for key, value in down_duration_dict.items():
 #         print("Job", item)
 #         print('Line 416, du:', du)
-        t_end = t_start + timedelta(hours=du)
+#         t_end = t_start + timedelta(hours=du)
 #         print("Time end: " + str(t_end))
         
         # calculate sum of head price, tail price and body price
@@ -442,6 +474,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
             t_su += step
         
         energy_cost += tmp * po
+        
         t_now = t_end
     
     return energy_cost
@@ -469,7 +502,7 @@ def hamming_distance(s1, s2):
                 
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
-                 product_related_characteristics_dict, start_time, weight1, weight2):
+                 product_related_characteristics_dict, down_duration_dict, start_time, weight1, weight2):
         # Attributes assignment
         self.dna_size = dna_size 
         self.cross_rate = cross_rate
@@ -479,6 +512,7 @@ class GA(object):
         self.price_dict = price_dict
         self.failure_dict = failure_dict
         self.product_related_characteristics_dict = product_related_characteristics_dict
+        self.down_duration_dict = down_duration_dict
         self.start_time = start_time
         self.w1 = weight1
         self.w2 = weight2
@@ -543,7 +577,7 @@ class GA(object):
 #             print('sub_pop', sub_pop)
             
             failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in sub_pop]
-            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in sub_pop]
+            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in sub_pop]
             fitness = self.get_fitness(failure_cost, energy_cost) # get the fitness values of the two
             
 #             print('fitness', fitness)
@@ -604,7 +638,7 @@ class GA(object):
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         
         failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in self.pop]
-        energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in self.pop]
+        energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
         
 #         print(self.start_time)
 #         print(self.pop)
@@ -628,7 +662,7 @@ if __name__ == '__main__':
 #     end_time = datetime(2017, 11, 15, 0, 0)
 
     # Generate raw material unit price
-    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations("downDurations.csv"))
+    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations("downDurations.csv")) # File from EnergyConsumption/InputOutput
 #     print("down_duration_dict", down_duration_dict)
 #     exit()
     product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013_new.csv")
@@ -636,8 +670,9 @@ if __name__ == '__main__':
     price_dict_new = read_price("price.csv") # File from EnergyConsumption/InputOutput
     job_dict_new = select_jobs(start_time, end_time, read_jobs("jobInfoProd_ga_013.csv")) # File from EnergyConsumption/InputOutput
 
-    failure_dict_new = read_failure("maintenanceInfluenceb4a4.csv", price_dict_new)
-    
+    failure_dict = read_failure_data("hourly_failure_rate.csv") # File from failuremodel-master/analyse_production
+    print("failure_dict", failure_dict)
+    exit()
 #     # write corresponding failure dict into file
 #     with open('ga_013_failure_plot.csv', 'w', newline='\n') as csv_file:
 #         writer = csv.writer(csv_file)
@@ -660,14 +695,15 @@ if __name__ == '__main__':
     weight2 = 1
     result_dict = {}
     original_schedule = waiting_jobs  
-    result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)+
+    result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)+
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                          failure_dict_new, product_related_characteristics_dict)}) # generation 0 is the original schedule
- 
+    
+#     exit()
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
-            product_related_characteristics_dict = product_related_characteristics_dict, start_time = first_start_time,
-            weight1=weight1, weight2=weight2)
+            product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
+            start_time = first_start_time, weight1=weight1, weight2=weight2)
       
     for generation in range(1, N_GENERATIONS+1):
         print("Gen: ", generation)
@@ -689,7 +725,7 @@ if __name__ == '__main__':
     print("Original schedule: ", original_schedule)
     print("DNA_SIZE: ", DNA_SIZE) 
     print("Original schedule start time:", first_start_time)
-    original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
+    original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
     original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
                                              failure_dict_new, product_related_characteristics_dict)
     print("Original energy cost: ", original_energy_cost)
