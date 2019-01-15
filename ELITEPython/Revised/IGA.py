@@ -1,5 +1,9 @@
 '''An Improved Genetic Algorithm (IGA) is implemented in this file.
     Features: 
+    1. Use the same IGA mentioned in the paper published in Sensors.
+    2. Apply failure model by Joachim: (1) MTBF
+    3. Modification of Input, Output
+    
 '''
 # Core modules
 import sys
@@ -128,8 +132,8 @@ def read_product_related_characteristics(productFile):
         with open(productFile, encoding='utf-8') as jobInfo_csv:
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
-                product_related_characteristics_dict.update({row['Product']:[float(row['UnitPrice']), float(row['Power']), 
-                                                                             int(row['ProductionSpeed'])]})
+                product_related_characteristics_dict.update({row['Product']:[round(float(row['UnitPrice']),3), float(row['Power']),
+                                                            float(row['TargetProductionRate'])]})
     except:
         print("Unexpected error when reading product related information:", sys.exc_info()[0]) 
         exit()
@@ -371,6 +375,10 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
     The failure cost of an individual.
     '''
      
+    ''' TODO: Another assumption 
+            1. No failure cost for runtime durations
+            2. Machine stop/restart cost + failure cost for downtime durations
+    '''
     downDurationIndex = 0
     failure_cost = 0
     t_now = start_time
@@ -726,11 +734,16 @@ if __name__ == '__main__':
     failure_list = read_failure_data("hourly_failure_rate.csv") # File from failuremodel-master/analyse_production
     hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
     
+    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+        writer = csv.writer(csv_file)
+        for key, value in hourly_failure_dict.items():
+            writer.writerow([key, value])
+
 #     print("down_duration_dict: ", down_duration_dict)
 #     print("hourly_failure_dict: ", hourly_failure_dict)
 #     exit()
     
-    product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013_new.csv")
+    product_related_characteristics_dict = read_product_related_characteristics("productRelatedCharacteristics.csv")
     
     price_dict_new = read_price("price.csv") # File from EnergyConsumption/InputOutput
     job_dict_new = select_jobs(start_time, end_time, read_jobs("jobInfoProd_ga_013.csv")) # File from EnergyConsumption/InputOutput
