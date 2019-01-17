@@ -1,0 +1,7 @@
+Working plan of the deliverable software package:
+1. User manual:
+	- Introduction of input
+	- Example
+2. Documentation
+	- Processing of the input data
+	- Comments of the software package
