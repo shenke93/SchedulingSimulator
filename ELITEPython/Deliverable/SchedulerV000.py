@@ -7,11 +7,13 @@
     5. Output details of each item in the job list.
     6. Add peak and off-peak energy policy.
     7. Add run-down scenario.
+    8. Runnable script from cmd
 '''
 # Core modules
 import sys
 import csv
 import collections
+import argparse
 from datetime import timedelta, datetime
 from operator import add
 # import pickle
@@ -875,6 +877,16 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
     '''
+    
+    # Read parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("historical_down_periods_file", help="File containing records of historical down duration periods.") # downDurations.csv
+    parser.add_argument("failure_rate_file", help="File containing failure rate of each hour from the failure model.") # hourly_failure_rate.csv
+    parser.add_argument("product_related_characteristics_file", help="File containing product related characteristics.") # productRelatedCharacteristics.csv
+    parser.add_argument("energy_price_file", help="File containing energy price of each hour.") # price.csv
+    parser.add_argument("job_info_file", help="File containing job information.") # jobInfoProd_ga_013.csv
+    args = parser.parse_args()
+    
 #     case 1 week
     start_time = datetime(2016, 11, 3, 6, 0)
     end_time = datetime(2016, 11, 8, 0, 0)
@@ -884,8 +896,8 @@ if __name__ == '__main__':
 #     end_time = datetime(2017, 11, 15, 0, 0)
 
     # Generate raw material unit price
-    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations("downDurations.csv")) # File from EnergyConsumption/InputOutput
-    failure_list = read_failure_data("hourly_failure_rate.csv") # File from failuremodel-master/analyse_production
+    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations(args.historical_down_periods_file)) # File from EnergyConsumption/InputOutput
+    failure_list = read_failure_data(args.failure_rate_file) # File from failuremodel-master/analyse_production
     hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
     
     with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
@@ -897,11 +909,11 @@ if __name__ == '__main__':
 #     print("hourly_failure_dict: ", hourly_failure_dict)
 #     exit()
     
-    product_related_characteristics_dict = read_product_related_characteristics("productRelatedCharacteristics.csv")
+    product_related_characteristics_dict = read_product_related_characteristics(args.product_related_characteristics_file)
     
-    price_dict_new = read_price("price.csv") # File from EnergyConsumption/InputOutput
+    price_dict_new = read_price(args.energy_price_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
-    job_dict_new = select_jobs(start_time, end_time, read_jobs("jobInfoProd_ga_013.csv")) # File from EnergyConsumption/InputOutput
+    job_dict_new = select_jobs(start_time, end_time, read_jobs(args.job_info_file)) # File from EnergyConsumption/InputOutput
 
     # TODO: change
 #     print("failure_dict", failure_dict)
