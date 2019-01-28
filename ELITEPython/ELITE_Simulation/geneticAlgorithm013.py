@@ -19,8 +19,17 @@ import time
 POP_SIZE = 8   
 CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
-N_GENERATIONS = 200
+N_GENERATIONS = 5000
 # np.random.seed(1234)
+
+import os
+os.chdir('./files')
+productfile = "productProd_joa.csv"
+pricefile = "price_joa.csv"
+jobfile = "jobInfoProd_joa.csv"
+maintfile = "maintenanceInfluenceb4a4.csv"
+failurefile = 'ga_013_failure_plot.csv'
+outputfile = 'ga_013_analyse_plot.csv'
 
 def ceil_dt(dt, delta):
     q, r = divmod(dt - datetime.min, delta)
@@ -39,8 +48,9 @@ def read_product_related_characteristics(productFile):
                 # raw material price is between [1, 2] euro/kg
                 product_related_characteristics_dict.update({row['Product']:[float(row['UnitPrice']), float(row['Power'])]})
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
+        print("Unexpected error when reading job information:", sys.exc_info()[0])
+        raise
+        #exit()
     return product_related_characteristics_dict
 
 def read_maintenance(maintenanceFile, price_dict):
@@ -55,8 +65,9 @@ def read_maintenance(maintenanceFile, price_dict):
             for row in reader:
                 maintenance_influence.append(float(row['Influence']))
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
-        exit()
+        #print("Unexpected error when reading job information:", sys.exc_info()[0])
+        raise
+        #exit()
     
 #     print(maintenance_influence)
     # Maintenance events: 
@@ -109,7 +120,8 @@ def read_price(priceFile):
             for row in reader:
                 price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
     except:
-        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+        print("Unexpected error when reading energy price:", sys.exc_info()[0])
+        raise
         exit()
     return price_dict
 
@@ -138,7 +150,9 @@ def read_job(jobFile):
                                                  datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"),
                                                  float(row['Quantity']), row['Product']]})
     except:
-        print("Unexpected error when reading job information:", sys.exc_info()[0]) 
+        print("Unexpected error when reading job information:", sys.exc_info()[0])
+        print(jobFile)
+        raise
         exit()
     return job_dict 
 
@@ -193,12 +207,12 @@ def get_failure_cost(indiviaual, start_time, job_dict, health_dict, product_rela
     
     return failure_cost
 
-def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict):
+def get_energy_cost(individual, start_time, job_dict, price_dict, product_related_characteristics_dict):
     ''' Give an individual (a possible schedule in our case), calculate its energy cost '''
 #     print('Individual:', indiviaual)
     energy_cost = 0
     t_now = start_time # current timestamp
-    for item in indiviaual:
+    for item in individual:
         t_start = t_now
 #         print("Time start: " + str(t_now))
         unit1 = job_dict.get(item, -1)
@@ -315,12 +329,20 @@ class GA(object):
 #             print('Start_time:', self.start_time)
 #             print('Sub_pop: ', sub_pop)
 #             value = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in sub_pop]
-            failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in sub_pop]
-            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in sub_pop]
+            if self.w1 > 0:
+                failure_cost = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict)
+                                        for i in sub_pop]
+            else:
+                failure_cost = [self.w1 for i in sub_pop]
+            if self.w2 > 0:
+                energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in sub_pop]
+            else:
+                energy_cost = [self.w2 for i in sub_pop]
 #             fitness = self.get_fitness(value)
 #             print("failure cost:", failure_cost)
 #             print("energy cost:", energy_cost)
-            fitness = self.get_fitness(failure_cost, energy_cost)
+            fitness = self.get_fitness(failure_cost, 
+                                       energy_cost)
 #             print('Fitness: ', fitness)
             # Elitism Selection
             winner_loser_idx = np.argsort(fitness)
@@ -371,8 +393,15 @@ class GA(object):
 #                 print("Distance too small, start genetic operation again!")
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
-        failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict) for i in self.pop]
-        energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in self.pop]
+        if self.w1 > 0:
+            failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict)
+                                          for i in self.pop]
+        else:
+            failure_cost_space = [self.w1 for i in self.pop]
+        if self.w2 > 0:
+            energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in self.pop]
+        else:
+            failure_cost_space = [self.w2 for i in self.pop]
 #         print(self.start_time)
 #         print(self.pop)
 #         print(space)
@@ -389,28 +418,28 @@ if __name__ == '__main__':
 #     
 
 # case 2 years
-    start_time = datetime(2016, 1, 19, 14, 0)
-    end_time = datetime(2017, 11, 15, 0, 0)
+    #start_time = datetime(2016, 1, 19, 14, 0)
+    #end_time = datetime(2017, 11, 15, 0, 0)
 
     # Generate raw material unit price
-    product_related_characteristics_dict = read_product_related_characteristics("productProd_ga_013.csv")
+    product_related_characteristics_dict = read_product_related_characteristics(productfile)
     
 #     print(product_related_characteristics_dict)
 #     exit()
     
-    price_dict_new = read_price("price.csv")
-    job_dict_new = select_jobs(start_time, end_time, read_job("jobInfoProd_ga_013.csv"))
+    price_dict_new = read_price(pricefile)
+    job_dict_new = read_job(jobfile)
 
 #     print(job_dict_new)
 #     exit()
 
-    failure_dict_new = read_maintenance("maintenanceInfluenceb4a4.csv", price_dict_new)
+    failure_dict_new = read_maintenance(maintfile, price_dict_new)
 #     print(failure_dict_new)
     
 
     
     # write corresponding failure dict into file
-    with open('ga_013_failure_plot.csv', 'w', newline='\n') as csv_file:
+    with open(failurefile, 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in failure_dict_new.items():
             writer.writerow([key, value])
@@ -439,57 +468,70 @@ if __name__ == '__main__':
 #     ts = time.time()
 #     elite_cost = float('inf')
 #     elite_schedule = []
-    weight1 = 1
+    weight1 = 0
     weight2 = 1
     result_dict = {}
-    original_schedule = waiting_jobs  
-    result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)+
-                        weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
-                                         failure_dict_new, product_related_characteristics_dict)})
- 
+    original_schedule = waiting_jobs
+    # result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
+    #                     #   + weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new,
+    #                     #                 failure_dict_new, product_related_characteristics_dict)
+    #                     })
+
  
     start_stamp = time.time()
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
-            job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new, 
+            job_dict=job_dict_new, price_dict=price_dict_new, failure_dict = failure_dict_new,
             product_related_characteristics_dict = product_related_characteristics_dict, start_time = first_start_time,
             weight1=weight1, weight2=weight2)
-    
+
     for generation in range(1, N_GENERATIONS+1):
-        print("Gen: ", generation)
+        #print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
-#         print("res:", res)
+        #print("res:", res)
         best_index = np.argmin(res)
 #         print("Most fitted DNA: ", pop[best_index])
 #         print("Most fitted cost: ", res[best_index])
 #         result_dict.update({generation:res[best_index]})
-    
+
     end_stamp = time.time()
 
     with open('IGAlarge.pkl', 'wb') as f:
         pickle.dump(pop[best_index], f)
 
     print("Time consumption:", end_stamp-start_stamp)
-    print()      
+    print()
     print("Candidate schedule", pop[best_index])
-    print("Most fitted cost: ", res[best_index])
+    best_cost = res[best_index]
+    print("Most fitted cost: ", best_cost)
 
     print("Original schedule: ", original_schedule)
     print("Original schedule start time:", first_start_time)
-    print("DNA_SIZE: ", DNA_SIZE) 
-    original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
-    original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, 
-                                             failure_dict_new, product_related_characteristics_dict)
+    print("DNA_SIZE: ", DNA_SIZE)
+    if weight2 > 0:
+        original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict)
+    else:
+        original_energy_cost = weight2
+    if weight1 > 0:
+        original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new,
+                                                 failure_dict_new, product_related_characteristics_dict)
+    else:
+        original_failure_cost = weight1
+    original_total_cost = original_energy_cost + original_failure_cost
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
-    print("Original total cost:", original_energy_cost+original_failure_cost)
+    print("Original total cost:", original_total_cost)
+
+    print('Percentage saved:', (1-best_cost/original_total_cost)*100, '%' )
 
 #     print("Elite schedule: ", elite_schedule)
 #     print("Elite cost:", elite_cost)
 #     te = time.time()
-#     print("Time consumed: ", te - ts)  
+#     print("Time consumed: ", te - ts)
 
-# write the result to csv for plot
-    with open('ga_013_analyse_plot.csv', 'w', newline='\n') as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in result_dict.items():
-            writer.writerow([key, value])
+# # write the result to csv for plot
+#     with open(outputfile, 'w', newline='\n') as csv_file:
+#         writer = csv.writer(csv_file)
+#         for key, value in result_dict.items():
+#             writer.writerow([key, value])
+#
+#     print(result_dict)

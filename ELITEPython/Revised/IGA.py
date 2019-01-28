@@ -27,6 +27,14 @@ N_GENERATIONS = 200
 C1 = 10
 C2 = 30
 
+# Used files:
+folder = "files//"
+downtimes = folder + "downDurations.csv"
+failure_rate = folder + "hourly_failure_rate.csv"
+product_related = folder + "productRelatedCharacteristics_joa.csv"
+prices = folder + "price_joa.csv"
+jobinfo = folder + "jobInfoProd_joa.csv"
+
 def ceil_dt(dt, delta):
     ''' 
     Ceil a data time dt according to the measurement delta.
@@ -871,28 +879,34 @@ if __name__ == '__main__':
     start_time = datetime(2016, 11, 3, 6, 0)
     end_time = datetime(2016, 11, 8, 0, 0)
 
+    weight1 = 0 # failure weight
+    weight2 = 1 # energy weight
+
 #     case 2 years
 #     start_time = datetime(2016, 1, 19, 14, 0)
 #     end_time = datetime(2017, 11, 15, 0, 0)
 
-    # Generate raw material unit price
-    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations("downDurations.csv")) # File from EnergyConsumption/InputOutput
-    failure_list = read_failure_data("hourly_failure_rate.csv") # File from failuremodel-master/analyse_production
-    hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
+    if weight1 != 0:
+        # Generate raw material unit price
+        down_duration_dict = select_down_durations(start_time, end_time, read_down_durations(downtimes)) # File from EnergyConsumption/InputOutput
+        failure_list = read_failure_data(failure_rate) # File from failuremodel-master/analyse_production
+        hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
     
-    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in hourly_failure_dict.items():
-            writer.writerow([key, value])
+        with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+            writer = csv.writer(csv_file)
+            for key, value in hourly_failure_dict.items():
+                writer.writerow([key, value])
 
 #     print("down_duration_dict: ", down_duration_dict)
 #     print("hourly_failure_dict: ", hourly_failure_dict)
 #     exit()
-    
-    product_related_characteristics_dict = read_product_related_characteristics("productRelatedCharacteristics.csv")
-    
-    price_dict_new = read_price("price.csv") # File from EnergyConsumption/InputOutput
-    job_dict_new = select_jobs(start_time, end_time, read_jobs("jobInfoProd_ga_013.csv")) # File from EnergyConsumption/InputOutput
+
+    product_related_characteristics_dict = read_product_related_characteristics(product_related)
+
+    if weight2 != 0:  # All code related to energy prices:
+        price_dict_new = read_price(prices) # File from EnergyConsumption/InputOutput
+    #job_dict_new = select_jobs(start_time, end_time, read_jobs(jobinfo)) # File from EnergyConsumption/InputOutput
+    job_dict_new = read_jobs(jobinfo)
 
     # TODO: change
 #     print("failure_dict", failure_dict)
@@ -933,7 +947,7 @@ if __name__ == '__main__':
             start_time = first_start_time, weight1=weight1, weight2=weight2)
       
     for generation in range(1, N_GENERATIONS+1):
-        print("Gen: ", generation)
+        #print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
 #         print("res:", res)
         best_index = np.argmin(res)
@@ -953,7 +967,8 @@ if __name__ == '__main__':
                                              product_related_characteristics_dict, down_duration_dict)
     print("Candidate energy cost:", candidate_energy_cost)
     print("Candidate failure cost:", candidate_failure_cost)
-    print("Candidate total cost:", candidate_energy_cost+candidate_failure_cost)
+    candidate_cost = candidate_energy_cost+candidate_failure_cost
+    print("Candidate total cost:", candidate_cost)
     
 #     print("Most fitted cost: ", res[best_index])
 
@@ -967,11 +982,14 @@ if __name__ == '__main__':
 #                                              product_related_characteristics_dict, down_duration_dict)
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
-    print("Original total cost:", original_energy_cost+original_failure_cost)
+    original_total_cost = original_energy_cost+original_failure_cost
+    print("Original total cost:", original_total_cost)
     
     result_dict = visualize(original_schedule, first_start_time, job_dict_new, product_related_characteristics_dict, down_duration_dict)
     print("Visualize_dict_origin:", result_dict)
     print("Down_duration", down_duration_dict)
+
+    print('Percentage saved:', (1-candidate_cost/original_total_cost)*100, '%' )
 
     # Output for visualization
     with open('executionRecords.csv', 'w', newline='\n') as csv_file:
