@@ -5,12 +5,14 @@
     3. Modification of Input, Output.
     4. Output modification to improve clarity.
     5. Output details of each item in the job list.
-    
+    6. Add peak and off-peak energy policy.
+    7. Add run-down scenario.
 '''
 # Core modules
 import sys
 import csv
 import collections
+import argparse
 from datetime import timedelta, datetime
 from operator import add
 # import pickle
@@ -24,8 +26,9 @@ CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
 N_GENERATIONS = 200
 
-C1 = 10
+C1 = 10 # Used for failure cost calculation in run-down scenario
 C2 = 30
+
 
 def ceil_dt(dt, delta):
     ''' 
@@ -94,7 +97,7 @@ def read_down_durations(downDurationFile):
 
 def select_down_durations(daterange1, daterange2, down_duration_dict):
     ''' 
-    Create a dictionary to restore selected job information in a time range.
+    Create a dictionary to restore selected downtime durations in a time range.
 
     Parameters
     ----------
@@ -104,12 +107,12 @@ def select_down_durations(daterange1, daterange2, down_duration_dict):
     daterange2: Date
         End datestemp of selected jobs.
         
-    job_dict: dict
-        Dictionary of jobs
+    down_duration_dict: dict
+        Dictionary of downtime durations.
     
     Returns
     -------
-    A dictionary containing jobs in the selected date range.
+    A dictionary containing downtime periods in the selected date range.
     '''
     res_dict = collections.OrderedDict()
     for key, value in down_duration_dict.items():
@@ -353,6 +356,7 @@ def get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_di
         
     return hourly_failure_dict
 
+
 def get_failure_cost_v2(indiviaual, start_time, job_dict,  product_related_characteristics_dict, down_duration_dict):
     ''' 
     Calculate the falure cost of an individual.
@@ -418,11 +422,16 @@ def get_failure_cost_v2(indiviaual, start_time, job_dict,  product_related_chara
                 continue
             if t_start < value[0] < t_end:
                 t_end = t_end + (value[1]-value[0])
+                failure_cost += C1 + (value[1] - value[0]) / timedelta(hours=1) * C2
 #                 print("Line 429, t_end:", t_end)
             if t_start > value[0] and t_end > value[1]:
                 t_end = t_end + (value[1] - t_start)
+                failure_cost += C1 + (value[1] - t_start) / timedelta(hours=1) * C2
+
             if t_start > value[0] and t_end < value[1]:
                 t_end = t_end + (t_end - t_start)
+                failure_cost += C1 + (t_end- t_start) / timedelta(hours=1) * C2
+                   
             else:
                 break
          
@@ -850,8 +859,8 @@ class GA(object):
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         
-        failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
-#         failure_cost_space = [self.w1 * get_failure_cost_v2(i, self.start_time, self.job_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
+#         failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
+        failure_cost_space = [self.w1 * get_failure_cost_v2(i, self.start_time, self.job_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
         energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
         
 #         print(self.start_time)
@@ -867,6 +876,16 @@ if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
     '''
+    
+    # Read parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("historical_down_periods_file", help="File containing records of historical down duration periods.") # downDurations.csv
+    parser.add_argument("failure_rate_file", help="File containing failure rate of each hour from the failure model.") # hourly_failure_rate.csv
+    parser.add_argument("product_related_characteristics_file", help="File containing product related characteristics.") # productRelatedCharacteristics.csv
+    parser.add_argument("energy_price_file", help="File containing energy price of each hour.") # price.csv
+    parser.add_argument("job_info_file", help="File containing job information.") # jobInfoProd_ga_013.csv
+    args = parser.parse_args()
+    
 #     case 1 week
     start_time = datetime(2016, 11, 3, 6, 0)
     end_time = datetime(2016, 11, 8, 0, 0)
@@ -876,8 +895,8 @@ if __name__ == '__main__':
 #     end_time = datetime(2017, 11, 15, 0, 0)
 
     # Generate raw material unit price
-    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations("downDurations.csv")) # File from EnergyConsumption/InputOutput
-    failure_list = read_failure_data("hourly_failure_rate.csv") # File from failuremodel-master/analyse_production
+    down_duration_dict = select_down_durations(start_time, end_time, read_down_durations(args.historical_down_periods_file)) # File from EnergyConsumption/InputOutput
+    failure_list = read_failure_data(args.failure_rate_file) # File from failuremodel-master/analyse_production
     hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
     
     with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
@@ -889,10 +908,11 @@ if __name__ == '__main__':
 #     print("hourly_failure_dict: ", hourly_failure_dict)
 #     exit()
     
-    product_related_characteristics_dict = read_product_related_characteristics("productRelatedCharacteristics.csv")
+    product_related_characteristics_dict = read_product_related_characteristics(args.product_related_characteristics_file)
     
-    price_dict_new = read_price("price.csv") # File from EnergyConsumption/InputOutput
-    job_dict_new = select_jobs(start_time, end_time, read_jobs("jobInfoProd_ga_013.csv")) # File from EnergyConsumption/InputOutput
+    price_dict_new = read_price(args.energy_price_file) # File from EnergyConsumption/InputOutput
+#     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
+    job_dict_new = select_jobs(start_time, end_time, read_jobs(args.job_info_file)) # File from EnergyConsumption/InputOutput
 
     # TODO: change
 #     print("failure_dict", failure_dict)
@@ -919,13 +939,13 @@ if __name__ == '__main__':
     weight2 = 1
     result_dict = {}
     original_schedule = waiting_jobs  
-    result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)+
-                        weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                        product_related_characteristics_dict, down_duration_dict)}) # generation 0 is the original schedule
-    
 #     result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)+
-#                         weight1 * get_failure_cost_v2(original_schedule, first_start_time, job_dict_new,
+#                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
 #                                         product_related_characteristics_dict, down_duration_dict)}) # generation 0 is the original schedule
+    
+    result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)+
+                        weight1 * get_failure_cost_v2(original_schedule, first_start_time, job_dict_new,
+                                        product_related_characteristics_dict, down_duration_dict)}) # generation 0 is the original schedule
 #     exit()
     ga = GA(dna_size=DNA_SIZE, cross_rate=CROSS_RATE, mutation_rate=MUTATION_RATE, pop_size=POP_SIZE, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
@@ -949,8 +969,10 @@ if __name__ == '__main__':
     print("Candidate schedule", pop[best_index])
     candidate_schedule = pop[best_index]
     candidate_energy_cost = weight2 * get_energy_cost(candidate_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
-    candidate_failure_cost = weight1 * get_failure_cost(candidate_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                             product_related_characteristics_dict, down_duration_dict)
+#     candidate_failure_cost = weight1 * get_failure_cost(candidate_schedule, first_start_time, job_dict_new, hourly_failure_dict,
+#                                              product_related_characteristics_dict, down_duration_dict)
+    candidate_failure_cost = weight1 * get_failure_cost_v2(candidate_schedule, first_start_time, job_dict_new,
+                                            product_related_characteristics_dict, down_duration_dict)
     print("Candidate energy cost:", candidate_energy_cost)
     print("Candidate failure cost:", candidate_failure_cost)
     print("Candidate total cost:", candidate_energy_cost+candidate_failure_cost)
@@ -961,15 +983,16 @@ if __name__ == '__main__':
     print("DNA_SIZE:", DNA_SIZE) 
     print("Original schedule start time:", first_start_time)
     original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
-    original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                             product_related_characteristics_dict, down_duration_dict)
-#     original_failure_cost = weight1 * get_failure_cost_v2(original_schedule, first_start_time, job_dict_new, 
+#     original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
 #                                              product_related_characteristics_dict, down_duration_dict)
+    original_failure_cost = weight1 * get_failure_cost_v2(original_schedule, first_start_time, job_dict_new, 
+                                             product_related_characteristics_dict, down_duration_dict)
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
     print("Original total cost:", original_energy_cost+original_failure_cost)
     
-    result_dict = visualize(original_schedule, first_start_time, job_dict_new, product_related_characteristics_dict, down_duration_dict)
+    result_dict = visualize(candidate_schedule, first_start_time, job_dict_new, product_related_characteristics_dict, down_duration_dict)
+    result_dict_origin = visualize(original_schedule, first_start_time, job_dict_new, product_related_characteristics_dict, down_duration_dict)
     print("Visualize_dict_origin:", result_dict)
     print("Down_duration", down_duration_dict)
 
@@ -977,6 +1000,11 @@ if __name__ == '__main__':
     with open('executionRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict.items():
+            writer.writerow([key, value[0], value[1], value[2]])
+            
+    with open('originalRecords.csv', 'w', newline='\n') as csv_file:
+        writer = csv.writer(csv_file)
+        for key, value in result_dict_origin.items():
             writer.writerow([key, value[0], value[1], value[2]])
             
     with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
