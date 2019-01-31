@@ -835,7 +835,7 @@ if __name__ == '__main__':
 #         pickle.dump(pop[best_index], f)
 
     print()      
-    print("Candidate schedule", list(pop[best_index]))
+    print("Candidate schedule", pop[best_index])
     candidate_schedule = pop[best_index]
     candidate_energy_cost = weight2 * get_energy_cost(candidate_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
     candidate_failure_cost = weight1 * get_failure_cost(candidate_schedule, first_start_time, job_dict_new, hourly_failure_dict,
