@@ -483,12 +483,12 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
                 continue
             if t_start > value[1]:
                 continue
-            if t_start < value[0] < t_end:
+            if t_start < value[0] < t_end: # if failure period within scheduling period
                 t_end = t_end + (value[1]-value[0])
 #                 print("Line 429, t_end:", t_end)
-            if t_start > value[0] and t_end > value[1]:
+            if t_start > value[0] and t_end > value[1]: # if start in the middle of failure period
                 t_end = t_end + (value[1] - t_start)
-            if t_start > value[0] and t_end < value[1]:
+            if t_start > value[0] and t_end < value[1]: # if start in the middle of failure period, short period
                 t_end = t_end + (t_end - t_start)
             
 #         for key, value in down_duration_dict.items():
