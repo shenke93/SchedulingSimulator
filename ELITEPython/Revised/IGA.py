@@ -19,11 +19,12 @@ from operator import add
 import numpy as np
 
 # Global variables
-POP_SIZE = 50
+POP_SIZE = 12
 CROSS_RATE = 0.7
-MUTATION_RATE = 0.1
-TIMES_MUTATE = 1
-N_GENERATIONS = 20000
+MUTATION_RATE = 0.7
+TIMES_MUTATE = 5
+N_GENERATIONS = 2000
+N_STOPPING = 500
 
 C1 = 10
 C2 = 30
@@ -38,7 +39,7 @@ jobinfo = folder + "jobInfoProd_joa.csv"
 output1 = folder + "best_schedule.txt"
 
 def ceil_dt(dt, delta):
-    ''' 
+    '''
     Ceil a data time dt according to the measurement delta.
 
     Parameters
@@ -58,7 +59,7 @@ def ceil_dt(dt, delta):
 
 
 def floor_dt(dt, delta):
-    ''' 
+    '''
     Floor a data time dt according to the measurement delta.
 
     Parameters
@@ -77,14 +78,14 @@ def floor_dt(dt, delta):
 
 
 def read_down_durations(downDurationFile):
-    ''' 
+    '''
     Create a dictionary to restore down duration information.
 
     Parameters
     ----------
     downDurationFile: string
         Name of file containing job information.
-    
+
     Returns
     -------
     A dictionary containing downtime duration indexes, startTime and endTime, key: int, value: list.
@@ -94,7 +95,7 @@ def read_down_durations(downDurationFile):
         with open(downDurationFile, encoding='utf-8') as downDurationInfo_csv:
             reader = csv.DictReader(downDurationInfo_csv)
             for row in reader:
-                down_duration_dict.update({row['ID']:[datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f"), 
+                down_duration_dict.update({row['ID']:[datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f"),
                                                  datetime.strptime(row['EndDateUTC'], "%Y-%m-%d %H:%M:%S.%f")]})
     except:
         print("Unexpected error when reading down duration information:", sys.exc_info()[0])
@@ -103,20 +104,20 @@ def read_down_durations(downDurationFile):
 
 
 def select_down_durations(daterange1, daterange2, down_duration_dict):
-    ''' 
+    '''
     Create a dictionary to restore selected job information in a time range.
 
     Parameters
     ----------
     daterange1: Date
         Start datestamp of selected jobs.
-    
+
     daterange2: Date
         End datestemp of selected jobs.
-        
+
     job_dict: dict
         Dictionary of jobs
-    
+
     Returns
     -------
     A dictionary containing jobs in the selected date range.
@@ -129,7 +130,7 @@ def select_down_durations(daterange1, daterange2, down_duration_dict):
 
 
 def read_product_related_characteristics(productFile):
-    ''' 
+    '''
     Create a dictionary to store product related characteristics from productFile.
 
     Parameters
@@ -149,21 +150,21 @@ def read_product_related_characteristics(productFile):
                 product_related_characteristics_dict.update({row['Product']:[round(float(row['UnitPrice']),3), float(row['Power']),
                                                             float(row['TargetProductionRate'])]})
     except:
-        print("Unexpected error when reading product related information:", sys.exc_info()[0]) 
+        print("Unexpected error when reading product related information:", sys.exc_info()[0])
         exit()
     return product_related_characteristics_dict
 
 
 # TODO: Depend on context of maintenance file
 def read_failure_data(maintenanceFile):
-    ''' 
-    Create a list to store influences of maintenances. 
+    '''
+    Create a list to store influences of maintenances.
 
     Parameters
     ----------
     maintenanceFile: string
         Name of file containing maintenance records.
-    
+
     Returns
     -------
     List containing influences of maintenances.
@@ -175,42 +176,42 @@ def read_failure_data(maintenanceFile):
             for row in reader:
                 maintenance_influence.append(float(row['Influence']))
     except:
-        print("Unexpected error when reading maintenance information:", sys.exc_info()[0]) 
+        print("Unexpected error when reading maintenance information:", sys.exc_info()[0])
         exit()
-    
+
     # Create the health dict, failure rates are based on data.
-    
+
 #     for key in price_dict:
 #         if key.weekday() == 5 and key.hour == 0:    #    Find all Saturday 00:00:00
 #             for i in range(216):
 #                 key1 = key+timedelta(hours=(i-96))
 #                 health_dict.update({key1:maintenance_influence[i]})
-#     
+#
 #     for key in price_dict:
 #         if key.weekday() == 5 and key.hour == 0:    #    Find all Saturday 00:00:00
 #             for i in range(216):
 #                 key1 = key+timedelta(hours=(i-96))
 #                 tmp = health_dict.get(key1, 0)
 #                 if tmp == 0:
-#                     health_dict.update({key1:maintenance_influence[i]}) 
+#                     health_dict.update({key1:maintenance_influence[i]})
 #                 else:
 #                     health_dict.update({key1:max(tmp, maintenance_influence[i])})
-               
+
     return maintenance_influence
 
- 
+
 # def read_failure(maintenanceFile, price_dict):
-#     ''' 
-#     Create a list to store influences of maintenances. 
-# 
+#     '''
+#     Create a list to store influences of maintenances.
+#
 #     Parameters
 #     ----------
 #     maintenanceFile: string
 #         Name of file containing maintenance records.
-#         
+#
 #     price_dict: dictionary
 #         Dict of hourly dependent energy price whose time range will be used in the dict for failure rate.
-#     
+#
 #     Returns
 #     -------
 #     A dictionary of hourly dependent failure rate, key: Date, value: float.
@@ -228,15 +229,15 @@ def read_failure_data(maintenanceFile):
 #         if d == 4: # Friday, 1 day before
 #             health_dict.update({key:maintenance_influence[72+h]})
 #         if d == 3: # Thursday, 2 days before
-#             health_dict.update({key:maintenance_influence[48+h]}) 
-#         if d == 0: # Monday, 2 days after    
+#             health_dict.update({key:maintenance_influence[48+h]})
+#         if d == 0: # Monday, 2 days after
 #             health_dict.update({key:maintenance_influence[144+h]})
 #         if d == 1: # Tuesday, 4 days before, 3 days after
-#             health_dict.update({key:max(maintenance_influence[168+h], maintenance_influence[h])})            
+#             health_dict.update({key:max(maintenance_influence[168+h], maintenance_influence[h])})
 #         if d == 2: # Wednesday, 3 days before, 4 days after
 #             health_dict.update({key:max(maintenance_influence[24+h], maintenance_influence[192+h])})
-#     
-#     return health_dict   
+#
+#     return health_dict
 
 
 # Possible to use for machine with low RAM.
@@ -249,14 +250,14 @@ def read_failure_data(maintenanceFile):
 
 
 def read_price(priceFile):
-    ''' 
+    '''
     Create a dictionary to restore hourly dependent energy price.
 
     Parameters
     ----------
     priceFile: string
         Name of file containing energy price.
-    
+
     Returns
     -------
     A dictionary containing hourly dependent energy price, key: Date, value: float.
@@ -274,14 +275,14 @@ def read_price(priceFile):
 
 
 def read_jobs(jobFile):
-    ''' 
+    '''
     Create a dictionary to restore job information.
 
     Parameters
     ----------
     jobFile: string
         Name of file containing job information.
-    
+
     Returns
     -------
     A dictionary containing job indexes and characteristics, key: int, value: list.
@@ -298,24 +299,24 @@ def read_jobs(jobFile):
         print("Unexpected error when reading job information:", sys.exc_info()[0])
         raise
         exit()
-    return job_dict 
+    return job_dict
 
 
 def select_jobs(daterange1, daterange2, job_dict):
-    ''' 
+    '''
     Create a dictionary to restore selected job information in a time range.
 
     Parameters
     ----------
     daterange1: Date
         Start datestamp of selected jobs.
-    
+
     daterange2: Date
         End datestemp of selected jobs.
-        
+
     job_dict: dict
         Dictionary of jobs
-    
+
     Returns
     -------
     A dictionary containing jobs in the selected date range.
@@ -328,19 +329,19 @@ def select_jobs(daterange1, daterange2, job_dict):
 
 
 def get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict):
-    ''' 
+    '''
     Get the hourly failure rate between a determined start time and end time.
     '''
     hourly_failure_dict = {}
     t_sd = floor_dt(start_time, timedelta(hours=1)) # start time left border
     t_eu = ceil_dt(end_time, timedelta(hours=1)) # end time right border
-    
+
     # Filtering down time, get all down durations longer than one hour
     down_duration_dict_filtered = collections.OrderedDict()
     for key, value in down_duration_dict.items():
         if (value[1] - value[0]) / timedelta(hours=1) >= 1:
             down_duration_dict_filtered.update({key:[floor_dt(value[0], timedelta(hours=1)), floor_dt(value[1], timedelta(hours=1))]})
-    
+
 #     print("down_duration_dict_filtered:", down_duration_dict_filtered)
     i = t_sd
     index=0
@@ -353,76 +354,76 @@ def get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_di
             hourly_failure_dict.update({i:float(0)})
             i = i + timedelta(hours=1)
         index = 0
-    
+
 #     print("i:", i)
 #     print("index:", index)
-    
+
     while i <= t_eu:
         hourly_failure_dict.update({i:failure_list[index]})
         i = i + timedelta(hours=1)
         index = index+1
-        
+
     return hourly_failure_dict
 
 def get_failure_cost_v2(indiviaual, start_time, job_dict,  product_related_characteristics_dict, down_duration_dict):
-    ''' 
+    '''
     Calculate the falure cost of an individual.
- 
+
     Parameters
     ----------
     individual: List
         A list of job indexes.
-     
+
     start_time: Date
         Start time of the individual.
-         
+
     job_dict: dict
         Dictionary of jobs.
-         
+
     health_dict: dict
         Dictionary of houly dependent failure rates.
-         
+
     product_related_characteristics_dict: dict
         Dictionary of product related characteristics.
-     
+
     Returns
     -------
     The failure cost of an individual.
     '''
-     
+
     ''' TODO: Another assumption 
             1. No failure cost for runtime durations
             2. Machine stop/restart cost + failure cost for downtime durations
     '''
     failure_cost = 0
     t_now = start_time
- 
+
     for item in indiviaual:
         t_start = t_now
         unit1 = job_dict.get(item, -1)
         if unit1 == -1:
             raise ValueError("No matching item in job dict: ", item)
-     
+
         product_type = unit1[4]    # get job product type
         quantity = unit1[3]  # get job quantity
-         
+
 #         if du <= 1: # safe period of 1 hour (no failure cost)
 #             continue;
         unit2 = product_related_characteristics_dict.get(product_type, -1)
         if unit2 == -1:
             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-        
+
         du = quantity / unit2[2] # get job duration
 #         print("Duration:", du)
 #         uc = unit2[0] # get job raw material unit price
-         
+
         t_o = t_start + timedelta(hours=du) # Without downtime duration
 #         print("t_o:", t_o)
         t_end = t_o
-         
+
         for key, value in down_duration_dict.items():
             # DowntimeDuration already added
-    
+
             if t_end < value[0]:
                 continue
             if t_start > value[1]:
@@ -436,86 +437,86 @@ def get_failure_cost_v2(indiviaual, start_time, job_dict,  product_related_chara
                 t_end = t_end + (t_end - t_start)
             else:
                 break
-         
+
 #         t_start = t_start+timedelta(hours=1) # exclude safe period, find start of sensitive period
 #         t_end = t_start + timedelta(hours=(du-1)) # end of sensitive period
-         
+
 #         t_su = ceil_dt(t_start, timedelta(hours=1)) #    t_start right border
 #         t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
 #         t_sd = floor_dt(t_start, timedelta(hours=1))  #    t_start left border
-#          
-       
+#
+
 #         if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
 #             raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
-         
+
 #         tmp = (1 - hourly_failure_dict.get(t_sd, 0)) * (1 - hourly_failure_dict.get(t_ed, 0))
 #         step = timedelta(hours=1)
 #         while t_su < t_ed:
 #             if hourly_failure_dict.get(t_su, -1) == -1:
 #                 raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
-#             tmp *= (1-hourly_failure_dict.get(t_su, 0)) 
+#             tmp *= (1-hourly_failure_dict.get(t_su, 0))
 #             t_su += step
-# #         
+# #
 # #         if product_related_characteristics_dict.get(product_type, -1) == -1:
 # #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-#         failure_cost += (1-tmp) * quantity * uc   
+#         failure_cost += (1-tmp) * quantity * uc
         t_now = t_end
-         
+
     return failure_cost
 
 
 def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, product_related_characteristics_dict, down_duration_dict):
-    ''' 
+    '''
     Calculate the falure cost of an individual.
- 
+
     Parameters
     ----------
     individual: List
         A list of job indexes.
-     
+
     start_time: Date
         Start time of the individual.
-         
+
     job_dict: dict
         Dictionary of jobs.
-         
+
     health_dict: dict
         Dictionary of houly dependent failure rates.
-         
+
     product_related_characteristics_dict: dict
         Dictionary of product related characteristics.
-     
+
     Returns
     -------
     The failure cost of an individual.
     '''
-     
+
     failure_cost = 0
     t_now = start_time
- 
+
     for item in indiviaual:
         t_start = t_now
         unit1 = job_dict.get(item, -1)
         if unit1 == -1:
             raise ValueError("No matching item in job dict: ", item)
-     
+
         product_type = unit1[4]    # get job product type
         quantity = unit1[3]  # get job quantity
-         
+
 #         if du <= 1: # safe period of 1 hour (no failure cost)
 #             continue;
         unit2 = product_related_characteristics_dict.get(product_type, -1)
         if unit2 == -1:
             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-        
+
         du = quantity / unit2[2] # get job duration
 #         print("Duration:", du)
         uc = unit2[0] # get job raw material unit price
-         
+
         t_o = t_start + timedelta(hours=du) # Without downtime duration
 #         print("t_o:", t_o)
         t_end = t_o
-        
+
         for key, value in down_duration_dict.items():
             # DowntimeDuration already added
             if t_end < value[0]:
@@ -531,55 +532,55 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
                 t_end = t_end + (t_end - t_start)
             else:
                 break
-         
+
 #         t_start = t_start+timedelta(hours=1) # exclude safe period, find start of sensitive period
 #         t_end = t_start + timedelta(hours=(du-1)) # end of sensitive period
-         
+
         t_su = ceil_dt(t_start, timedelta(hours=1)) #    t_start right border
         t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
         t_sd = floor_dt(t_start, timedelta(hours=1))  #    t_start left border
-         
-       
+
+
 #         if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
 #             raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
-         
+
         tmp = (1 - hourly_failure_dict.get(t_sd, 0)) * (1 - hourly_failure_dict.get(t_ed, 0))
         step = timedelta(hours=1)
         while t_su < t_ed:
             if hourly_failure_dict.get(t_su, -1) == -1:
                 raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
-            tmp *= (1-hourly_failure_dict.get(t_su, 0)) 
+            tmp *= (1-hourly_failure_dict.get(t_su, 0))
             t_su += step
-#         
+#
 #         if product_related_characteristics_dict.get(product_type, -1) == -1:
 #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-        failure_cost += (1-tmp) * quantity * uc   
+        failure_cost += (1-tmp) * quantity * uc
         t_now = t_end
-         
+
     return failure_cost
 
 
 def get_energy_cost(individual, start_time, job_dict, price_dict, product_related_characteristics_dict):
-    ''' 
+    '''
     Calculate the energy cost of an individual.
 
     Parameters
     ----------
     individual: List
         A list of job indexes.
-    
+
     start_time: Date
         Start time of the individual.
-        
+
     job_dict: dict
         Dictionary of jobs.
-        
+
     health_dict: dict
         Dictionary of houly dependent failure rates.
-        
+
     product_related_characteristics_dict: dict
         Dictionary of product related characteristics.
-    
+
     Returns
     -------
     The energy cost of an individual.
@@ -594,23 +595,23 @@ def get_energy_cost(individual, start_time, job_dict, price_dict, product_relate
         unit1 = job_dict.get(item, -1)
         if unit1 == -1:
             raise ValueError("No matching item in the job dict for %d" % item)
-       
+
         product_type = unit1[4] # get job product type
         #quantity = unit1[3]
-        
+
         unit2 = product_related_characteristics_dict.get(product_type, -1)
         if unit2 == -1:
             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-       
+
         #du = quantity / unit2[2] # get job duration
         du = unit1[0]
         #print("Duration:", du)
         po = unit2[1] # get job power profile
-        
+
         t_o = t_start + timedelta(hours=du) # Without downtime duration
 #         print("t_o:", t_o)
         t_end = t_o
-        
+
 #         for key, value in down_duration_dict.items():
 #             # DowntimeDuration already added
 #
@@ -625,13 +626,13 @@ def get_energy_cost(individual, start_time, job_dict, price_dict, product_relate
 #                 t_end = t_end + (value[1] - t_start)
 #             if t_start > value[0] and t_end < value[1]:
 #                 t_end = t_end + (t_end - t_start)
-            
+
 #         for key, value in down_duration_dict.items():
 #         print("Job", item)
 #         print('Line 416, du:', du)
 #         t_end = t_start + timedelta(hours=du)
 #         print("Time end: " + str(t_end))
-        
+
         # calculate sum of head price, tail price and body price
 
         t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start right border
@@ -651,11 +652,11 @@ def get_energy_cost(individual, start_time, job_dict, price_dict, product_relate
                 raise ValueError("For item %d: No matching item in the price dict for %s" % (item, t_su))
             energy_cost += price_dict.get(t_su, 0) * po
             t_su += step
-        
+
         energy_cost += tmp * po
-        
+
         t_now = t_end
-    
+
 #     print("Finish time:", t_now)
     return energy_cost
 
@@ -668,21 +669,21 @@ def get_energy_cost(individual, start_time, job_dict, price_dict, product_relate
 def visualize(individual, start_time, job_dict, product_related_characteristics_dict, down_duration_dict):
     # Assistant function to visualize the processing of a candidate schedule throughout the time horizon
     detail_dict = {}
-    t_now = start_time 
-    
+    t_now = start_time
+
     for item in individual:
         t_start = t_now
-        
+
         unit1 = job_dict.get(item, -1)
         product_type = unit1[4] # get job product type
         quantity = unit1[3] # get job objective quantity
-        
+
         unit2 = product_related_characteristics_dict.get(product_type, -1)
         du = quantity / unit2[2] # get job duration
-        
+
         t_o = t_start + timedelta(hours=du) # Without downtime duration
         t_end = t_o
-    
+
         for key, value in down_duration_dict.items():
             # DowntimeDuration already added
 
@@ -697,7 +698,7 @@ def visualize(individual, start_time, job_dict, product_related_characteristics_
                 t_end = t_end + (value[1] - t_start)
             if t_start > value[0] and t_end < value[1]:
                 t_end = t_end + (t_end - t_start)
-        
+
         detail_dict.update({item:[t_start, t_end, du]})
         t_now = t_end
 
@@ -705,31 +706,31 @@ def visualize(individual, start_time, job_dict, product_related_characteristics_
 
 
 def hamming_distance(s1, s2):
-    ''' 
+    '''
     Calculate the hamming distance (the number of positions at which the corresponding symbols are different) of two list.
 
     Parameters
     ----------
     s1: List
         A list of job indexes.
-    
+
     s2: list
         A list of job indexes.
-    
+
     Returns
     -------
     The hamming distance of two lists.
     '''
     assert len(s1) == len(s2)
     return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
- 
-                
+
+
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict,
                  product_related_characteristics_dict,  start_time, weight1, weight2,
                  failure_dict=[], down_duration_dict= []):
         # Attributes assignment
-        self.dna_size = dna_size 
+        self.dna_size = dna_size
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
         self.pop_size = pop_size
@@ -743,9 +744,9 @@ class GA(object):
         self.w2 = weight2
         # generate N random individuals (N = pop_size)
         self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
-        
+
         self.memory = []
-        
+
     def get_fitness(self, sub_pop):
         ''' Get fitness values for all individuals in a generation.
         '''
@@ -762,16 +763,17 @@ class GA(object):
         else:
             energy_cost = [self.w2 for i in sub_pop]
         return list(map(add, failure_cost, energy_cost))
-    
+
 #     def select(self, fitness):
 #         ''' Nature selection with individuals' fitnesses.
 #         '''
 #         idx = np.random.choice(np.arange(self.pop_size), size=self.pop_size, replace=True, p = fitness/fitness.sum())
 # #         print("idx:", idx)
-#         return self.pop[idx] 
-    
-    def crossover(self, winner_loser): 
+#         return self.pop[idx]
+
+    def crossover(self, winner_loser):
         ''' Using microbial genetic evolution strategy, the crossover result is used to represent the loser.
+        the winner stays the same
         '''
         # crossover for loser
         if np.random.rand() < self.cross_rate:
@@ -780,7 +782,7 @@ class GA(object):
             swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
             winner_loser[1][:] = np.concatenate((keep_job, swap_job))
         return winner_loser
-    
+
     def mutate(self, schedule):
         ''' Using microbial genetic evolution strategy, mutation only works on the loser.
         '''
@@ -796,16 +798,16 @@ class GA(object):
             schedule[point], schedule[swap_point] = swap_B, swap_A
         #print(schedule)
         return schedule
-        
+
     def evolve(self, n, with_crossover=True):
-        ''' 
+        '''
         Execution of the provided GA.
 
         Parameters
         ----------
         n: int
-            Number of iteration times 
-    
+            Number of iteration times
+
         Returns
         -------
         The hamming distance of two lists.
@@ -821,99 +823,60 @@ class GA(object):
             # sort population by fitness
             self.pop = self.pop[best]
 
-            #get two random parents from the top half
-            sub_pop_idx = np.random.choice(np.arange(0, int(self.pop_size*0.5)), size=2, replace=False)
-            sub_pop = self.pop[sub_pop_idx]
+            # use the top half for crossover and mutation, do only mutation on the bottom half
+            # round to a multiple of two
+            top_length = int(int(self.pop_size*0.5) >> 1 << 1)
 
-            # get the fitness values of the two
-            fitness = self.get_fitness(sub_pop)
-            #print(fitness)
+            #get pairs of random parents from the top half
+            sub_pop_idx = np.random.choice(np.arange(0, top_length), size=top_length, replace=False)
 
-            # Elitism Selection
-            winner_loser_idx = np.argsort(fitness)
-#             print('winner_loser_idx', winner_loser_idx)
+            for i in range(int(top_length / 2)):
+                sub_pop = self.pop[sub_pop_idx[i*2:i*2+2]]
+                # get the fitness values of the two
+                fitness = self.get_fitness(sub_pop)
+                #print(fitness)
 
-            winner_loser = sub_pop[winner_loser_idx] # the first is winner and the second is loser
-#             print('winner_loser', winner_loser)
+                # Elitism Selection
+                winner_loser_idx = np.argsort(fitness)
+#               print('winner_loser_idx', winner_loser_idx)
 
-            origin = winner_loser[1] # pick up the loser for genetic operations
+                sorted_idx = sub_pop_idx[i*2:i*2+2][winner_loser_idx]
 
-            # Crossover (of the winner and the loser)
-            #print(winner_loser)
-            if with_crossover:
-                winner_loser = self.crossover(winner_loser)
-            #print(winner_loser)
-            
-            # Mutation (only on the child) (should affect fitness)
-            loser = self.mutate(origin)
+                winner_loser = self.pop[sorted_idx] # the first is winner and the second is loser
+#               print('winner_loser', winner_loser)
 
-            winner_loser[1] = loser
-            #sub_pop_idx = np.random.choice(np.arange(int(self.pop_size/2), self.pop_size), size=2,
-            #                               replace=False)
-            # sub_pop = self.pop[sub_pop_idx]
-            fitness = self.get_fitness(winner_loser)
-            #print(fitness.min())
+                #origin = winner_loser[1] # pick up the loser for genetic operations
+
+                # Crossover (of the winner and the loser)
+                #print(winner_loser)
+                if with_crossover:
+                    winner_loser = self.crossover(winner_loser)
+                #print(winner_loser)
+
+                # Mutation (only on the child) (should affect fitness)
+                for m in range(TIMES_MUTATE):
+                    loser = self.mutate(winner_loser[1])
+
+                winner_loser[1] = loser
+                #sub_pop_idx = np.random.choice(np.arange(int(self.pop_size/2), self.pop_size), size=2,
+                #                               replace=False)
+                # sub_pop = self.pop[sub_pop_idx]
+                #fitness = self.get_fitness(winner_loser)
+                #print(fitness.min())
+                rang = np.arange(top_length, self.pop_size)
+                sub_pop_id = np.random.choice(rang, size=1, replace=False)
+
+                self.pop[sub_pop_id] = loser # take the original places of the parents
+
+            np.arange(top_length, self.pop_size + 1)
 
 
-            
-#             print('Winner_loser after crossover and mutate: ', winner_loser)
-#             print('Winner', winner_loser[0])
-#             print('Loser', winner_loser[1])
-#             print('Origin2:', origin)
-            
-#             print(hamming_distance(origin, winner_loser[1]))
-            # Distance evaluation:
-            #print(origin, loser)
-            hd = hamming_distance(origin, winner_loser[1])
-            #print(hd)
-            #if hd > (self.dna_size / 5):
-            # Memory search：
-            child = winner_loser[1]
-
-#             print("Child:", child)           
-#             print("Current memory:", self.memory)    
-
-            flag = 0 # 0 means the new generated child is not in the memory
-            for item in self.memory:
-                if (item == child).all():
-                    #print("In memory!")
-                    flag = 1
-                    break
-
-            if flag == 0:
-                #print("Not in memory!")
-                if (len(self.memory) >= self.pop_size * 5):
-                    self.memory.pop()
-                self.memory.append(child)
-
-                self.pop[np.random.choice(np.arange(int(self.pop_size*0.5), self.pop_size), size=2, replace=False)] = winner_loser
-                i = i + 1 # End of procedure
-            else:
-                pass
-#                     print("In memory, start genetic operation again!")
-            #else:
-            #    print("Distance too small, start genetic operation again!")
-                
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         cost_space = self.get_fitness(self.pop)
-        #if self.w1 > 0:
-        #    failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
-        #else:
-        #    failure_cost_space = [self.w1 for i in self.pop]
-#         failure_cost_space = [self.w1 * get_failure_cost_v2(i, self.start_time, self.job_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
-        #if self.w2 > 0:
-        #    energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict) for i in self.pop]
-        #else:
-        #    energy_cost_space = [self.w2 for i in self.pop]
-#         print(self.start_time)
-#         print(self.pop)
-#         print(space)
-#         print("failure_cost_space:", failure_cost_space)
-#         print("energy_cost_space:", energy_cost_space)
 
         return self.pop, cost_space
-      
-        
+
+
 if __name__ == '__main__':
     ''' Use start_time and end_time to determine a waiting job list from records
         Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
@@ -963,12 +926,12 @@ if __name__ == '__main__':
 
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
-    
+
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
     else:
         first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
-    
+
 #     print("Waiting jobs: ", waiting_jobs)
 #     print("Prices: ", price_dict_new)
 #     print("Failures: ", failure_dict_new)
@@ -984,7 +947,7 @@ if __name__ == '__main__':
                                    product_related_characteristics_dict, down_duration_dict)
 
     result_dict.update({0: firstresult}) # generation 0 is the original schedule
-    
+
 #     result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)+
 #                         weight1 * get_failure_cost_v2(original_schedule, first_start_time, job_dict_new,
 #                                         product_related_characteristics_dict, down_duration_dict)}) # generation 0 is the original schedule
@@ -996,12 +959,11 @@ if __name__ == '__main__':
 
     best_cost_list = []
     worst_cost_list = []
-    for generation in range(1, N_GENERATIONS+1):
+    generation = 0
+    while generation < N_GENERATIONS+N_STOPPING:
+        generation += 1
         #print("Gen: ", generation)
-        if generation < int(N_GENERATIONS*0.9):
-            co = True
-        else:
-            co = False
+        co = (generation < N_GENERATIONS)
         pop, res = ga.evolve(1, with_crossover=co)          # natural selection, crossover and mutation
         #print(pop)
 #         print("res:", res)
@@ -1012,7 +974,7 @@ if __name__ == '__main__':
         best_cost_list.append(best_cost)
         worst_cost_list.append(res[worst_index])
 #         result_dict.update({generation:res[best_index]})
-        print(str(generation) + '/' + str(N_GENERATIONS), end='')
+        print(str(generation) + '/' + str(N_GENERATIONS+ N_STOPPING) + ':\t' + str(best_cost), end='')
         print('\r', end='')
     
     # Used to store intermediate result for large-size problems

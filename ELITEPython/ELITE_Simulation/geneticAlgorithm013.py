@@ -19,7 +19,7 @@ import time
 POP_SIZE = 8   
 CROSS_RATE = 0.6
 MUTATION_RATE = 0.8
-N_GENERATIONS = 5000
+N_GENERATIONS = 200
 # np.random.seed(1234)
 
 import os
