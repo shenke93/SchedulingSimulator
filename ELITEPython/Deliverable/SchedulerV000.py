@@ -9,6 +9,7 @@ import sys
 import csv
 import collections
 import argparse
+import warnings
 from datetime import timedelta, datetime
 from operator import add
 # import pickle
@@ -330,6 +331,8 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
             t_o = t_start + timedelta(hours=du) # Without downtime duration
     #         print("t_o:", t_o)
             t_end = t_o
+
+            print(down_duration_dict)
             
             for key, value in down_duration_dict.items():
                 # DowntimeDuration already added
@@ -612,11 +615,19 @@ class GA(object):
         
         self.memory = []
         
-    def get_fitness(self, value1, value2):
+    def get_fitness(self, sub_pop):
         ''' Get fiteness values for all individuals in a generation.
         '''
+        if self.w1:
+            failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
+        else:
+            failure_cost = [self.w1 for i in sub_pop]
+        if self.w2:
+            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in sub_pop]
+        else:
+            energy_cost = [self.w2 for i in sub_pop]
         # There are 2 sub-objectives, the fitness is the sum of these two
-        return list(map(add, value1, value2))
+        return list(map(add, failure_cost, energy_cost))
     
 #     def select(self, fitness):
 #         ''' Nature selection with individuals' fitnesses.
@@ -665,11 +676,7 @@ class GA(object):
             sub_pop_idx = np.random.choice(np.arange(0, self.pop_size), size=2, replace=False)
             sub_pop = self.pop[sub_pop_idx] # pick 2 individuals from pop
             
-#             print('sub_pop', sub_pop)
-            
-            failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
-            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in sub_pop]
-            fitness = self.get_fitness(failure_cost, energy_cost) # get the fitness values of the two
+            fitness = self.get_fitness(sub_pop) # get the fitness values of the two
             
 #             print('fitness', fitness)
             # Elitism Selection
@@ -728,8 +735,14 @@ class GA(object):
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         
-        failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in self.pop]
-        energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
+        if self.w1:
+            failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in self.pop]
+        else:
+            failure_cost_space = [self.w1 for i in self.pop]
+        if self.w2:
+            energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
+        else: 
+            energy_cost_space = [self.w2 for i in self.pop]
         
 #         print(self.start_time)
 #         print(self.pop)
@@ -740,14 +753,28 @@ class GA(object):
         return self.pop, list(map(add, failure_cost_space, energy_cost_space))
       
         
-def run_opt(start_time, end_time, down_duration_file, failure_file, range_hourly_failure_file, prod_rel_file, energy_file, job_file, 
+def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size):
+    weight_failure = 1
+    weight_energy = 1
     # Generate raw material unit price
-    down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
-    failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
-    hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
+    try:
+        down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
+        failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
+        hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
+
+        with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+            writer = csv.writer(csv_file)
+            for key, value in hourly_failure_dict.items():
+                writer.writerow([key, value])
+    except:
+        warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
+        weight_failure = 0
+        down_duration_dict = {}
+        failure_list = []
+        hourly_failure_dict = {}
     
-    with open(range_hourly_failure_file, 'w', newline='\n') as csv_file:
+    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in hourly_failure_dict.items():
             writer.writerow([key, value])
@@ -782,27 +809,29 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, range_hourly
 #     print("Waiting jobs: ", waiting_jobs)
 #     print("Prices: ", price_dict_new)
 #     print("Failures: ", failure_dict_new)
-    
-    weight1 = 1
-    weight2 = 1
+
     result_dict = {}
     original_schedule = waiting_jobs  
-    result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)+
-                        weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                        product_related_characteristics_dict, down_duration_dict, scenario)}) # generation 0 is the original schedule
+    total_result = 0
+    if weight_energy:
+        total_result += weight_energy * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
+    if weight_failure:
+        total_result += weight_failure * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
+                                        product_related_characteristics_dict, down_duration_dict, scenario)
+    result_dict.update({0: total_result}) # generation 0 is the original schedule
     
 #     exit()
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
-            start_time = first_start_time, weight1=weight1, weight2=weight2, scenario=scenario)
+            start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, scenario=scenario)
       
     for generation in range(1, iterations+1):
 #         print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
 #         print("res:", res)
         best_index = np.argmin(res)
-#        print(generation, '/', iterations+1, ':\t' best_index)
+        print(generation, '/', iterations, ':\t', res[best_index], end='\r'); sys.stdout.flush() # overwrite this line continually
 #         print("Most fitted DNA: ", pop[best_index])
 #         print("Most fitted cost: ", res[best_index])
 #         result_dict.update({generation:res[best_index]})
@@ -814,9 +843,12 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, range_hourly
     print()      
     print("Candidate schedule", pop[best_index])
     candidate_schedule = pop[best_index]
-    candidate_energy_cost = weight2 * get_energy_cost(candidate_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
-    candidate_failure_cost = weight1 * get_failure_cost(candidate_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                             product_related_characteristics_dict, down_duration_dict, scenario=scenario)
+    candidate_energy_cost = weight_energy * get_energy_cost(candidate_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
+    if weight_failure:
+        candidate_failure_cost = weight_failure * get_failure_cost(candidate_schedule, first_start_time, job_dict_new, hourly_failure_dict,
+                                                product_related_characteristics_dict, down_duration_dict, scenario=scenario)
+    else:
+        candidate_failure_cost = weight_failure
 
     print("Candidate energy cost:", candidate_energy_cost)
     print("Candidate failure cost:", candidate_failure_cost)
@@ -827,9 +859,12 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, range_hourly
     print("\nOriginal schedule:", original_schedule)
 #     print("DNA_SIZE:", DNA_SIZE) 
     print("Original schedule start time:", first_start_time)
-    original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
-    original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                             product_related_characteristics_dict, down_duration_dict, scenario)
+    original_energy_cost = weight_energy * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
+    if weight_failure:
+        original_failure_cost = weight_failure * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
+                                                                product_related_characteristics_dict, down_duration_dict, scenario=scenario)
+    else:
+        original_failure_cost = weight_failure
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
     print("Original total cost:", original_energy_cost+original_failure_cost)
