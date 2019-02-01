@@ -597,6 +597,60 @@ def hamming_distance(s1, s2):
     assert len(s1) == len(s2)
     return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
  
+
+class BF(object):
+    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+                  start_time, weight1, weight2, scenario):
+        # Attributes assignment
+        self.dna_size = len(job_dict)
+        self.pop = job_dict.keys()
+        self.job_dict = job_dict
+        self.price_dict = price_dict
+        self.failure_dict = failure_dict
+        self.product_related_characteristics_dict = product_related_characteristics_dict
+        self.down_duration_dict = down_duration_dict
+        self.start_time = start_time
+        self.w1 = weight1
+        self.w2 = weight2
+        self.scenario = scenario
+
+    def get_fitness(self, sub_pop):
+        ''' Get fiteness values for all individuals in a generation.
+        '''
+        if self.w1:
+            failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
+        else:
+            failure_cost = [self.w1 for i in sub_pop]
+        if self.w2:
+            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in sub_pop]
+        else:
+            energy_cost = [self.w2 for i in sub_pop]
+        # There are 2 sub-objectives, the fitness is the sum of these two
+        return list(map(add, failure_cost, energy_cost))
+
+    
+    def check_all(self):
+        if len(self.pop) > 10:
+            raise ValueError('The input is too long, no brute force recommended')
+        tot_cost_min = np.inf
+        best_sched = []
+        tot_cost_max = 0
+        worst_sched = []
+        import itertools
+        allperm = itertools.permutations(self.pop)
+        i = 0
+        for test in allperm:
+            tot_cost = self.get_fitness([test])[0]
+            if tot_cost < tot_cost_min:
+                tot_cost_min = tot_cost
+                best_sched = test
+            if tot_cost > tot_cost_max:
+                tot_cost_max = tot_cost
+                worst_sched = test
+            i += 1
+            print(i)
+        return tot_cost_min, tot_cost_max, best_sched, worst_sched
+            
                 
 class GA(object):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
@@ -633,6 +687,7 @@ class GA(object):
             energy_cost = [self.w2 for i in sub_pop]
         # There are 2 sub-objectives, the fitness is the sum of these two
         return list(map(add, failure_cost, energy_cost))
+        
     
 #     def select(self, fitness):
 #         ''' Nature selection with individuals' fitnesses.
@@ -700,8 +755,7 @@ class GA(object):
             winner_loser = self.crossover(winner_loser)
             
             # Mutation (only on the child)
-            for i in range(5):
-                winner_loser = self.mutate(winner_loser)
+            winner_loser = self.mutate(winner_loser)
             
 #             print('Winner_loser after crossover and mutate: ', winner_loser)
 #             print('Winner', winner_loser[0])
@@ -733,11 +787,9 @@ class GA(object):
                     self.pop[sub_pop_idx] = winner_loser
                     i = i + 1 # End of procedure
                 else:
-                    pass
-#                     print("In memory, start genetic operation again!")
+                    print("In memory, start genetic operation again!")
             else:
-                pass
-#                 print("Distance too small, start genetic operation again!")
+                print("Distance too small, start genetic operation again!")
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         
@@ -757,6 +809,65 @@ class GA(object):
 #         print("energy_cost_space:", energy_cost_space)
 
         return self.pop, list(map(add, failure_cost_space, energy_cost_space))
+
+
+def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
+           scenario):
+    weight_failure = 1
+    weight_energy = 1
+    # Generate raw material unit price
+    try:
+        down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
+        failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
+        hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
+
+        with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+            writer = csv.writer(csv_file)
+            for key, value in hourly_failure_dict.items():
+                writer.writerow([key, value])
+    except:
+        warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
+        weight_failure = 0
+        down_duration_dict = {}
+        failure_list = []
+        hourly_failure_dict = {}
+
+#     print("down_duration_dict: ", down_duration_dict)
+#     print("hourly_failure_dict: ", hourly_failure_dict)
+#     exit()
+    
+    product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
+    
+    price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
+#     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
+    job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 1, 2) # File from EnergyConsumption/InputOutput
+
+    # TODO: change
+#     print("failure_dict", failure_dict)
+#     exit()
+#     # write corresponding failure dict into file
+#     with open('ga_013_failure_plot.csv', 'w', newline='\n') as csv_file:
+#         writer = csv.writer(csv_file)
+#         for key, value in failure_dict_new.items():
+#             writer.writerow([key, value])
+
+    waiting_jobs = [*job_dict_new]
+    
+    if not waiting_jobs:
+        raise ValueError("No waiting jobs!")
+    else:
+        first_start_time = job_dict_new.get(waiting_jobs[0])[1] # Find the start time of original schedule
+
+    bf = BF(job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
+        product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
+        start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, scenario=scenario)
+    
+    best_result, worst_result, best_schedule, worst_schedule = bf.check_all()
+
+    result_dict = visualize(best_schedule, first_start_time, job_dict_new, product_related_characteristics_dict, down_duration_dict)
+    result_dict_origin = visualize(worst_schedule, first_start_time, job_dict_new, product_related_characteristics_dict, down_duration_dict)
+
+    return best_result, worst_result, result_dict, result_dict_origin
 
         
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
