@@ -1,5 +1,0 @@
-Working plan of the deliverable software package:
-1. User manual:
-	- Data processing manual
-	- Example
-
