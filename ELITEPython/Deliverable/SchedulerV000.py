@@ -12,6 +12,7 @@ import argparse
 import warnings
 from datetime import timedelta, datetime
 from operator import add
+import pandas as pd
 # import pickle
 
 # 3rd-party modules
@@ -114,8 +115,12 @@ def select_from_range(dateRange1, dateRange2, dict, pos1, pos2):
     '''
     res_dict = collections.OrderedDict()
     for key, value in dict.items():
-        if value[pos1] >= dateRange1 and value[pos2] <= dateRange2:
-            res_dict.update({key:value})
+        try:
+            if value[pos1] >= dateRange1 and value[pos2] <= dateRange2:
+                res_dict.update({key:value})
+        except TypeError:
+            print(value[pos1], dateRange1, value[pos2], dateRange2)
+            raise
     return res_dict
 
 
@@ -567,7 +572,7 @@ def visualize(individual, start_time, job_dict, product_related_characteristics_
             if t_start > value[0] and t_end < value[1]:
                 t_end = t_end + (t_end - t_start)
         
-        detail_dict.update({item:[t_start, t_end, du]})
+        detail_dict.update({item:[t_start, t_end, du, product_type]})
         t_now = t_end
 
     return detail_dict
@@ -695,7 +700,8 @@ class GA(object):
             winner_loser = self.crossover(winner_loser)
             
             # Mutation (only on the child)
-            winner_loser = self.mutate(winner_loser)
+            for i in range(5):
+                winner_loser = self.mutate(winner_loser)
             
 #             print('Winner_loser after crossover and mutate: ', winner_loser)
 #             print('Winner', winner_loser[0])
@@ -751,7 +757,7 @@ class GA(object):
 #         print("energy_cost_space:", energy_cost_space)
 
         return self.pop, list(map(add, failure_cost_space, energy_cost_space))
-      
+
         
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size):
@@ -773,11 +779,6 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         down_duration_dict = {}
         failure_list = []
         hourly_failure_dict = {}
-    
-    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in hourly_failure_dict.items():
-            writer.writerow([key, value])
 
 #     print("down_duration_dict: ", down_duration_dict)
 #     print("hourly_failure_dict: ", hourly_failure_dict)
@@ -825,13 +826,19 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, scenario=scenario)
-      
+
+    best_result_list = []
+    worst_result_list = [] 
     for generation in range(1, iterations+1):
 #         print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
 #         print("res:", res)
         best_index = np.argmin(res)
-        print(generation, '/', iterations, ':\t', res[best_index], end='\r'); sys.stdout.flush() # overwrite this line continually
+        worst_index = np.argmax(res)
+        print(generation, '/', iterations, ':\t', res[best_index], end='\r') # overwrite this line continually
+        
+        best_result_list.append(res[best_index])
+        worst_result_list.append(res[worst_index])
 #         print("Most fitted DNA: ", pop[best_index])
 #         print("Most fitted cost: ", res[best_index])
 #         result_dict.update({generation:res[best_index]})
@@ -874,6 +881,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 #     print("Visualize_dict_origin:", result_dict)
 #     print("Down_duration", down_duration_dict)
 
+
     # Output for visualization
     with open('executionRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
@@ -885,10 +893,12 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         for key, value in result_dict_origin.items():
             writer.writerow([key, value[0], value[1], value[2]])
             
-    with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in down_duration_dict.items():
-            writer.writerow([key, value[0], value[1]])
+    # with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
+    #     writer = csv.writer(csv_file)
+    #     for key, value in down_duration_dict.items():
+    #         writer.writerow([key, value[0], value[1]])
+
+    return candidate_schedule, best_result_list, worst_result_list, result_dict_origin, result_dict
 
 if __name__ == '__main__':
     
@@ -914,6 +924,6 @@ if __name__ == '__main__':
     end_time = datetime(2016, 11, 8, 0, 0)
 
     run_opt(start_time, end_time, args.historical_down_periods_file, 
-           args.failure_rate_file, 'range_hourly_failure_rate.csv', args.product_related_characteristics_file, 
+           args.failure_rate_file, args.product_related_characteristics_file, 
            args.energy_price_file, args.job_info_file,
            args.scenario, args.generations, args.crossover_rate, args.mutation_rate, args.pop_size)
