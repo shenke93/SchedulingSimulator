@@ -86,7 +86,8 @@ def read_down_durations(downDurationFile):
                 down_duration_dict.update({row['ID']:[datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f"), 
                                                  datetime.strptime(row['EndDateUTC'], "%Y-%m-%d %H:%M:%S.%f")]})
     except:
-        print("Unexpected error when reading down duration information:", sys.exc_info()[0])
+        print("Unexpected error when reading down duration information from '{}'".format(downDurationFile))
+        raise
         exit()
     return down_duration_dict
 
@@ -483,12 +484,12 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
                 continue
             if t_start > value[1]:
                 continue
-            if t_start < value[0] < t_end: # if failure period within scheduling period
+            if t_start < value[0] < t_end:
                 t_end = t_end + (value[1]-value[0])
 #                 print("Line 429, t_end:", t_end)
-            if t_start > value[0] and t_end > value[1]: # if start in the middle of failure period
+            if t_start > value[0] and t_end > value[1]:
                 t_end = t_end + (value[1] - t_start)
-            if t_start > value[0] and t_end < value[1]: # if start in the middle of failure period, short period
+            if t_start > value[0] and t_end < value[1]:
                 t_end = t_end + (t_end - t_start)
             
 #         for key, value in down_duration_dict.items():
@@ -739,39 +740,14 @@ class GA(object):
         return self.pop, list(map(add, failure_cost_space, energy_cost_space))
       
         
-if __name__ == '__main__':
-    
-    # Read parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument("historical_down_periods_file", help="File containing records of historical down duration periods.") # downDurations.csv
-    parser.add_argument("failure_rate_file", help="File containing failure rate of each hour from the failure model.") # hourly_failure_rate.csv
-    parser.add_argument("product_related_characteristics_file", help="File containing product related characteristics.") # productRelatedCharacteristics.csv
-    parser.add_argument("energy_price_file", help="File containing energy price of each hour.") # price.csv
-    parser.add_argument("job_info_file", help="File containing job information.") # jobInfoProd_ga_013.csv
-    parser.add_argument("scenario", type=int, help="Choose scenario: 1-MTBF 2-Machine stop/restart") # number of scenario
-    parser.add_argument("pop_size", type=int, help="Population size") # pupulation size
-    parser.add_argument("generations", type=int, help="Number of generations")
-    parser.add_argument("crossover_rate", type=float, help="Crossover rate")
-    parser.add_argument("mutation_rate", type=float, help="Mutation rate")
-    args = parser.parse_args()
-        
-#     case 1 week
-    ''' Use start_time and end_time to pick up a waiting job list from records.
-        Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
-    '''
-    start_time = datetime(2016, 11, 3, 6, 0)
-    end_time = datetime(2016, 11, 8, 0, 0)
-
-#     case 2 years
-#     start_time = datetime(2016, 1, 19, 14, 0)
-#     end_time = datetime(2017, 11, 15, 0, 0)
-
+def run_opt(start_time, end_time, down_duration_file, failure_file, range_hourly_failure_file, prod_rel_file, energy_file, job_file, 
+            scenario, iterations, cross_rate, mut_rate, pop_size):
     # Generate raw material unit price
-    down_duration_dict = select_from_range(start_time, end_time, read_down_durations(args.historical_down_periods_file), 0, 1) # File from EnergyConsumption/InputOutput
-    failure_list = read_failure_data(args.failure_rate_file) # File from failuremodel-master/analyse_production
+    down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
+    failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
     hourly_failure_dict = get_hourly_failrue_dict(start_time, end_time, failure_list, down_duration_dict)
     
-    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+    with open(range_hourly_failure_file, 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in hourly_failure_dict.items():
             writer.writerow([key, value])
@@ -780,11 +756,11 @@ if __name__ == '__main__':
 #     print("hourly_failure_dict: ", hourly_failure_dict)
 #     exit()
     
-    product_related_characteristics_dict = read_product_related_characteristics(args.product_related_characteristics_file)
+    product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
     
-    price_dict_new = read_price(args.energy_price_file) # File from EnergyConsumption/InputOutput
+    price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
-    job_dict_new = select_from_range(start_time, end_time, read_jobs(args.job_info_file), 1, 2) # File from EnergyConsumption/InputOutput
+    job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 1, 2) # File from EnergyConsumption/InputOutput
 
     # TODO: change
 #     print("failure_dict", failure_dict)
@@ -813,19 +789,20 @@ if __name__ == '__main__':
     original_schedule = waiting_jobs  
     result_dict.update({0: weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)+
                         weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                        product_related_characteristics_dict, down_duration_dict, args.scenario)}) # generation 0 is the original schedule
+                                        product_related_characteristics_dict, down_duration_dict, scenario)}) # generation 0 is the original schedule
     
 #     exit()
-    ga = GA(dna_size=DNA_SIZE, cross_rate=args.crossover_rate, mutation_rate=args.mutation_rate, pop_size=args.pop_size, pop = waiting_jobs,
+    ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
-            start_time = first_start_time, weight1=weight1, weight2=weight2, scenario=args.scenario)
+            start_time = first_start_time, weight1=weight1, weight2=weight2, scenario=scenario)
       
-    for generation in range(1, args.generations+1):
+    for generation in range(1, iterations+1):
 #         print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
 #         print("res:", res)
         best_index = np.argmin(res)
+#        print(generation, '/', iterations+1, ':\t' best_index)
 #         print("Most fitted DNA: ", pop[best_index])
 #         print("Most fitted cost: ", res[best_index])
 #         result_dict.update({generation:res[best_index]})
@@ -835,11 +812,11 @@ if __name__ == '__main__':
 #         pickle.dump(pop[best_index], f)
 
     print()      
-    print("Candidate schedule", list(pop[best_index]))
+    print("Candidate schedule", pop[best_index])
     candidate_schedule = pop[best_index]
     candidate_energy_cost = weight2 * get_energy_cost(candidate_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
     candidate_failure_cost = weight1 * get_failure_cost(candidate_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                             product_related_characteristics_dict, down_duration_dict, scenario=args.scenario)
+                                             product_related_characteristics_dict, down_duration_dict, scenario=scenario)
 
     print("Candidate energy cost:", candidate_energy_cost)
     print("Candidate failure cost:", candidate_failure_cost)
@@ -852,7 +829,7 @@ if __name__ == '__main__':
     print("Original schedule start time:", first_start_time)
     original_energy_cost = weight2 * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
     original_failure_cost = weight1 * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-                                             product_related_characteristics_dict, down_duration_dict, args.scenario)
+                                             product_related_characteristics_dict, down_duration_dict, scenario)
     print("Original energy cost: ", original_energy_cost)
     print("Original failure cost: ", original_failure_cost)
     print("Original total cost:", original_energy_cost+original_failure_cost)
@@ -877,14 +854,31 @@ if __name__ == '__main__':
         writer = csv.writer(csv_file)
         for key, value in down_duration_dict.items():
             writer.writerow([key, value[0], value[1]])
-    
-#     print("Elite schedule: ", elite_schedule)
-#     print("Elite cost:", elite_cost)
-#     te = time.time()
-#     print("Time consumed: ", te - ts)  
 
-# write the result to csv for plot
-#     with open('ga_013_analyse_plot.csv', 'w', newline='\n') as csv_file:
-#         writer = csv.writer(csv_file)
-#         for key, value in result_dict.items():
-#             writer.writerow([key, value])
+if __name__ == '__main__':
+    
+    # Read parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("historical_down_periods_file", help="File containing records of historical down duration periods.") # downDurations.csv
+    parser.add_argument("failure_rate_file", help="File containing failure rate of each hour from the failure model.") # hourly_failure_rate.csv
+    parser.add_argument("product_related_characteristics_file", help="File containing product related characteristics.") # productRelatedCharacteristics.csv
+    parser.add_argument("energy_price_file", help="File containing energy price of each hour.") # price.csv
+    parser.add_argument("job_info_file", help="File containing job information.") # jobInfoProd_ga_013.csv
+    parser.add_argument("scenario", type=int, help="Choose scenario: 1-MTBF 2-Machine stop/restart") # number of scenario
+    parser.add_argument("pop_size", type=int, help="Population size") # pupulation size
+    parser.add_argument("generations", type=int, help="Number of generations")
+    parser.add_argument("crossover_rate", type=float, help="Crossover rate")
+    parser.add_argument("mutation_rate", type=float, help="Mutation rate")
+    args = parser.parse_args()
+        
+#     case 1 week
+    ''' Use start_time and end_time to pick up a waiting job list from records.
+        Available range: 2016-01-23 17:03:58.780 to 2017-11-15 07:15:20.500
+    '''
+    start_time = datetime(2016, 11, 3, 6, 0)
+    end_time = datetime(2016, 11, 8, 0, 0)
+
+    run_opt(start_time, end_time, args.historical_down_periods_file, 
+           args.failure_rate_file, 'range_hourly_failure_rate.csv', args.product_related_characteristics_file, 
+           args.energy_price_file, args.job_info_file,
+           args.scenario, args.generations, args.crossover_rate, args.mutation_rate, args.pop_size)
