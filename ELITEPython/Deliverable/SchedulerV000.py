@@ -13,6 +13,9 @@ import warnings
 from datetime import timedelta, datetime
 from operator import add
 import pandas as pd
+import logging
+import os
+import math
 # import pickle
 
 # 3rd-party modules
@@ -329,7 +332,8 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
             if unit2 == -1:
                 raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
             
-            du = quantity / unit2[2] # get job duration
+            du = unit1[0]
+            #du = quantity / unit2[2] # get job duration
     #         print("Duration:", du)
             uc = unit2[0] # get job raw material unit price
              
@@ -398,8 +402,10 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
             unit2 = product_related_characteristics_dict.get(product_type, -1)
             if unit2 == -1:
                 raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+
+            du = unit1[0]
             
-            du = quantity / unit2[2] # get job duration
+    #        du = quantity / unit2[2] # get job duration
     #         print("Duration:", du)
     #         uc = unit2[0] # get job raw material unit price
              
@@ -476,8 +482,9 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
         unit2 = product_related_characteristics_dict.get(product_type, -1)
         if unit2 == -1:
             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-       
-        du = quantity / unit2[2] # get job duration
+
+        du = unit1[0] # get job duration
+        #du = quantity / unit2[2] # get job duration
 #         print("Duration:", du)
         po = unit2[1] # get job power profile
         
@@ -552,7 +559,8 @@ def visualize(individual, start_time, job_dict, product_related_characteristics_
         quantity = unit1[3] # get job objective quantity
         
         unit2 = product_related_characteristics_dict.get(product_type, -1)
-        du = quantity / unit2[2] # get job duration
+        du = unit1[0]
+        #du = quantity / unit2[2] # get job duration
         
         t_o = t_start + timedelta(hours=du) # Without downtime duration
         t_end = t_o
@@ -596,9 +604,9 @@ def hamming_distance(s1, s2):
     '''
     assert len(s1) == len(s2)
     return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
- 
 
-class BF(object):
+
+class Scheduler(object):
     def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
                   start_time, weight1, weight2, scenario):
         # Attributes assignment
@@ -615,7 +623,7 @@ class BF(object):
         self.scenario = scenario
 
     def get_fitness(self, sub_pop):
-        ''' Get fiteness values for all individuals in a generation.
+        ''' Get fitness values for all individuals in a generation.
         '''
         if self.w1:
             failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
@@ -627,6 +635,24 @@ class BF(object):
             energy_cost = [self.w2 for i in sub_pop]
         # There are 2 sub-objectives, the fitness is the sum of these two
         return list(map(add, failure_cost, energy_cost))
+    
+ 
+
+class BF(Scheduler):
+    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+                  start_time, weight1, weight2, scenario):
+        # Attributes assignment
+        self.dna_size = len(job_dict)
+        self.pop = job_dict.keys()
+        self.job_dict = job_dict
+        self.price_dict = price_dict
+        self.failure_dict = failure_dict
+        self.product_related_characteristics_dict = product_related_characteristics_dict
+        self.down_duration_dict = down_duration_dict
+        self.start_time = start_time
+        self.w1 = weight1
+        self.w2 = weight2
+        self.scenario = scenario
 
     
     def check_all(self):
@@ -638,6 +664,7 @@ class BF(object):
         worst_sched = []
         import itertools
         allperm = itertools.permutations(self.pop)
+        totallen = math.factorial(len(self.pop))
         i = 0
         for test in allperm:
             tot_cost = self.get_fitness([test])[0]
@@ -648,11 +675,11 @@ class BF(object):
                 tot_cost_max = tot_cost
                 worst_sched = test
             i += 1
-            print(i)
+            print(str(i) + '/' + str(totallen) + '\t {:}'.format(tot_cost_min), end='\r')
         return tot_cost_min, tot_cost_max, best_sched, worst_sched
             
                 
-class GA(object):
+class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
                  product_related_characteristics_dict, down_duration_dict, start_time, weight1, weight2, scenario):
         # Attributes assignment
@@ -671,30 +698,7 @@ class GA(object):
         self.scenario = scenario
         # generate N random individuals (N = pop_size)
         self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
-        
         self.memory = []
-        
-    def get_fitness(self, sub_pop):
-        ''' Get fiteness values for all individuals in a generation.
-        '''
-        if self.w1:
-            failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
-        else:
-            failure_cost = [self.w1 for i in sub_pop]
-        if self.w2:
-            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in sub_pop]
-        else:
-            energy_cost = [self.w2 for i in sub_pop]
-        # There are 2 sub-objectives, the fitness is the sum of these two
-        return list(map(add, failure_cost, energy_cost))
-        
-    
-#     def select(self, fitness):
-#         ''' Nature selection with individuals' fitnesses.
-#         '''
-#         idx = np.random.choice(np.arange(self.pop_size), size=self.pop_size, replace=True, p = fitness/fitness.sum())
-# #         print("idx:", idx)
-#         return self.pop[idx] 
     
     def crossover(self, winner_loser): 
         ''' Using microbial genetic evolution strategy, the crossover result is used to represent the loser.
@@ -707,16 +711,16 @@ class GA(object):
             winner_loser[1][:] = np.concatenate((keep_job, swap_job))
         return winner_loser
     
-    def mutate(self, winner_loser): 
+    def mutate(self, loser): 
         ''' Using microbial genetic evolution strategy, mutation only works on the loser.
         '''
         # mutation for loser, randomly choose two points and do the swap
         if np.random.rand() < self.mutation_rate:
             point, swap_point = np.random.randint(0, self.dna_size, size=2)
-            swap_A, swap_B = winner_loser[1][point], winner_loser[1][swap_point]
-            winner_loser[1][point], winner_loser[1][swap_point] = swap_B, swap_A 
+            swap_A, swap_B = loser[point], loser[swap_point]
+            loser[point], loser[swap_point] = swap_B, swap_A 
         
-        return winner_loser
+        return loser
         
     def evolve(self, n):
         ''' 
@@ -731,65 +735,86 @@ class GA(object):
         -------
         The hamming distance of two lists.
         '''
+
         i = 1
         while i <= n: # n is the number of evolution times in one iteration
-            sub_pop_idx = np.random.choice(np.arange(0, self.pop_size), size=2, replace=False)
-            sub_pop = self.pop[sub_pop_idx] # pick 2 individuals from pop
-            
-            fitness = self.get_fitness(sub_pop) # get the fitness values of the two
-            
-#             print('fitness', fitness)
-            # Elitism Selection
-            
-            winner_loser_idx = np.argsort(fitness)
-            
-#             print('winner_loser_idx', winner_loser_idx)
+            fitness = self.get_fitness(self.pop)
+            self.pop = self.pop[np.argsort(fitness)]
 
-            winner_loser = sub_pop[winner_loser_idx] # the first is winner and the second is loser
-            
-#             print('winner_loser', winner_loser)
+            split_half = int(self.pop_size >> 1)
 
-            origin = sub_pop[winner_loser_idx][1] # pick up the loser for genetic operations
+            sub_pop_idx = np.random.choice(np.arange(0, split_half), size=2, replace=False)
 
-            # Crossover (of the winner and the loser)
-            winner_loser = self.crossover(winner_loser)
+            for i in range(len(sub_pop_idx) >> 1):
+                temp_pop_idx = sub_pop_idx[i:i+2]
+                sub_pop = self.pop[temp_pop_idx] # pick 2 individuals from pop
+                fitness = self.get_fitness(sub_pop) # get the fitness values of the two
             
-            # Mutation (only on the child)
-            winner_loser = self.mutate(winner_loser)
+#                 print('fitness', fitness)
+                # Elitism Selection
             
-#             print('Winner_loser after crossover and mutate: ', winner_loser)
-#             print('Winner', winner_loser[0])
-#             print('Loser', winner_loser[1])
-#             print('Origin2:', origin)
+                winner_loser_idx = np.argsort(fitness)
+                sorted_sub_pop_idx = temp_pop_idx[winner_loser_idx]
             
-#             print(hamming_distance(origin, winner_loser[1]))
-            # Distance evaluation:
-            if hamming_distance(origin, winner_loser[1]) > (self.dna_size / 5):
-            # Memory search：
-                child = winner_loser[1]
+#               print('winner_loser_idx', winner_loser_idx)
+
+                winner_loser = self.pop[sorted_sub_pop_idx]
+                winner = winner_loser[0]; loser = winner_loser[1] # the first is winner and the second is loser
+            
+                origin = loser.copy() # pick up the loser for genetic operations
+
+                # Crossover (of the winner and the loser)
+                winner_loser = self.crossover(winner_loser)
+            
+                # Mutation (only on the child)
+                for i in range(5):
+                    loser = self.mutate(loser)
+                winner_loser[1] = loser
+
+                for i in np.arange(split_half, self.pop_size):
+                    other = self.pop[i]
+                    other = self.mutate(other)
+                    self.pop[i] = other
+            
+    #             print('Winner_loser after crossover and mutate: ', winner_loser)
+    #             print('Winner', winner_loser[0])
+    #             print('Loser', winner_loser[1])
+    #             print('Origin2:', origin)
                 
-#             print("Child:", child)           
-#             print("Current memory:", self.memory)    
-        
+    #             print(hamming_distance(origin, winner_loser[1]))
+                # Distance evaluation:
+                #if hamming_distance(origin, loser) > (self.dna_size / 5):
+                # Memory search：
+                child = loser
+                    
+    #             print("Child:", child)           
+    #             print("Current memory:", self.memory)    
+            
                 flag = 0 # 0 means the new generated child is not in the memory  
                 for item in self.memory:
                     if (item == child).all():
-#                     print("In memory!")
+                        #print('In memory')
                         flag = 1
                         break
-                
                 if flag == 0:
 #                     print("Not in memory!")
-                    if (len(self.memory) >= self.pop_size * 5):
+                    if (len(self.memory) >= self.pop_size * 10):
                         self.memory.pop()
                     self.memory.append(child)
+
+                    #logging.info(self.get_fitness(self.pop))
             
-                    self.pop[sub_pop_idx] = winner_loser
+                    #self.pop[sorted_sub_pop_idx][0] = winner
+                    self.pop[np.random.choice(np.arange(split_half, self.pop_size))] = loser
+
+                    #print('After:', self.get_fitness(self.pop))
                     i = i + 1 # End of procedure
                 else:
-                    print("In memory, start genetic operation again!")
-            else:
-                print("Distance too small, start genetic operation again!")
+                    #print("In memory, start genetic operation again!")
+                    pass
+                #else:
+                    #print("Distance too small, start genetic operation again!")
+                #    pass
                 
 #         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
         
@@ -872,6 +897,8 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
         
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size):
+    filestream = open('previousrun.txt', 'w')
+    logging.basicConfig(level=20, stream=filestream)
     weight_failure = 1
     weight_energy = 1
     # Generate raw material unit price
@@ -931,6 +958,9 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         total_result += weight_failure * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
                                         product_related_characteristics_dict, down_duration_dict, scenario)
     result_dict.update({0: total_result}) # generation 0 is the original schedule
+
+    #import pdb; pdb.set_trace()
+
     
 #     exit()
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
@@ -946,7 +976,8 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 #         print("res:", res)
         best_index = np.argmin(res)
         worst_index = np.argmax(res)
-        print(generation, '/', iterations, ':\t', res[best_index], end='\r') # overwrite this line continually
+        print(str(generation) + '/' + str(iterations) + ':\t' +  str(res[best_index]), end=''); print('\r', end='') # overwrite this line continually
+
         
         best_result_list.append(res[best_index])
         worst_result_list.append(res[worst_index])
@@ -1008,6 +1039,8 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     #     writer = csv.writer(csv_file)
     #     for key, value in down_duration_dict.items():
     #         writer.writerow([key, value[0], value[1]])
+
+    filestream.close()
 
     return candidate_schedule, best_result_list, worst_result_list, result_dict_origin, result_dict
 
