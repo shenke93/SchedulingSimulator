@@ -49,7 +49,7 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
     df_tasks = df_tasks.merge(df_cons, how='left', left_on='ArticleName', right_on='Product').set_index('StartDateUTC', drop=True)
     
     # Concatenate the list of tasks and the energy cost on axis 0
-    out_table = pd.concat([df_tasks, df_cost]).sort_index()
+    out_table = pd.concat([df_tasks, df_cost], sort=False).sort_index()
 
     startind = df_cost.index[df_cost.index < df_tasks.index[0]].max()
     out_table = out_table[startind: df_tasks.index[-1]]
