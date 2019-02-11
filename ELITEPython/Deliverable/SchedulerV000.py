@@ -1481,12 +1481,16 @@ if __name__ == '__main__':
     
     # Read parameters
     parser = argparse.ArgumentParser()
+    parser.add_argument("mode", type=int, help="The running mode of the scheduler: 1-User 2-Demo", default=1)
+    # TODO: procedures after the user choose mode
     parser.add_argument("historical_down_periods_file", help="File containing records of historical down duration periods.") # downDurations.csv
     parser.add_argument("failure_rate_file", help="File containing failure rate of each hour from the failure model.") # hourly_failure_rate.csv
     parser.add_argument("product_related_characteristics_file", help="File containing product related characteristics.") # productRelatedCharacteristics.csv
     parser.add_argument("energy_price_file", help="File containing energy price of each hour.") # price.csv
     parser.add_argument("job_info_file", help="File containing job information.") # jobInfoProd_ga_013.csv
     parser.add_argument("scenario", type=int, help="Choose scenario: 1-MTBF 2-Machine stop/restart") # number of scenario
+    parser.add_argument("objective", type=int, help="Choose objectives: 1-Energy+Failure 2-Energy Only 3-Failure Only", default=1) 
+    # TODO: prodedures after the user choose objectives
     parser.add_argument("pop_size", type=int, help="Population size") # pupulation size
     parser.add_argument("generations", type=int, help="Number of generations")
     parser.add_argument("crossover_rate", type=float, help="Crossover rate")
