@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 plt.style.use('seaborn-darkgrid')
 import time
 import random
+import os
 
 from configfile import *
-from configfile_test import *
+from configfile_analyse import *
 
 def print_ul(strin):
     print(strin)
@@ -29,19 +30,21 @@ def main():
 
         for value in test:
                 if value == 'GA':
-                        best_result, orig_result, best_sched, orig_sched, best_curve, worst_curve = \
+                        best_result, orig_result, best_sched, orig_sched, best_curve, worst_curve, gen = \
                                                         run_opt(start_time, end_time, historical_down_periods_file, failure_rate_file, 
                                                         product_related_characteristics_file, energy_price_file, job_info_file, 
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_before=weight_before, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy)
-
                         print('Execution finished.')
+                        print('Number of generations was', gen)
                         # print('Start visualization')
 
                         print('Best:', best_result, '\t', * best_sched)
                         print('Original:', orig_result, '\t', * orig_sched)
 
                         fig = show_results(best_curve, worst_curve)
+                        if export is True:
+                                plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
                         fig.show()
                         begin = make_df(best_sched)
                         end = make_df(orig_sched)
@@ -54,16 +57,21 @@ def main():
                         prod_char = pd.read_csv(product_related_characteristics_file)
 
 
-                        plt.figure(dpi=50, figsize=[20, 10])
+                        plt.figure(dpi=50, figsize=[20, 15])
                         if 'Type' in begin.columns:
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
-                        show_energy_plot(begin, energy_price, prod_char, 'Best schedule (GA)', namecolor)
+                        show_energy_plot(begin, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor)
+                        if export is True:
+                                print('Export to', export_folder)
+                                plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
                         plt.show()
 
-                        plt.figure(dpi=50, figsize=[20, 10])
+                        plt.figure(dpi=50, figsize=[20, 15])
                         show_energy_plot(end, energy_price, prod_char, 'Original schedule', namecolor)
+                        if export is True:
+                                plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
                         plt.show()
                 if value == 'BF':
                         timer0 = time.monotonic()
@@ -89,12 +97,16 @@ def main():
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
-                        plt.figure(dpi=50, figsize=[20, 10])
+                        plt.figure(dpi=50, figsize=[20, 15])
                         show_energy_plot(begin, energy_price, prod_char, 'Best schedule (BF)', namecolor)
+                        if export is True:
+                                plt.savefig(os.path.join(export_folder, r"\best_sched.png"), dpi=300)
                         plt.show()
 
-                        plt.figure(dpi=50, figsize=[20, 10])
+                        plt.figure(dpi=50, figsize=[20, 15])
                         show_energy_plot(end, energy_price, prod_char, 'Worst schedule (BF)', namecolor)
+                        if export is True:
+                                plt.savefig(os.path.join(export_folder, r"\worst_sched.png"), dpi=300)
                         plt.show()
                 if value == 'WF':
                         timer0 = time.monotonic()

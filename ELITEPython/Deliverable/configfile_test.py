@@ -1,7 +1,7 @@
 # This configurationfile should be loaded for the idealised case with variable energy prices
 from datetime import datetime
 
-test = ['WF']
+test = ['GA', 'BF']
 
 historical_down_periods_file='historicalDownPeriod_false.csv'
 failure_rate_file='hourlyFailureRate_false.csv'

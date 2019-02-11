@@ -470,6 +470,100 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
     return failure_cost
 
 
+def get_detailed_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict):
+    ''' 
+    Calculate the energy cost of an individual.
+
+    Parameters
+    ----------
+    individual: List
+        A list of job indexes.
+    
+    start_time: Date
+        Start time of the individual.
+        
+    job_dict: dict
+        Dictionary of jobs.
+        
+    health_dict: dict
+        Dictionary of houly dependent failure rates.
+        
+    product_related_characteristics_dict: dict
+        Dictionary of product related characteristics.
+    
+    Returns
+    -------
+    The energy cost of an individual.
+    '''
+#     print("Line 401, downDurationIndex:", downDurationIndex)
+    energy_cost = []
+    t_now = start_time # current timestamp
+    for item in indiviaual:
+#         print("For job:", item)
+        t_start = t_now
+#         print("Time start: " + str(t_now))
+        unit1 = job_dict.get(item, -1)
+        if unit1 == -1:
+            raise ValueError("No matching item in the job dict for %d" % item)
+       
+        product_type = unit1['product'] # get job product type
+        #quantity = unit1['quantity']
+        
+        unit2 = product_related_characteristics_dict.get(product_type, -1)
+        if unit2 == -1:
+            raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+
+        du = unit1['duration'] # get job duration
+        #du = quantity / unit2[2] # get job duration
+#         print("Duration:", du)
+        po = unit2[1] # get job power profile
+        job_en_cost = 0
+        
+        t_o = t_start + timedelta(hours=du) # Without downtime duration
+#         print("t_o:", t_o)
+        t_end = t_o
+        
+        for key, value in down_duration_dict.items():
+            # DowntimeDuration already added
+            
+            if t_end < value[0]:
+                continue
+            if t_start > value[1]:
+                continue
+            if t_start < value[0] < t_end:
+                t_end = t_end + (value[1]-value[0])
+#                 print("Line 429, t_end:", t_end)
+            if t_start > value[0] and t_end > value[1]:
+                t_end = t_end + (value[1] - t_start)
+            if t_start > value[0] and t_end < value[1]:
+                t_end = t_end + (t_end - t_start)
+        
+        # calculate sum of head price, tail price and body price
+
+        t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start right border
+        t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
+        t_sd = floor_dt(t_start, timedelta(hours=1)) # t_start_left border
+
+        if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
+            raise ValueError("For item %d: In boundary conditions, no matching item in the price dict for %s or %s" % (item, t_sd, t_ed))
+        # calculate the head and tail prices and add them up
+        tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) + price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
+
+        step = timedelta(hours=1)
+        while t_su < t_ed:
+            if price_dict.get(t_su, 0) == 0:
+                raise ValueError("For item %d: No matching item in the price dict for %s" % (item, t_su))
+            job_en_cost += price_dict.get(t_su, 0)
+            t_su += step
+        
+        job_en_cost += tmp
+        job_en_cost *= po
+        
+        t_now = t_end
+        energy_cost.append(job_en_cost)
+    
+    return energy_cost
+
 def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict):
     ''' 
     Calculate the energy cost of an individual.
@@ -538,12 +632,6 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
                 t_end = t_end + (value[1] - t_start)
             if t_start > value[0] and t_end < value[1]:
                 t_end = t_end + (t_end - t_start)
-            
-#         for key, value in down_duration_dict.items():
-#         print("Job", item)
-#         print('Line 416, du:', du)
-#         t_end = t_start + timedelta(hours=du)
-#         print("Time end: " + str(t_end))
         
         # calculate sum of head price, tail price and body price
 
@@ -551,15 +639,11 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
         t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
         t_sd = floor_dt(t_start, timedelta(hours=1)) # t_start_left border
 
-#         print("Ceil time start to the next hour:" + str(t_u))
-#         print("Floor time end to the previous hour:" + str(t_d))
         if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
             raise ValueError("For item %d: In boundary conditions, no matching item in the price dict for %s or %s" % (item, t_sd, t_ed))
         # calculate the head and tail prices and add them up
         tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) + price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
-#         print("Head price: %f" % price_dict.get(floor_dt(t_now, timedelta(hours=1)), 0))
-#         print("Tail price: %f" % price_dict.get(t_d, 0))
-#         print("Head and tail cost: %f" % tmp)
+
         step = timedelta(hours=1)
         while t_su < t_ed:
             if price_dict.get(t_su, 0) == 0:
@@ -574,8 +658,39 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
         energy_cost += job_en_cost
         i += 1
     
-#     print("Finish time:", t_now)
     return energy_cost
+
+def get_detailed_conversion_cost(schedule, job_info_dict, related_chars_dict):
+    conversion_cost = []
+
+    if len(schedule) <= 1:
+        print('No conversion cost')
+        return conversion_cost
+
+    for item1, item2 in zip(schedule[:-1], schedule[1:]):
+        # find product made:
+        first_product = job_info_dict[item1]['product']
+        second_product = job_info_dict[item2]['product']
+
+        try:
+            first_product_type = job_info_dict[item1]['type']
+            second_product_type = job_info_dict[item2]['type']
+        except KeyError:
+            warnings.warn('No type found, continuing without conversion cost')
+            return 0
+
+        # Alternatively get the product info from another database
+        # first_product_type = related_chars_dict[first_product][4]
+        # second_product_type = related_chars_dict[second_product][4]
+
+        if first_product_type != second_product_type:
+            # add conversion cost
+            # suppose cost is fixed
+            conversion_cost.append(1)
+        else:
+            conversion_cost.append(0)
+    conversion_cost.append(0)
+    return conversion_cost
 
 def get_conversion_cost(schedule, job_info_dict, related_chars_dict):
     conversion_cost = 0
@@ -605,6 +720,26 @@ def get_conversion_cost(schedule, job_info_dict, related_chars_dict):
             # suppose cost is fixed
             conversion_cost += 1
     return conversion_cost
+
+def get_detailed_before_cost(schedule, start_time, job_info_dict):
+    before_cost = []
+    begin = start_time
+
+    for item in schedule:
+        duration = job_info_dict[item]['duration']
+        end = begin + timedelta(hours=duration)
+        if 'before' in job_info_dict[item]: # assume not all jobs have deadlines
+            # check deadline condition
+            beforedate = job_info_dict[item]['before']
+            if end > beforedate: # did not get deadline
+                before_cost.append((end-beforedate).total_seconds() / 3600)
+            else:
+                before_cost.append(0)
+        else: 
+            before_cost.append(0)
+        #else pass
+        begin = end
+    return before_cost
 
 def get_before_cost(schedule, start_time, job_info_dict):
     before_cost = 0
@@ -709,7 +844,7 @@ class Scheduler(object):
         self.wb = weightb
         self.scenario = scenario
 
-    def get_fitness(self, sub_pop, split_types=False, split_jobs=False):
+    def get_fitness(self, sub_pop, split_types=False):
         ''' Get fitness values for all individuals in a generation.
         '''
         if self.w1:
@@ -733,6 +868,33 @@ class Scheduler(object):
         else:
             total_cost = np.array(failure_cost) + np.array(energy_cost) + np.array(conversion_cost) + np.array(before_cost)
             return total_cost
+
+    def get_detailed_fitness(self, sub_pop, split_jobs=False):
+        ''' Get fitness values for all individuals in a generation.
+        '''
+        # if self.w1:
+        #     failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
+        # else:
+        #     failure_cost = [self.w1 for i in sub_pop]
+        #print(sub_pop)
+
+        if self.w2:
+            energy_cost = [self.w2*get_detailed_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in sub_pop]
+        else:
+            energy_cost = [self.w2 for i in sub_pop]
+        if self.wc:
+            conversion_cost = [self.wc*np.array(get_detailed_conversion_cost(i, self.job_dict, self.product_related_characteristics_dict)) for i in sub_pop]
+        else:
+            conversion_cost = [self.wc for i in sub_pop]
+        if self.wb:
+            before_cost = [self.wb*np.array(get_detailed_before_cost(i, self.start_time, self.job_dict)) for i in sub_pop]
+        else:
+            before_cost = [self.wb for i in sub_pop]
+        if split_jobs:
+            return np.array(energy_cost), np.array(conversion_cost), np.array(before_cost)
+        else:
+            total_cost = np.array(energy_cost) + np.array(conversion_cost) + np.array(before_cost)
+            return total_cost        
     
  
 class BF(Scheduler):
@@ -799,37 +961,16 @@ class GA(Scheduler):
                  weightb, scenario,
                  num_mutations= 5):
         # Attributes assignment
+        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+                start_time, weight1, weight2, weightc, weightb, scenario)
         self.dna_size = dna_size 
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
         self.pop_size = pop_size
-        self.job_dict = job_dict
-        self.price_dict = price_dict
-        self.failure_dict = failure_dict
-        self.product_related_characteristics_dict = product_related_characteristics_dict
-        self.down_duration_dict = down_duration_dict
-        self.start_time = start_time
-        self.w1 = weight1
-        self.w2 = weight2
-        self.wc = weightc
-        self.wb = weightb
-        self.scenario = scenario
         self.num_mutations = num_mutations
         # generate N random individuals (N = pop_size)
         self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
         self.memory = []
-        #self.estimate_genes_fitness()
-
-    def estimate_genes_fitness(self):
-        jobs = self.job_dict
-        energy_cons = self.product_related_characteristics_dict
-        price = self.price_dict
-
-        for key in jobs:
-            prod = jobs[key]['product']
-            jobs[key]['energy'] = energy_cons[prod][1]
-        
-        #import pdb; pdb.set_trace()
     
     def crossover(self, winner_loser): 
         ''' Using microbial genetic evolution strategy, the crossover result is used to represent the loser.
@@ -842,14 +983,24 @@ class GA(Scheduler):
             winner_loser[1][:] = np.concatenate((keep_job, swap_job))
         return winner_loser
     
-    def mutate(self, loser):
+    def mutate(self, loser, prob=False):
         ''' Using microbial genetic evolution strategy, mutation only works on the loser.
         '''
         # mutation for loser, randomly choose two points and do the swap
         if np.random.rand() < self.mutation_rate:
-            point, swap_point = np.random.randint(0, self.dna_size, size=2)
+            if prob:
+                tmpl = list(range(self.dna_size))
+                point = np.random.choice(tmpl, size=1, replace=False, p=prob)
+                tmpl.pop(int(point))
+                # prob.pop(int(point))
+                # inverse = list(np.array(prob).max() - np.array(prob))
+                # inverse = inverse / sum(inverse)
+                swap_point = np.random.choice(tmpl, size=1, replace=False)
+            else:
+                point, swap_point = np.random.choice(range(self.dna_size), size=2, replace=False)
+            # point, swap_point = np.random.randint(0, self.dna_size, size=2)
             swap_A, swap_B = loser[point], loser[swap_point]
-            loser[point], loser[swap_point] = swap_B, swap_A 
+            loser[point], loser[swap_point] = swap_B, swap_A
         return loser
         
     def evolve(self, n):
@@ -869,7 +1020,7 @@ class GA(Scheduler):
         i = 1
 
         while i <= n: # n is the number of evolution times in one iteration
-            print
+            #print
             #print()
             #print(); print(fitness)
             #print('get fitness')
@@ -883,6 +1034,7 @@ class GA(Scheduler):
             prob = [p / sum(prob) for p in prob]
 
             num_couples = 1
+            # roulette wheel 
             sub_pop_idx = np.random.choice(idx, size=num_couples * 2, replace=False, p=prob)
 
             #print('evolve and mutate')
@@ -914,7 +1066,11 @@ class GA(Scheduler):
                 # Mutation (only on the child)
                 loser = winner_loser[1]
                 for k in range(self.num_mutations):
-                    loser = self.mutate(loser)
+                    # determine mismatch for each task
+                    detailed_fitness = self.get_detailed_fitness([loser])[0]
+                    #print(detailed_fitness)
+                    mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
+                    loser = self.mutate(loser, mutation_prob)
                 winner_loser[1] = loser
 
                 # for i in np.arange(, self.pop_size):
@@ -1319,7 +1475,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 
     filestream.close()
 
-    return sum(total_cost), sum(original_cost), result_dict, result_dict_origin, best_result_list, worst_result_list
+    return sum(total_cost), sum(original_cost), result_dict, result_dict_origin, best_result_list, worst_result_list, generation
 
 if __name__ == '__main__':
     
