@@ -106,7 +106,6 @@ def read_down_durations(downDurationFile):
     except:
         print("Unexpected error when reading down duration information from '{}'".format(downDurationFile))
         raise
-        exit()
     return down_duration_dict
 
 
@@ -190,8 +189,8 @@ def read_failure_data(maintenanceFile):
             for row in reader:
                 maintenance_influence.append(float(row['Influence']))
     except:
-        print("Unexpected error when reading maintenance information:", sys.exc_info()[0]) 
-        exit()
+        print("Unexpected error when reading maintenance information from {}:".format(maintenanceFile))
+        raise
     
     # Create the health dict, failure rates are based on data.
     
@@ -239,7 +238,7 @@ def read_price(priceFile):
     return price_dict
 
 
-def read_jobs(jobFile):
+def read_jobs(jobFile, get_totaltime=False):
     ''' 
     Create a dictionary to restore job information.
 
@@ -253,13 +252,17 @@ def read_jobs(jobFile):
     A dictionary containing job indexes and characteristics, key: int, value: list.
     '''
     job_dict = {}
+    if get_totaltime:
+        str_time = 'Totaltime'
+    else:
+        str_time = 'Uptime'
     try:
         with open(jobFile, encoding='utf-8') as jobInfo_csv:
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
                 job_num = int(row['ID'])
                 job_entry = dict(zip(['duration', 'start', 'end', 'quantity', 'product'],
-                                [float(row['Duration']), 
+                                [float(row[str_time]),
                                  datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
                                  datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"),
                                  float(row['Quantity']), 
@@ -343,18 +346,17 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
     -------
     The failure cost of an individual.
     '''
-    if scenario == 1:  
-        failure_cost = 0
-        t_now = start_time
-     
+    failure_cost = 0
+    t_now = start_time
+    if scenario == 1:
         for item in indiviaual:
             t_start = t_now
             unit1 = job_dict.get(item, -1)
             if unit1 == -1:
                 raise ValueError("No matching item in job dict: ", item)
          
-            product_type = unit1[4]    # get job product type
-            quantity = unit1[3]  # get job quantity
+            product_type = unit1['product']    # get job product type
+            quantity = unit1['quantity']  # get job quantity
              
     #         if du <= 1: # safe period of 1 hour (no failure cost)
     #             continue;
@@ -362,7 +364,7 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
             if unit2 == -1:
                 raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
             
-            du = unit1[0]
+            du = unit1['duration']
             #du = quantity / unit2[2] # get job duration
     #         print("Duration:", du)
             uc = unit2[0] # get job raw material unit price
@@ -371,7 +373,7 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
     #         print("t_o:", t_o)
             t_end = t_o
 
-            print(down_duration_dict)
+            #print(down_duration_dict)
             
             for key, value in down_duration_dict.items():
                 # DowntimeDuration already added
@@ -410,22 +412,19 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
     #         
     #         if product_related_characteristics_dict.get(product_type, -1) == -1:
     #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-            failure_cost += (1-tmp) * quantity * uc   
+            failure_cost += (1-tmp) * quantity * uc 
             t_now = t_end
     
     
     if scenario == 2:
-        failure_cost = 0
-        t_now = start_time
-     
         for item in indiviaual:
             t_start = t_now
             unit1 = job_dict.get(item, -1)
             if unit1 == -1:
                 raise ValueError("No matching item in job dict: ", item)
          
-            product_type = unit1[4]    # get job product type
-            quantity = unit1[3]  # get job quantity
+            product_type = unit1['type']    # get job product type
+            quantity = unit1['quant']  # get job quantity
              
     #         if du <= 1: # safe period of 1 hour (no failure cost)
     #             continue;
@@ -433,7 +432,7 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
             if unit2 == -1:
                 raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
 
-            du = unit1[0]
+            du = unit1['duration']
             
     #        du = quantity / unit2[2] # get job duration
     #         print("Duration:", du)
@@ -469,8 +468,7 @@ def get_failure_cost(indiviaual, start_time, job_dict, hourly_failure_dict, prod
          
     return failure_cost
 
-
-def get_detailed_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict):
+def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict, detailed=False):
     ''' 
     Calculate the energy cost of an individual.
 
@@ -496,101 +494,10 @@ def get_detailed_energy_cost(indiviaual, start_time, job_dict, price_dict, produ
     The energy cost of an individual.
     '''
 #     print("Line 401, downDurationIndex:", downDurationIndex)
-    energy_cost = []
-    t_now = start_time # current timestamp
-    for item in indiviaual:
-#         print("For job:", item)
-        t_start = t_now
-#         print("Time start: " + str(t_now))
-        unit1 = job_dict.get(item, -1)
-        if unit1 == -1:
-            raise ValueError("No matching item in the job dict for %d" % item)
-       
-        product_type = unit1['product'] # get job product type
-        #quantity = unit1['quantity']
-        
-        unit2 = product_related_characteristics_dict.get(product_type, -1)
-        if unit2 == -1:
-            raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-
-        du = unit1['duration'] # get job duration
-        #du = quantity / unit2[2] # get job duration
-#         print("Duration:", du)
-        po = unit2[1] # get job power profile
-        job_en_cost = 0
-        
-        t_o = t_start + timedelta(hours=du) # Without downtime duration
-#         print("t_o:", t_o)
-        t_end = t_o
-        
-        for key, value in down_duration_dict.items():
-            # DowntimeDuration already added
-            
-            if t_end < value[0]:
-                continue
-            if t_start > value[1]:
-                continue
-            if t_start < value[0] < t_end:
-                t_end = t_end + (value[1]-value[0])
-#                 print("Line 429, t_end:", t_end)
-            if t_start > value[0] and t_end > value[1]:
-                t_end = t_end + (value[1] - t_start)
-            if t_start > value[0] and t_end < value[1]:
-                t_end = t_end + (t_end - t_start)
-        
-        # calculate sum of head price, tail price and body price
-
-        t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start right border
-        t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
-        t_sd = floor_dt(t_start, timedelta(hours=1)) # t_start_left border
-
-        if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
-            raise ValueError("For item %d: In boundary conditions, no matching item in the price dict for %s or %s" % (item, t_sd, t_ed))
-        # calculate the head and tail prices and add them up
-        tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) + price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
-
-        step = timedelta(hours=1)
-        while t_su < t_ed:
-            if price_dict.get(t_su, 0) == 0:
-                raise ValueError("For item %d: No matching item in the price dict for %s" % (item, t_su))
-            job_en_cost += price_dict.get(t_su, 0)
-            t_su += step
-        
-        job_en_cost += tmp
-        job_en_cost *= po
-        
-        t_now = t_end
-        energy_cost.append(job_en_cost)
-    
-    return energy_cost
-
-def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict):
-    ''' 
-    Calculate the energy cost of an individual.
-
-    Parameters
-    ----------
-    individual: List
-        A list of job indexes.
-    
-    start_time: Date
-        Start time of the individual.
-        
-    job_dict: dict
-        Dictionary of jobs.
-        
-    health_dict: dict
-        Dictionary of houly dependent failure rates.
-        
-    product_related_characteristics_dict: dict
-        Dictionary of product related characteristics.
-    
-    Returns
-    -------
-    The energy cost of an individual.
-    '''
-#     print("Line 401, downDurationIndex:", downDurationIndex)
-    energy_cost = 0
+    if detailed:
+        energy_cost = []
+    else:
+        energy_cost = 0
     t_now = start_time # current timestamp
     i = 0
     for item in indiviaual:
@@ -619,7 +526,7 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
         t_end = t_o
         
         for key, value in down_duration_dict.items():
-            # DowntimeDuration already added
+            # Add the total downtimeduration
             
             if t_end < value[0]:
                 continue
@@ -655,9 +562,11 @@ def get_energy_cost(indiviaual, start_time, job_dict, price_dict, product_relate
         job_en_cost *= po
         
         t_now = t_end
-        energy_cost += job_en_cost
+        if detailed:
+            energy_cost.append(job_en_cost)
+        else:
+            energy_cost += job_en_cost
         i += 1
-    
     return energy_cost
 
 def get_detailed_conversion_cost(schedule, job_info_dict, related_chars_dict):
@@ -692,8 +601,11 @@ def get_detailed_conversion_cost(schedule, job_info_dict, related_chars_dict):
     conversion_cost.append(0)
     return conversion_cost
 
-def get_conversion_cost(schedule, job_info_dict, related_chars_dict):
-    conversion_cost = 0
+def get_conversion_cost(schedule, job_info_dict, related_chars_dict, detailed=False):
+    if detailed:
+        conversion_cost = []
+    else:
+        conversion_cost = 0
 
     if len(schedule) <= 1:
         print('No conversion cost')
@@ -718,7 +630,15 @@ def get_conversion_cost(schedule, job_info_dict, related_chars_dict):
         if first_product_type != second_product_type:
             # add conversion cost
             # suppose cost is fixed
-            conversion_cost += 1
+            if detailed:
+                conversion_cost.append(1)
+            else:
+                conversion_cost += 1
+        else:
+            if detailed:
+                conversion_cost.append(0)
+    if detailed:
+        conversion_cost.append(0)
     return conversion_cost
 
 def get_detailed_before_cost(schedule, start_time, job_info_dict):
@@ -741,21 +661,52 @@ def get_detailed_before_cost(schedule, start_time, job_info_dict):
         begin = end
     return before_cost
 
-def get_before_cost(schedule, start_time, job_info_dict):
-    before_cost = 0
-    begin = start_time
+def get_before_cost(schedule, start_time, job_info_dict, down_duration_dict, detailed=False):
+    if detailed:
+        before_cost = []
+    else:
+        before_cost = 0
+    t_now = start_time
 
     for item in schedule:
+        t_start = t_now
+
         duration = job_info_dict[item]['duration']
-        end = begin + timedelta(hours=duration)
+
+        t_end = t_start + timedelta(hours=duration) # Without downtime duration
+        
+        for key, value in down_duration_dict.items():
+            # Add the total downtimeduration
+            if t_end < value[0]:
+                continue
+            if t_start > value[1]:
+                continue
+            if t_start < value[0] < t_end:
+                t_end = t_end + (value[1]-value[0])
+#                 print("Line 429, t_end:", t_end)
+            if t_start > value[0] and t_end > value[1]:
+                t_end = t_end + (value[1] - t_start)
+            if t_start > value[0] and t_end < value[1]:
+                t_end = t_end + (t_end - t_start)
+        
+
         if 'before' in job_info_dict[item]: # assume not all jobs have deadlines
             # check deadline condition
             beforedate = job_info_dict[item]['before']
-            if end > beforedate: # did not get deadline
-                before_cost += (end-beforedate).total_seconds()
-        #else pass
-        begin = end
-    return before_cost / 3600
+            if t_end > beforedate: # did not get deadline
+                this_cost = (t_end-beforedate).total_seconds() / 3600
+                if detailed:
+                    before_cost.append(this_cost)
+                else:
+                    before_cost += this_cost
+            else: # did get deadline
+                if detailed:
+                    before_cost.append(0)
+        else:
+            if detailed:
+                before_cost.append(0)
+        t_now = t_end
+    return before_cost
 
 
 def visualize(individual, start_time, job_dict, product_related_characteristics_dict, down_duration_dict):
@@ -769,10 +720,10 @@ def visualize(individual, start_time, job_dict, product_related_characteristics_
         
         unit1 = job_dict.get(item, -1)
         product_type = unit1['product'] # get job product name
-        quantity = unit1['quantity'] # get job objective quantity
+        #quantity = unit1['quantity'] # get job objective quantity
 
         
-        unit2 = product_related_characteristics_dict.get(product_type, -1)
+        #unit2 = product_related_characteristics_dict.get(product_type, -1)
         du = unit1['duration']
         #du = quantity / unit2[2] # get job duration
         
@@ -804,6 +755,49 @@ def visualize(individual, start_time, job_dict, product_related_characteristics_
         t_now = t_end
 
     return detail_dict
+
+def calc_times_dt(individual, start_time, job_dict, down_duration_dict):
+    # Assistant function to visualize the processing of a candidate schedule throughout the time horizon
+    detail_dict = {}
+    t_now = start_time 
+    
+    for item in individual:
+        itemlist = []
+        t_start = t_now
+        
+        unit1 = job_dict.get(item, -1)
+        product_type = unit1['product'] # get job product name
+        du = unit1['duration']
+        
+        t_o = t_start + timedelta(hours=du) # Without downtime duration
+        t_end = t_o
+    
+        for key, value in down_duration_dict.items():
+            # DowntimeDuration already added
+            # value0 is start time and value1 is end time of downtime duration
+            if t_end < value[0]:
+                continue
+            if t_start > value[1]:
+                continue
+            if t_start < value[0] < t_end:
+                t_end = t_end + (value[1]-value[0])
+            if t_start > value[0] and t_end > value[1]:
+            # t_start > startvalue downtime and t_end > endvalue downtime
+                t_end = t_end + (value[1] - t_start)
+            if t_start > value[0] and t_end < value[1]:
+                t_end = t_end + (t_end - t_start)
+        
+        itemlist.extend([t_start, t_end, du, product_type])
+
+        if 'type' in unit1:
+            type = unit1['type']  # get job product type
+            itemlist.append(type)
+
+        detail_dict.update({item:itemlist})
+        t_now = t_end
+
+    return detail_dict
+
 
 
 def hamming_distance(s1, s2):
@@ -860,7 +854,7 @@ class Scheduler(object):
         else:
             conversion_cost = [self.wc for i in sub_pop]
         if self.wb:
-            before_cost = [self.wb*get_before_cost(i, self.start_time, self.job_dict) for i in sub_pop]
+            before_cost = [self.wb*get_before_cost(i, self.start_time, self.job_dict, self.down_duration_dict) for i in sub_pop]
         else:
             before_cost = [self.wb for i in sub_pop]
         if split_types:
@@ -877,17 +871,20 @@ class Scheduler(object):
         # else:
         #     failure_cost = [self.w1 for i in sub_pop]
         #print(sub_pop)
-
+        # if self.w1:
+        #     failure_cost = [self.w1*get_detailed_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
+        # else:
+        #     failure_cost = [self.w1 for i in sub_pop]
         if self.w2:
-            energy_cost = [self.w2*get_detailed_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in sub_pop]
+            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict, detailed=True) for i in sub_pop]
         else:
             energy_cost = [self.w2 for i in sub_pop]
         if self.wc:
-            conversion_cost = [self.wc*np.array(get_detailed_conversion_cost(i, self.job_dict, self.product_related_characteristics_dict)) for i in sub_pop]
+            conversion_cost = [self.wc*np.array(get_conversion_cost(i, self.job_dict, self.product_related_characteristics_dict, detailed=True)) for i in sub_pop]
         else:
             conversion_cost = [self.wc for i in sub_pop]
         if self.wb:
-            before_cost = [self.wb*np.array(get_detailed_before_cost(i, self.start_time, self.job_dict)) for i in sub_pop]
+            before_cost = [self.wb*np.array(get_before_cost(i, self.start_time, self.job_dict, self.down_duration_dict, detailed=True)) for i in sub_pop]
         else:
             before_cost = [self.wb for i in sub_pop]
         if split_jobs:
@@ -916,7 +913,8 @@ class BF(Scheduler):
         allperm = itertools.permutations(self.pop)
         totallen = math.factorial(len(self.pop))
         i = 0
-        for test in allperm:
+        while i < totallen:
+            test = next(allperm)
             tot_cost = self.get_fitness([test])[0]
             if tot_cost < tot_cost_min:
                 tot_cost_min = tot_cost
@@ -926,33 +924,13 @@ class BF(Scheduler):
                 worst_sched = test
             i += 1
             print(str(i) + '/' + str(totallen) + '\t {:}'.format(tot_cost_min), end='\r')
+            if msvcrt.kbhit() == True:
+                char = msvcrt.getche()
+                if char in [b'c', b'q']:
+                    print('User hit c or q button, exiting...')
+                    break
         print('\n')
         return tot_cost_min, tot_cost_max, best_sched, worst_sched
-
-
-class worst_first(Scheduler): 
-    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
-                start_time, weight1, weight2, weightc, weightb, scenario):
-        # Attributes assignment
-        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
-                start_time, weight1, weight2, weightc, weightb, scenario)
-    
-    def predict(self):
-        jobs = self.job_dict
-        prices = self.price_dict
-        char = self.product_related_characteristics_dict
-        for key in jobs:
-            prod = jobs[key]['product']
-            energy = char[prod][1]
-            print(energy)
-            jobs[key]['energy'] = energy
-        # def get_energy(j):
-        #     return j['energy']
-        print(jobs)
-        def get_energy(j):
-            return jobs[j]['energy']
-        for key in sorted(jobs, key=get_energy):
-            pass
 
                 
 class GA(Scheduler):
@@ -1155,11 +1133,7 @@ class GA(Scheduler):
 
 
 def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
-           scenario):
-    weight_failure = 1
-    weight_energy = 1
-    weight_conversion = 0
-    weight_before = 0
+           scenario, weight_failure=1, weight_conversion=1, weight_before=1, weight_energy=1):
     # Generate raw material unit price
     try:
         down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
@@ -1215,59 +1189,12 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 
     return best_result, worst_result, result_dict, result_dict_origin
 
-def run_wf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
-           scenario):
-    weight_failure = 1
-    weight_energy = 1
-    weight_conversion = 0
-    weight_before = 0
-    # Generate raw material unit price
-    try:
-        down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
-        failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
-        hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
-
-        with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-            writer = csv.writer(csv_file)
-            for key, value in hourly_failure_dict.items():
-                writer.writerow([key, value])
-    except:
-        warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
-        weight_failure = 0
-        down_duration_dict = {}
-        failure_list = []
-        hourly_failure_dict = {}
-    
-    product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
-    
-    price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
-#     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
-    job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
-
-    waiting_jobs = [*job_dict_new]
-    
-    if not waiting_jobs:
-        raise ValueError("No waiting jobs!")
-    else:
-        first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
-
-    wf = worst_first(job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
-        product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
-        start_time=first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, weightb=weight_before, 
-        scenario=scenario)
-
-    wf.predict()
-
-    return None
-
         
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
-            scenario, iterations, cross_rate, mut_rate, pop_size, weight_conversion = 0, weight_before = 0, num_mutations=5, adaptive=[],
-            stop_condition='num_iterations', stop_value=None, weight_energy = 0):
+            scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
+            stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_before = 0, weight_energy = 0, weight_failure = 0):
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)
-    weight_failure = 0
-    #weight_energy = 1
     # Generate raw material unit price
     try:
         down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
@@ -1332,6 +1259,9 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 
     #import pdb; pdb.set_trace()
 
+    # Remove the downtimes from the job dict (the product is not produced during this period)
+    #job_dict_new = remove_downtimes(job_dict_new)
+
     
 #     exit()
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
@@ -1370,7 +1300,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         worst_result_list.append(res[worst_index])
 
         if stop_condition == 'num_iterations':
-            if generation >= iterations:
+            if generation > iterations:
                 stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
@@ -1468,10 +1398,10 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         for key, value in result_dict_origin.items():
             writer.writerow([key, value[0], value[1], value[2]])
             
-    # with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
-    #     writer = csv.writer(csv_file)
-    #     for key, value in down_duration_dict.items():
-    #         writer.writerow([key, value[0], value[1]])
+    with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
+        writer = csv.writer(csv_file)
+        for key, value in down_duration_dict.items():
+            writer.writerow([key, value[0], value[1]])
 
     filestream.close()
 

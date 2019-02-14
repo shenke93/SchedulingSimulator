@@ -3,8 +3,8 @@ from datetime import datetime
 
 test = ['GA'] # GA, BF (Genetic, Brute Force)
 
-historical_down_periods_file='historicalDownPeriod_false.csv'
-failure_rate_file='hourlyFailureRate_false.csv'
+historical_down_periods_file='historicalDownPeriods.csv'
+failure_rate_file='hourlyFailureRate.csv'
 product_related_characteristics_file='productRelatedCharacteristics.csv'
 energy_price_file='energyPrice.csv'
 job_info_file='jobInfo.csv'
@@ -30,3 +30,4 @@ stop_value = iterations
 
 export = True
 export_folder = r"D:\users\jdavid\ELITE project\Figures\Dump"
+interactive = False
