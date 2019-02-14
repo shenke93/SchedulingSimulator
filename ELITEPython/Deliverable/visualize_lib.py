@@ -67,8 +67,9 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
 
     lines = []
     import matplotlib.lines as mlines
+    import matplotlib.patches as mpatches
     for item in color_dict:
-        line = mlines.Line2D([],[], color=color_dict[item], label=item, linewidth=12)
+        line = mlines.Line2D([],[], color=color_dict[item], label=item, linewidth=8, solid_capstyle='butt')
         lines.append(line)
     plt.legend(bbox_to_anchor=(0, 1.05, 1, 1.05), loc='lower left', borderaxespad=0., handles=lines, mode='expand', ncol=len(color_dict))
     
@@ -131,10 +132,10 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
 
 def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None):
     c, table = calculate_energy_cost(tasks, prices, energy, True)
-
-    plt.suptitle(title + ' (Result: {:.2f} €)'.format(c), y=0.02)
+    
     plt.subplot(5,1,(4,5))
     timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
+    plt.title(title + ' (Result: {:.2f} €)'.format(c), y=1.15)
 
     plt.subplot(5,1,1)
     plt.title('Energy price')
