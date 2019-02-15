@@ -154,6 +154,7 @@ class GA(object):
         '''
         idx = np.random.choice(np.arange(self.pop_size), size=self.pop_size, replace=True, p = fitness/fitness.sum())
 #         print("idx:", idx)
+#         print(type(fitness))
         return self.pop[idx] 
     
     def crossover(self, parent, pop):
