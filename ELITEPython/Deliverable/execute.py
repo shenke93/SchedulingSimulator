@@ -46,7 +46,7 @@ def main():
                                                         product_related_characteristics_file, energy_price_file, job_info_file, 
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_before=weight_before, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
-                                                        weight_failure=weight_failure)
+                                                        weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method)
                         print('Execution finished.')
                         print('Number of generations was', gen)
                         # print('Start visualization')
@@ -68,7 +68,6 @@ def main():
                         energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(product_related_characteristics_file)
                         
-
 
 
                         plt.figure(dpi=50, figsize=[20, 15])
