@@ -1127,7 +1127,7 @@ class GA(Scheduler):
                 flag = 0
                 #print('validation step')
                 if self.validation:
-                    if not validate(winner_loser[1], self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict):
+                    if not validate(winner_loser[1], self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.precedence_dict):
                         #self.pop[sub_pop_idx] = winner_loser
                         #i = i + 1 # End of an evolution procedure
                         flag = 1
