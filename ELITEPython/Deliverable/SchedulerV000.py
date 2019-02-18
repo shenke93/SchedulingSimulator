@@ -184,8 +184,8 @@ def read_precedence(precedenceFile):
 #                     print("Not In")
                     precedence_dict.update({key:[int(row['After'])]})
     except:
-        print("Unexpected error when reading precedence information:", sys.exc_info()[0]) 
-        exit()
+        print("Unexpected error when reading precedence information from '{}'".format(precedenceFile)) 
+        raise
     
 #     print(precedence_dict)
     return precedence_dict
@@ -826,9 +826,10 @@ def visualize(individual, start_time, job_dict, price_dict, product_related_char
            
     return detailed_dict
 
-def validate(individual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict= {}):
+def validate(individual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict):
     # validate time
     time_dict = get_time(individual, start_time, job_dict, price_dict, product_related_characteristics_dict, down_duration_dict)
+#     print(time_dict)
     flag = True
     for key, value in time_dict.items():
         due = job_dict[key]['before'] # due date of a job
@@ -889,6 +890,8 @@ class Scheduler(object):
         self.failure_dict = failure_dict
         self.product_related_characteristics_dict = product_related_characteristics_dict
         self.down_duration_dict = down_duration_dict
+        # TODO: replace with input data from precedence file
+        self.precedence_dict = {}
         self.start_time = start_time
         self.w1 = weight1
         self.w2 = weight2
@@ -1119,8 +1122,8 @@ class GA(Scheduler):
                 #         other = self.mutate(other)
                 #     self.pop[i] = other
 
-
-                if validate(winner_loser[1], self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict):
+#                 print("Start validate:")
+                if validate(winner_loser[1], self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.precedence_dict):
                     #self.pop[sub_pop_idx] = winner_loser
                     #i = i + 1 # End of an evolution procedure
                     flag = 0
