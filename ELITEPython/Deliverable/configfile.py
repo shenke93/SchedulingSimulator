@@ -29,6 +29,7 @@ stop_condition = 'num_iterations'   # ['num_iterations', 'end_value', 'abs_time'
 stop_value = iterations
 duration_str = 'duration' #['quantity', 'duration']
 evolution_method = 'random' #['random', 'roulette']
+validation = False
 
 export = True
 export_folder = r"D:\users\jdavid\ELITE project\Figures\Dump"

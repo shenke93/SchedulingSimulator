@@ -999,7 +999,7 @@ class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
                  product_related_characteristics_dict, down_duration_dict, start_time, weight1, weight2, weightc, 
                  weightb, scenario,
-                 num_mutations= 1, duration_str=duration_str, evolution_method='roulette'):
+                 num_mutations= 1, duration_str=duration_str, evolution_method='roulette', validation=True):
         # Attributes assignment
         super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
                 start_time, weight1, weight2, weightc, weightb, scenario, duration_str)
@@ -1009,6 +1009,7 @@ class GA(Scheduler):
         self.pop_size = pop_size
         self.num_mutations = num_mutations
         self.evolution_method = evolution_method
+        self.validation = validation
         # generate N random individuals (N = pop_size)
         self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
         self.memory = []
@@ -1119,13 +1120,13 @@ class GA(Scheduler):
                 #         other = self.mutate(other)
                 #     self.pop[i] = other
 
-
-                if validate(winner_loser[1], self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict):
-                    #self.pop[sub_pop_idx] = winner_loser
-                    #i = i + 1 # End of an evolution procedure
-                    flag = 0
-                else:
-                    flag = 1
+                flag = 0
+                #print('validation step')
+                if self.validation:
+                    if not validate(winner_loser[1], self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict):
+                        #self.pop[sub_pop_idx] = winner_loser
+                        #i = i + 1 # End of an evolution procedure
+                        flag = 1
             
     #             print('Winner_loser after crossover and mutate: ', winner_loser)
     #             print('Winner', winner_loser[0])
@@ -1265,7 +1266,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_before = 0, weight_energy = 0, weight_failure = 0,
-            duration_str=duration_str, evolution_method='random'):
+            duration_str=duration_str, evolution_method='random', validation=True):
     print(duration_str)
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)
@@ -1343,7 +1344,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 
             weightb = weight_before, scenario=scenario,
-            num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method)
+            num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation)
 
     result_dict = {}
     original_schedule = waiting_jobs

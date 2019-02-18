@@ -36,6 +36,8 @@ weight_conversion = 5
 stop_condition = 'num_iterations'
 stop_value = iterations
 
+evolution_method = 'roulette' #['random', 'roulette']
+
 from time import gmtime, strftime
 
 export_folder = r"D:\users\jdavid\ELITE project\Figures\Results"+strftime("%Y%m%d_%H%M", gmtime())
