@@ -1271,7 +1271,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_before = 0, weight_energy = 0, weight_failure = 0,
             duration_str=duration_str, evolution_method='random', validation=True):
-    print(duration_str)
+#     print(duration_str)
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)
     # Generate raw material unit price
