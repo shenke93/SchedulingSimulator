@@ -2,11 +2,19 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.ticker import MaxNLocator
 
 def show_results(best_result, worst_result):
     plt.plot(best_result)
     plt.plot(worst_result)
     plt.title('Result versus number of iterations')
+    plt.xlabel('# iterations')
+    plt.ylabel('Predicted result')
+
+    figure = plt.gcf()
+    ax = figure.gca()
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
     return plt.gcf()
 
 def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', enddate='EndDateUTC', order=False, downtimes=None):

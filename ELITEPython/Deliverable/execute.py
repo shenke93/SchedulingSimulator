@@ -39,7 +39,6 @@ def main():
                         downtimes = downtimes[downtimes.StartDateUTC.between(start_time, end_time)]
                 except:
                         pass
-
         for value in test:
                 if value == 'GA':
                         best_result, orig_result, best_sched, orig_sched, best_curve, worst_curve, gen = \
@@ -58,7 +57,8 @@ def main():
                         fig = show_results(best_curve, worst_curve)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
-                        fig.show()
+                        if interactive:
+                                fig.show()
                         begin = make_df(best_sched)
                         end = make_df(orig_sched)
 
