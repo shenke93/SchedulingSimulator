@@ -32,12 +32,13 @@ def main():
         print_ul('Scheduler v0.0.0')
         print('Execution Start!')
 
+        downtimes = None
         if weight_failure:
                 try:
                         downtimes = pd.read_csv(historical_down_periods_file, parse_dates=['StartDateUTC', 'EndDateUTC'])
                         downtimes = downtimes[downtimes.StartDateUTC.between(start_time, end_time)]
                 except:
-                        downtimes = None
+                        pass
 
         for value in test:
                 if value == 'GA':
