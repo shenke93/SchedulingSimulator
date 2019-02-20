@@ -8,7 +8,7 @@ import time
 import random
 import os, sys
 
-from configfile import * # default configuration file
+# from configfile import * # default configuration file
 from configfile_test2 import * # customized configuration file
 
 print(sys.path[0])

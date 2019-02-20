@@ -10,6 +10,7 @@ def show_results(best_result, worst_result):
     plt.title('Result versus number of iterations')
     plt.xlabel('# iterations')
     plt.ylabel('Predicted result')
+    plt.legend()
 
     figure = plt.gcf()
     ax = figure.gca()

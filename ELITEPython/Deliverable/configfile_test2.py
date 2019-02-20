@@ -17,7 +17,8 @@ job_info_file=os.path.join(filepath, 'generated_jobInfoProd.csv')
 output_init=os.path.join(filepath, 'original_jobs.csv')
 output_final=os.path.join(filepath, 'final_jobs.csv')
 
-interactive = False
+interactive = True
+export = False
 cwd = os.getcwd()
 export_folder = cwd + '\Results' + strftime("%Y%m%d_%H%M", gmtime())
 # export_folder = r"D:\users\jdavid\ELITE project\Figures\Results"+strftime("%Y%m%d_%H%M", gmtime())
@@ -27,6 +28,11 @@ os.makedirs(export_folder, exist_ok=True)
 ''' Scenario Configuration
 '''
 test = ['GA'] # Choices: GA, BF
+scenario = 1  
+duration_str = 'duration' # ['quantity', 'duration']
+validation = True # ['True', 'False']
+
+
 
 evolution_method = 'random' #['random', 'roulette']
 pop_size = 12
