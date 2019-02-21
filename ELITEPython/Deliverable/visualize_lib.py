@@ -5,8 +5,8 @@ import pandas as pd
 from matplotlib.ticker import MaxNLocator
 
 def show_results(best_result, worst_result):
-    plt.plot(best_result)
-    plt.plot(worst_result)
+    plt.plot(best_result, label='best')
+    plt.plot(worst_result, label='worst')
     plt.title('Result versus number of iterations')
     plt.xlabel('# iterations')
     plt.ylabel('Predicted result')

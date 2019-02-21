@@ -28,9 +28,23 @@ def make_df(dict):
         #df['ReasonId'] = 100
         return df
 
+class writer :
+        def __init__(self, *writers) :
+                self.writers = writers
+
+        def write(self, text) :
+                for w in self.writers :
+                        w.write(text)
+        
+        def flush(self):
+                pass
+
 def main():
         print_ul('Scheduler v0.0.0')
         print('Execution Start!')
+
+        fout = open(os.path.join(export_folder, 'out.log'), 'w+')
+        sys.stdout = writer(sys.stdout, fout)
 
         downtimes = None
         if weight_failure:
@@ -128,6 +142,13 @@ def main():
                                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
+                
+                if export:
+                        g = globals()
+                        outputlist = [k for k in g if type(g[k]) in [int, str, list]]
+                        with open(os.path.join(export_folder, r"output_params.txt"), 'w+') as f:
+                                for item in outputlist:
+                                        f.write(item + ' = ' + str(g[item]) + '\n')
 
 if __name__ == "__main__":
         main()
