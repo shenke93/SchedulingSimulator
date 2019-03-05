@@ -1,4 +1,9 @@
-''' Visualisation routines for the results of the SchedulerV000'''
+''' 
+Joachim David and Ke Shen - 2019
+Ghent University
+----------------
+Visualisation routines for the results of the SchedulerV000
+'''
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -159,3 +164,27 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
     plt.plot(table.Power, drawstyle='steps-post')
     plt.ylim(bottom=-table.Power.max()*0.05, top=table.Power.max()*1.05)
     plt.tight_layout()
+
+def show_gantt(df, start, end):
+    plt.figure(figsize=(20, 10))
+    # df_task['Start'] = (df_task.StartDateUTC - df_task.StartDateUTC[0].floor('D')).dt.total_seconds()/3600
+    # df_task['End'] = (df_task.EndDateUTC - df_task.StartDateUTC[0].floor('D')).dt.total_seconds()/3600
+    df_part = df[df.StartDateUTC.between(start, end) & df.EndDateUTC.between(start, end)]
+    all_reasons = list(df.ReasonId.unique())
+    all_reasons.sort()
+    plot_gantt(df_part, 'ReasonId', 'ArticleName', order=all_reasons)
+    # handles, labels = plt.gca().get_legend_handles_labels()
+    # by_label = dict(zip(labels, handles))
+    # key_list = sorted(by_label)
+    # value_list = [by_label[key] for key in key_list]
+    # plt.legend(value_list, key_list, loc='lower right')
+    plt.title('Gantt chart, original')
+    #try:
+    #    plt.savefig('D:/temp/gantt.svg', dpi=1200, bbox_inches='tight')
+    #except:
+    #    pass
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    print(__doc__)

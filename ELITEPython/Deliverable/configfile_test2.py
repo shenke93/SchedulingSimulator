@@ -39,7 +39,7 @@ pop_size = 12
 crossover_rate = 0.9
 mutation_rate = 0.4
 num_mutations = 1
-iterations = 20
+iterations = 40000
 adapt_ifin = [5000, 15000, 20000, 30000, 35000]
 
 start_time = datetime(2016, 11, 3, 6, 0) # Date range of jobs to choose
@@ -48,7 +48,7 @@ end_time = datetime(2016, 12, 3, 0, 0) # Year, Month, Day, Hour, Minute, Second
 weight_energy = 1
 weight_before = 10
 weight_failure = 0.001
-weight_conversion = 5
+weight_conversion = 10
 
 stop_condition = 'num_iterations'
 stop_value = iterations

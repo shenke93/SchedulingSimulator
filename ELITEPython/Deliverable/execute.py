@@ -8,7 +8,7 @@ import time
 import random
 import os, sys
 
-# from configfile import * # default configuration file
+from configfile import * # default configuration file
 from configfile_test2 import * # customized configuration file
 
 print(sys.path[0])
@@ -47,7 +47,7 @@ def main():
         sys.stdout = writer(sys.stdout, fout)
 
         downtimes = None
-        if weight_failure:
+        if weight_failure and working_method=='historical':
                 try:
                         downtimes = pd.read_csv(historical_down_periods_file, parse_dates=['StartDateUTC', 'EndDateUTC'])
                         downtimes = downtimes[downtimes.StartDateUTC.between(start_time, end_time)]

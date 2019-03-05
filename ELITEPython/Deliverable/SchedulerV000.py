@@ -307,7 +307,7 @@ def get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_di
     
 #     print("down_duration_dict_filtered:", down_duration_dict_filtered)
     i = t_sd
-    index=0
+    index = 0
     for value in down_duration_dict_filtered.values():
         while i < value[0]:
             hourly_failure_dict.update({i:failure_list[index]})
