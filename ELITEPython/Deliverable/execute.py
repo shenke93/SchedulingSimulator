@@ -55,12 +55,13 @@ def main():
                         pass
         for value in test:
                 if value == 'GA':
-                        best_result, orig_result, best_sched, orig_sched, best_curve, worst_curve, gen = \
+                        best_result, orig_result, best_sched, orig_sched, best_curve, mean_curve, worst_curve, gen = \
                                                         run_opt(start_time, end_time, historical_down_periods_file, failure_rate_file, 
                                                         product_related_characteristics_file, energy_price_file, job_info_file, 
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_before=weight_before, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
-                                                        weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation)
+                                                        weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
+                                                        working_method=working_method)
                         print('Execution finished.')
                         print('Number of generations was', gen)
                         # print('Start visualization')
@@ -68,7 +69,7 @@ def main():
                         print('Best:', best_result, '\t', * best_sched)
                         print('Original:', orig_result, '\t', * orig_sched)
 
-                        fig = show_results(best_curve, worst_curve)
+                        fig = show_results(best_curve, worst_curve, mean_curve)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
                         if interactive:
@@ -109,7 +110,7 @@ def main():
                         best_result, worst_result, best_sched, worst_sched = run_bf(start_time, end_time, historical_down_periods_file, failure_rate_file, 
                                                                                 product_related_characteristics_file, energy_price_file, job_info_file,
                                                                                 scenario, weight_failure=weight_failure, weight_conversion=weight_conversion, 
-                                                                                weight_before=weight_before, weight_energy=weight_energy)
+                                                                                weight_before=weight_before, weight_energy=weight_energy, duration_str=duration_str)
                         timer1 = time.monotonic()
                         elapsed_time = timer1-timer0
                         print('Elapsed time: {:.2f} s'.format(elapsed_time))

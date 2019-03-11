@@ -27,9 +27,9 @@ weight_before=1
 adapt_ifin = []
 stop_condition = 'num_iterations'   # ['num_iterations', 'end_value', 'abs_time']
 stop_value = iterations
-duration_str = 'duration' #['quantity', 'duration']
+duration_str = 'quantity' #['quantity', 'duration']
 evolution_method = 'random' #['random', 'roulette']
-working_method = 'historical' #['historical', 'expected']
+working_method = 'expected' #['historical', 'expected']
 validation = False
 
 export = True
