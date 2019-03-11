@@ -1354,17 +1354,21 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)
     # Generate raw material unit price
-    try:
-        down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
-        failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
-        hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
+    if working_method == 'historical':
+        try:
+            down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
+            failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
+            hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
 
-        with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-            writer = csv.writer(csv_file)
-            for key, value in hourly_failure_dict.items():
-                writer.writerow([key, value])
-    except:
-        warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
+            with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+                writer = csv.writer(csv_file)
+                for key, value in hourly_failure_dict.items():
+                    writer.writerow([key, value])
+        except:
+            warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
+            failure_downtimes = True
+    if (working_method != 'historical') or failure_downtimes:
+        warnings.warn('No import of downtime durations.')
         weight_failure = 0
         down_duration_dict = {}
         failure_list = []

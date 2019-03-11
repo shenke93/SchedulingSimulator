@@ -5,7 +5,7 @@ import os
 
 ''' Input / Output Configuration
 '''
-historical_down_periods_file=[]
+#historical_down_periods_file=[]
 failure_rate_file=[]
 filepath='original_data'
 product_related_characteristics_file=os.path.join(filepath, 'generated_productRelatedCharacteristics.csv')
