@@ -61,7 +61,7 @@ def main():
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_before=weight_before, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
                                                         weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
-                                                        working_method=working_method)
+                                                        pre_selection=pre_selection, working_method=working_method)
                         print('Execution finished.')
                         print('Number of generations was', gen)
                         # print('Start visualization')

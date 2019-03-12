@@ -31,7 +31,7 @@ test = ['GA'] # Choices: GA, BF
 scenario = 1  
 #duration_str = 'duration' # ['quantity', 'duration']
 validation = False # ['True', 'False']
-
+pre_selection = False # ['True', 'False']
 
 
 evolution_method = 'roulette' #['random', 'roulette']
@@ -39,7 +39,7 @@ pop_size = 12
 crossover_rate = 0.4
 mutation_rate = 0.4
 num_mutations = 3
-iterations = 40000
+iterations = 400
 adapt_ifin = [5000, 15000, 20000, 30000, 35000]
 
 start_time = datetime(2016, 11, 3, 6, 0) # Date range of jobs to choose

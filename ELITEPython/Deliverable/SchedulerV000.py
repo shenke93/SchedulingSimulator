@@ -12,18 +12,21 @@ import argparse
 import warnings
 from datetime import timedelta, datetime
 from operator import add
-import pandas as pd
+import operator
 import logging
 import os
 import math
 import itertools
 import time
 import msvcrt
+from collections import OrderedDict
+
 # import pickle
 from configfile import duration_str
 
 # 3rd-party modules
 import numpy as np
+import pandas as pd
 
 # Global variables
 # POP_SIZE = 8   
@@ -1071,7 +1074,7 @@ class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
                  product_related_characteristics_dict, down_duration_dict, start_time, weight1, weight2, weightc, 
                  weightb, scenario,
-                 num_mutations= 1, duration_str=duration_str, evolution_method='roulette', validation=False,
+                 num_mutations= 1, duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False,
                  working_method='historical'):
         # Attributes assignment
         super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
@@ -1083,10 +1086,16 @@ class GA(Scheduler):
         self.num_mutations = num_mutations
         self.evolution_method = evolution_method
         self.validation = validation
+        self.pre_selection = pre_selection
         # generate N random individuals (N = pop_size)
         # BETTER METHOD: FUTURE WORK
-        # Add functionality: first due date first TODO
-        self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
+        # Add functionality: first due date first TODO:
+        if self.pre_selection == True:
+            # In this case, EDD rule has already been applied on the pop
+            # Such procedure is executed in run_opt()
+            self.pop = np.vstack(pop for _ in range(pop_size))
+        else:
+            self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
         self.memory = []
     
     def crossover(self, winner_loser): 
@@ -1349,7 +1358,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_before = 0, weight_energy = 0, weight_failure = 0,
-            duration_str=duration_str, evolution_method='roulette', validation=False, working_method='historical'):
+            duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='historical'):
     print('Using', working_method, 'method')
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)
@@ -1402,6 +1411,16 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
     
+#     print(job_dict_new)
+    if pre_selection == True:
+        sorted_jobs = OrderedDict(sorted(job_dict_new.items(), key=lambda kv: kv[1].get('before')))
+        waiting_jobs = [*sorted_jobs]
+#         print("Sorted_job:", sorted_job)
+    
+#     print(sorted_job)
+#     print(waiting_jobs)
+#     exit()
+    
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
     else:
@@ -1438,7 +1457,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 
             weightb = weight_before, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,
-            working_method=working_method)
+            pre_selection=pre_selection, working_method=working_method)
 
     result_dict = {}
     original_schedule = waiting_jobs
