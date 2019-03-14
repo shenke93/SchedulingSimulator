@@ -1,0 +1,59 @@
+[input-config]
+original_folder='Original_data'
+product_related_characteristics_file = "generated_productRelatedCharacteristics.csv"
+energy_price_file = "generated_hourly_energy_price.csv"
+historical_down_periods_file = "historicalDownPeriods.csv"
+job_info_file = "generated_jobInfoProd.csv"
+failure_rate_file = 'hourlyFailureRate.csv'
+
+[output-config]
+export = True
+export_folder = "\Results"
+output_init = "original_jobs.csv"
+output_final = "final_jobs.csv"
+interactive = False
+
+[scenario-config]
+test = 'GA'
+scenario = 1
+validation = False
+pre_selection = False
+iteractive = False
+
+weight_energy = 1
+weight_before = 10000
+weight_failure = 0
+weight_conversion = 3
+
+evolution_method = 'roulette'
+pop_size = 12
+crossover_rate = 0.4
+mutation_rate = 0.4
+num_mutations = 3
+iterations = 400
+
+stop_condition = 'num_iterations'
+duration_str = 'quantity'
+evolution_method = 'random'
+working_method = 'expected'
+
+adapt_ifin_low = 5000
+adapt_ifin_high = 35000
+adapt_ifin_step = 10000
+
+[start-end]
+start_year = 
+start_month = 
+start_day = 
+start_hour = 
+start_minute = 
+start_second = 
+end_year = 
+end_month = 
+end_day = 
+end_hour = 
+end_minute =
+end_second = 
+
+
+ 

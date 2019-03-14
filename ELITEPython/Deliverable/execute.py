@@ -1,15 +1,19 @@
 from SchedulerV000 import run_opt, run_bf
 from datetime import datetime
+from time import localtime, strftime
 from visualize_lib import show_results, plot_gantt, show_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
+from configfile import adapt_ifin
 plt.style.use('seaborn-darkgrid')
 import time
 import random
 import os, sys
+import configparser
 
-from configfile import * # default configuration file
-from configfile_test2 import * # customized configuration file
+# Deprecated configurtaion
+# from configfile import * # default configuration file
+# from configfile_test2 import * # customized configuration file
 
 print(sys.path[0])
 os.chdir(sys.path[0])
@@ -38,9 +42,61 @@ class writer :
         
         def flush(self):
                 pass
-
+    
 def main():
         print_ul('Scheduler v0.0.0')
+        
+        # Taking config file path from the user.
+        configParser = configparser.RawConfigParser()   
+        configFilePath = 'config.txt'
+        configParser.read(configFilePath)
+        
+        # Read input-config
+        original_folder = configParser.get('input-config', 'original_folder')
+        product_related_characteristics_file = os.path.join(original_folder, configParser.get('input-config', 'product_related_characteristics_file'))
+        energy_price_file = os.path.join(original_folder, configParser.get('input-config', 'energy_price_file'))
+        historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
+        job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
+        failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
+        
+        # Read output-config
+        export_folder = os.getcwd() + configParser.get('output-config', 'export_folder') + strftime("%Y%m%d_%H%M", localtime())
+        os.makedirs(export_folder, exist_ok=True)
+        output_init = os.path.join(export_folder, configParser.get('output-config', 'output_init'))
+        output_final = os.path.join(export_folder, configParser.get('output-config', 'output_final'))
+        interactive = configParser.getboolean('output-config', 'interactive')
+        export = configParser.getboolean('output-config', 'export')
+        
+        # Read scenario-config
+        test = [configParser.get('scenario-config', 'test')]
+        scenario = configParser.getint('scenario-config', 'scenario')
+        validation = configParser.getboolean('scenario-config', 'validation')
+        pre_selection = configParser.getboolean('scenario-config', 'pre_selection')
+        
+        weight_energy = configParser.getint('scenario-config', 'weight_energy')
+        weight_before = configParser.getint('scenario-config', 'weight_before')
+        weight_failure = configParser.getint('scenario-config', 'weight_failure')
+        weight_conversion = configParser.getint('scenario-config', 'weight_conversion')
+        
+        evolution_method = configParser.get('scenario-config', 'evolution_method')
+        pop_size = configParser.getint('scenario-config', 'pop_size')
+        crossover_rate = configParser.getfloat('scenario-config', 'crossover_rate')
+        mutation_rate = configParser.getfloat('scenario-config', 'mutation_rate')
+        num_mutations = configParser.getint('scenario-config', 'num_mutations')
+        iterations = configParser.getint('scenario-config', 'iterations')
+        
+        stop_condition = configParser.get('scenario-config', 'stop_condition')
+        stop_value = iterations
+        duration_str = configParser.get('scenario-config', 'duration_str')
+        evolution_method = configParser.get('scenario-config', 'evolution_method')
+        working_method = configParser.get('scenario-config', 'working_method')
+        
+        adapt_ifin_low = configParser.getint('scenario-config', 'adapt_ifin_low')
+        adapt_ifin_high = configParser.getint('scenario-config', 'adapt_ifin_high')
+        adapt_ifin_step = configParser.getint('scenario-config', 'adapt_ifin_step')
+        adapt_ifin = [i for i in range(adapt_ifin_low, adapt_ifin_high+adapt_ifin_step, adapt_ifin_step)]
+        
+        
         print('Execution Start!')
 
         fout = open(os.path.join(export_folder, 'out.log'), 'w+')
