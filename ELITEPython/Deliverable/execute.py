@@ -15,8 +15,8 @@ import configparser
 # from configfile import * # default configuration file
 # from configfile_test2 import * # customized configuration file
 
-print(sys.path[0])
-os.chdir(sys.path[0])
+# print(sys.path[0])
+# os.chdir(sys.path[0])
 
 def print_ul(strin):
     print(strin)
@@ -78,7 +78,6 @@ def main():
         weight_failure = configParser.getint('scenario-config', 'weight_failure')
         weight_conversion = configParser.getint('scenario-config', 'weight_conversion')
         
-        evolution_method = configParser.get('scenario-config', 'evolution_method')
         pop_size = configParser.getint('scenario-config', 'pop_size')
         crossover_rate = configParser.getfloat('scenario-config', 'crossover_rate')
         mutation_rate = configParser.getfloat('scenario-config', 'mutation_rate')
@@ -96,7 +95,13 @@ def main():
         adapt_ifin_step = configParser.getint('scenario-config', 'adapt_ifin_step')
         adapt_ifin = [i for i in range(adapt_ifin_low, adapt_ifin_high+adapt_ifin_step, adapt_ifin_step)]
         
-        
+        start_time = datetime(configParser.getint('start-end', 'start_year'), configParser.getint('start-end', 'start_month'), 
+                              configParser.getint('start-end', 'start_day'), configParser.getint('start-end', 'start_hour'), 
+                              configParser.getint('start-end', 'start_minute'), configParser.getint('start-end', 'start_second')) # Date range of jobs to choose
+        end_time = datetime(configParser.getint('start-end', 'end_year'), configParser.getint('start-end', 'end_month'), 
+                              configParser.getint('start-end', 'end_day'), configParser.getint('start-end', 'end_hour'), 
+                              configParser.getint('start-end', 'end_minute'), configParser.getint('start-end', 'end_second'))
+
         print('Execution Start!')
 
         fout = open(os.path.join(export_folder, 'out.log'), 'w+')
