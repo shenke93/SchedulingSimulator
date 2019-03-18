@@ -1491,7 +1491,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         mean_result_list.append(mean)
 
         if stop_condition == 'num_iterations':
-            if generation > iterations:
+            if generation >= iterations:
                 stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
