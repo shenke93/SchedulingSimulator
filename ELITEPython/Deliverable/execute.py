@@ -11,8 +11,6 @@ import random
 import os, sys
 import configparser
 
-sys.path.append(os.getcwd())
-
 #print(sys.path)
 
 # Deprecated configurtaion
@@ -52,7 +50,7 @@ def main():
         
         # Taking config file path from the user.
         configParser = configparser.RawConfigParser()   
-        configFilePath = os.path.join(os.path.split(sys.argv[0])[0], 'config.ini')
+        configFilePath = 'config.ini'
         configParser.read(configFilePath)
         
         # Read input-config
@@ -72,7 +70,7 @@ def main():
         export = configParser.getboolean('output-config', 'export')
         
         # Read scenario-config
-        test = [configParser.get('scenario-config', 'test')]
+        test = configParser.get('scenario-config', 'test').replace(' ', '').split(',')
         scenario = configParser.getint('scenario-config', 'scenario')
         validation = configParser.getboolean('scenario-config', 'validation')
         pre_selection = configParser.getboolean('scenario-config', 'pre_selection')
@@ -99,12 +97,20 @@ def main():
         adapt_ifin_step = configParser.getint('scenario-config', 'adapt_ifin_step')
         adapt_ifin = [i for i in range(adapt_ifin_low, adapt_ifin_high+adapt_ifin_step, adapt_ifin_step)]
         
-        start_time = datetime(configParser.getint('start-end', 'start_year'), configParser.getint('start-end', 'start_month'), 
-                              configParser.getint('start-end', 'start_day'), configParser.getint('start-end', 'start_hour'), 
-                              configParser.getint('start-end', 'start_minute'), configParser.getint('start-end', 'start_second')) # Date range of jobs to choose
-        end_time = datetime(configParser.getint('start-end', 'end_year'), configParser.getint('start-end', 'end_month'), 
-                              configParser.getint('start-end', 'end_day'), configParser.getint('start-end', 'end_hour'), 
-                              configParser.getint('start-end', 'end_minute'), configParser.getint('start-end', 'end_second'))
+        if configParser.has_section('start-end'):
+                start_time = datetime(configParser.getint('start-end', 'start_year'), configParser.getint('start-end', 'start_month'), 
+                                configParser.getint('start-end', 'start_day'), configParser.getint('start-end', 'start_hour'), 
+                                configParser.getint('start-end', 'start_minute'), configParser.getint('start-end', 'start_second')) # Date range of jobs to choose
+                end_time = datetime(configParser.getint('start-end', 'end_year'), configParser.getint('start-end', 'end_month'), 
+                                configParser.getint('start-end', 'end_day'), configParser.getint('start-end', 'end_hour'), 
+                                configParser.getint('start-end', 'end_minute'), configParser.getint('start-end', 'end_second'))
+        elif configParser.has_section('start'):
+                start_time = datetime(configParser.getint('start', 'start_year'), configParser.getint('start', 'start_month'), 
+                                configParser.getint('start', 'start_day'), configParser.getint('start', 'start_hour'), 
+                                configParser.getint('start', 'start_minute'), configParser.getint('start', 'start_second')) # Date range of jobs to choose
+                end_time = None
+        else:
+                raise NameError('No section with start date found!')
 
         print('Execution Start!')
 
@@ -139,24 +145,22 @@ def main():
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
                         if interactive:
                                 fig.show()
-                        begin = make_df(best_sched)
-                        end = make_df(orig_sched)
+                        best = make_df(best_sched)
+                        orig = make_df(orig_sched)
 
                         # output files to csv's
-                        begin.to_csv(output_init)
-                        end.to_csv(output_final)
+                        orig.to_csv(output_init)
+                        best.to_csv(output_final)
 
                         energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(product_related_characteristics_file)
                         
-
-
                         plt.figure(dpi=50, figsize=[20, 15])
-                        if 'Type' in begin.columns:
+                        if 'Type' in best.columns:
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
-                        show_energy_plot(begin, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes)
+                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes)
                         if export is True:
                                 print('Export to', export_folder)
                                 plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
@@ -164,7 +168,7 @@ def main():
                                 plt.show()
 
                         plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(end, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
+                        show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
                         if interactive:
@@ -175,7 +179,8 @@ def main():
                         best_result, worst_result, best_sched, worst_sched = run_bf(start_time, end_time, historical_down_periods_file, failure_rate_file, 
                                                                                 product_related_characteristics_file, energy_price_file, job_info_file,
                                                                                 scenario, weight_failure=weight_failure, weight_conversion=weight_conversion, 
-                                                                                weight_before=weight_before, weight_energy=weight_energy, duration_str=duration_str)
+                                                                                weight_before=weight_before, weight_energy=weight_energy, duration_str=duration_str,
+                                                                                working_method=working_method)
                         timer1 = time.monotonic()
                         elapsed_time = timer1-timer0
                         print('Elapsed time: {:.2f} s'.format(elapsed_time))
@@ -186,35 +191,33 @@ def main():
                         print('Best:',best_result, '\t', * best_sched)
                         print('Worst:', worst_result, '\t', * worst_sched)
 
-                        begin = make_df(best_sched)
-                        end = make_df(worst_sched)
+                        best = make_df(best_sched)
+                        worst = make_df(worst_sched)
+
                         energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(product_related_characteristics_file)
 
-                        if 'Type' in begin.columns:
+                        if 'Type' in best.columns:
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
                         plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(begin, energy_price, prod_char, 'Best schedule (BF)', namecolor, downtimes=downtimes)
+                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF)', namecolor, downtimes=downtimes)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"best_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
 
                         plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(end, energy_price, prod_char, 'Worst schedule (BF)', namecolor, downtimes=downtimes)
+                        show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF)', namecolor, downtimes=downtimes)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
                 
                 if export:
-                        g = globals()
-                        outputlist = [k for k in g if type(g[k]) in [int, str, list]]
-                        with open(os.path.join(export_folder, r"output_params.txt"), 'w+') as f:
-                                for item in outputlist:
-                                        f.write(item + ' = ' + str(g[item]) + '\n')
+                        import shutil
+                        shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
 
 if __name__ == "__main__":
         main()

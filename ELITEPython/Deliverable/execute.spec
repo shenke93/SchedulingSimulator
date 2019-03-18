@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['execute.py'],
-             pathex=['C:\\Users\\admin_kshen\\Documents\\SchedulingSimulator\\ELITEPython\\Deliverable'],
+             pathex=['D:\\users\\jdavid\\Programming\\GitHub\\SchedulingSimulator\\ELITEPython\\Deliverable'],
              binaries=[],
              datas=[],
              hiddenimports=[],

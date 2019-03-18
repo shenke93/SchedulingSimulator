@@ -4,3 +4,5 @@ ELITEPython/Deliverable/previousrun.txt
 *.pyc
 *.log
 Results*/
+build/
+dist/

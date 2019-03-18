@@ -273,26 +273,34 @@ def read_jobs(jobFile, get_totaltime=False):
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
                 job_num = int(row['ID'])
-                job_entry = dict(zip(['duration', 'start', 'end', 'quantity', 'product'],
-                                [float(row[str_time]),
-                                 datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
-                                 datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"),
-                                 float(row['Quantity']), 
-                                 row['Product']]))
-                job_dict[job_num] = job_entry
-                # job_dict.update({int(row['ID']):[float(row['Duration']), datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f"), 
-                #                                  datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f"),
-                #                                  float(row['Quantity']), row['Product']]})
+                # insert product name
+                job_entry = dict({'product': row['Product']})
+                # time string or quantity should be in the row
+                if (str_time in row) and row[str_time] is not None:
+                    job_entry['duration'] = float(row[str_time])
+                if ('Quantity' in row) and row['Quantity'] is not None:
+                    job_entry['quantity'] = float(row['Quantity'])
+                
+                if ('Start' in row) and row['Start'] is not None:
+                    job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
+                if ('End' in row) and row['End'] is not None:
+                    job_entry['end'] = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
+                
+                # Add product type
                 if ('Type' in row) and row['Type'] is not None:
-                    job_dict[job_num]['type'] = row['Type']
+                    job_entry['type'] = row['Type']
                     #print('Added type')
                 else:
-                    job_dict[job_num]['type'] = 'unknown'
+                    job_entry['type'] = 'unknown'
+
+                # Add due date
                 if ('Before' in row) and (row['Before'] is not None):
-                    job_dict[job_num]['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
+                    job_entry['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
                     #print('Before date read')
                 else:
-                    job_dict[job_num]['before'] = datetime.max
+                    job_entry['before'] = datetime.max
+                # add the item to the job dictionary
+                job_dict[job_num] = job_entry
     except:
         print("Unexpected error when reading job information from {}:".format(jobFile))
         raise
@@ -572,6 +580,7 @@ def get_energy_cost(individual, start_time, job_dict, price_dict, product_relate
         job_en_cost = 0
         
         if working_method == 'historical':
+            #print(du)
             t_o = t_start + timedelta(hours=du) # Without downtime duration
     #         print("t_o:", t_o)
             t_end = t_o
@@ -833,7 +842,7 @@ def get_time(individual, start_time, job_dict, price_dict, product_related_chara
         #du = quantity / unit2[2] # get job duration
         if duration_str == 'duration':
             du = unit1['duration']
-        if duration_str == 'quantity':
+        elif duration_str == 'quantity':
             quantity = unit1['quantity']
             product_type = unit1['product'] # get job product type
             unit2 = product_related_characteristics_dict.get(product_type)
@@ -976,12 +985,12 @@ class Scheduler(object):
         '''
         if self.w1:
             failure_cost = [self.w1*np.array(get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario,
-                            detail=detail, duration_str=duration_str, working_method=self.working_method)) for i in sub_pop]
+                            detail=detail, duration_str=self.duration_str, working_method=self.working_method)) for i in sub_pop]
         else:
             failure_cost = [self.w1 for i in sub_pop]
         if self.w2:
             energy_cost = [self.w2*np.array(get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict,
-                            detail=detail, duration_str=duration_str, working_method=self.working_method)) for i in sub_pop]
+                            detail=detail, duration_str=self.duration_str, working_method=self.working_method)) for i in sub_pop]
         else:
             energy_cost = [self.w2 for i in sub_pop]
         if self.wc:
@@ -990,7 +999,7 @@ class Scheduler(object):
             conversion_cost = [self.wc for i in sub_pop]
         if self.wb:
             before_cost = [self.wb*np.array(get_before_cost(i, self.start_time, self.job_dict, self.product_related_characteristics_dict, 
-                                                            self.down_duration_dict, detail=detail, duration_str=duration_str, working_method=self.working_method)) for i in sub_pop]
+                                                            self.down_duration_dict, detail=detail, duration_str=self.duration_str, working_method=self.working_method)) for i in sub_pop]
         else:
             before_cost = [self.wb for i in sub_pop]
         if split_types:
@@ -1209,7 +1218,7 @@ class GA(Scheduler):
                 #print('validation step')
                 if self.validation:
                     if not validate(winner_loser[1], self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.precedence_dict, duration_str=self.duration_str,
-                                    working_method=working_method):
+                                    working_method=self.working_method):
                         #self.pop[sub_pop_idx] = winner_loser
                         #i = i + 1 # End of an evolution procedure
                         flag = 1
@@ -1296,7 +1305,8 @@ class GA(Scheduler):
 
 
 def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
-           scenario, weight_failure=1, weight_conversion=1, weight_before=1, weight_energy=1, duration_str='duration'):
+           scenario, weight_failure=1, weight_conversion=1, weight_before=1, weight_energy=1, duration_str='duration', 
+           working_method='historical'):
     # Generate raw material unit price
     try:
         down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
@@ -1322,7 +1332,12 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
     
     price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
-    job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+    if (start_time != None) and (end_time != None):
+        job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+    elif (start_time != None):
+        job_dict_new = read_jobs(job_file)
+    else:
+        raise NameError('No start time found!')
 
     # TODO: change
 #     print("failure_dict", failure_dict)
@@ -1338,7 +1353,10 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
     else:
-        first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
+        try:
+            first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
+        except:
+            first_start_time = start_time
 
     bf = BF(job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
         product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
@@ -1397,7 +1415,13 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     
     price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
-    job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+
+    if (start_time != None) and (end_time != None):
+        job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+    elif (start_time != None):
+        job_dict_new = read_jobs(job_file)
+    else:
+        raise NameError('No start time found!')
 
     # TODO: change
 #     print("failure_dict", failure_dict)
@@ -1424,7 +1448,10 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
     else:
-        first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
+        try:
+            first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
+        except:
+            first_start_time = start_time
     
 #     print("Waiting jobs: ", waiting_jobs)
 #     print("Prices: ", price_dict_new)
@@ -1491,7 +1518,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         mean_result_list.append(mean)
 
         if stop_condition == 'num_iterations':
-            if generation >= stop_value:
+            if generation >= iterations:
                 stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
