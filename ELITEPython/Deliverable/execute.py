@@ -11,6 +11,10 @@ import random
 import os, sys
 import configparser
 
+sys.path.append(os.getcwd())
+
+#print(sys.path)
+
 # Deprecated configurtaion
 # from configfile import * # default configuration file
 # from configfile_test2 import * # customized configuration file
@@ -48,7 +52,7 @@ def main():
         
         # Taking config file path from the user.
         configParser = configparser.RawConfigParser()   
-        configFilePath = 'config.txt'
+        configFilePath = os.path.join(os.path.split(sys.argv[0])[0], 'config.ini')
         configParser.read(configFilePath)
         
         # Read input-config
@@ -85,7 +89,7 @@ def main():
         iterations = configParser.getint('scenario-config', 'iterations')
         
         stop_condition = configParser.get('scenario-config', 'stop_condition')
-        stop_value = iterations
+        stop_value = configParser.getint('scenario-config', 'stop_value')
         duration_str = configParser.get('scenario-config', 'duration_str')
         evolution_method = configParser.get('scenario-config', 'evolution_method')
         working_method = configParser.get('scenario-config', 'working_method')

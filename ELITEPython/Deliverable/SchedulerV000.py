@@ -1491,13 +1491,13 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         mean_result_list.append(mean)
 
         if stop_condition == 'num_iterations':
-            if generation >= iterations:
+            if generation >= stop_value:
                 stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
                 stop = True
         if stop_condition == 'abs_time':
-            timer1 = time.monotonic()
+            timer1 = time.monotonic()  # returns time in seconds
             elapsed_time = timer1-timer0
             if elapsed_time >= stop_value:
                 stop = True
