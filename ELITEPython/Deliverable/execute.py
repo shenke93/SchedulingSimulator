@@ -76,7 +76,7 @@ def main():
         pre_selection = configParser.getboolean('scenario-config', 'pre_selection')
         
         weight_energy = configParser.getint('scenario-config', 'weight_energy')
-        weight_before = configParser.getint('scenario-config', 'weight_before')
+        weight_constraint = configParser.getint('scenario-config', 'weight_constraint')
         weight_failure = configParser.getint('scenario-config', 'weight_failure')
         weight_conversion = configParser.getint('scenario-config', 'weight_conversion')
         
@@ -130,7 +130,7 @@ def main():
                                                         run_opt(start_time, end_time, historical_down_periods_file, failure_rate_file, 
                                                         product_related_characteristics_file, energy_price_file, job_info_file, 
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
-                                                        weight_before=weight_before, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
+                                                        weight_constraint=weight_constraint, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
                                                         weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
                                                         pre_selection=pre_selection, working_method=working_method)
                         print('Execution finished.')
@@ -179,7 +179,7 @@ def main():
                         best_result, worst_result, best_sched, worst_sched = run_bf(start_time, end_time, historical_down_periods_file, failure_rate_file, 
                                                                                 product_related_characteristics_file, energy_price_file, job_info_file,
                                                                                 scenario, weight_failure=weight_failure, weight_conversion=weight_conversion, 
-                                                                                weight_before=weight_before, weight_energy=weight_energy, duration_str=duration_str,
+                                                                                weight_constraint=weight_constraint, weight_energy=weight_energy, duration_str=duration_str,
                                                                                 working_method=working_method)
                         timer1 = time.monotonic()
                         elapsed_time = timer1-timer0

@@ -299,6 +299,13 @@ def read_jobs(jobFile, get_totaltime=False):
                     #print('Before date read')
                 else:
                     job_entry['before'] = datetime.max
+
+                # Add after date
+                if ('After' in row) and (row['After'] is not None):
+                    job_entry['after'] = datetime.strptime(row['After'], "%Y-%m-%d %H:%M:%S.%f")
+                else:
+                    job_entry['after'] = datetime.min
+
                 # add the item to the job dictionary
                 job_dict[job_num] = job_entry
     except:
@@ -676,11 +683,11 @@ def get_conversion_cost(schedule, job_info_dict, related_chars_dict, detail=Fals
         conversion_cost.append(0)
     return conversion_cost
 
-def get_before_cost(schedule, start_time, job_info_dict, product_related_characteristics_dict, down_duration_dict, detail=False, duration_str='duration', working_method='historical'):
+def get_constraint_cost(schedule, start_time, job_info_dict, product_related_characteristics_dict, down_duration_dict, detail=False, duration_str='duration', working_method='historical'):
     if detail:
-        before_cost = []
+        constraint_cost = []
     else:
-        before_cost = 0
+        constraint_cost = 0
     t_now = start_time
 
     for item in schedule:
@@ -715,24 +722,27 @@ def get_before_cost(schedule, start_time, job_info_dict, product_related_charact
                 t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
             else:
                 raise NameError('Availability column not found, error')
-        
+
+        deadline_cost = 0
         if 'before' in job_info_dict[item]: # assume not all jobs have deadlines
             # check deadline condition
             beforedate = job_info_dict[item]['before']
             if t_end > beforedate: # did not get deadline
-                this_cost = (t_end-beforedate).total_seconds() / 3600
-                if detail:
-                    before_cost.append(this_cost)
-                else:
-                    before_cost += this_cost
-            else: # did get deadline
-                if detail:
-                    before_cost.append(0)
-        else:
-            if detail:
-                before_cost.append(0)
+                deadline_cost = (t_end-beforedate).total_seconds() / 3600
+
+        if 'after' in job_info_dict[item]: # assume not all jobs have deadlines
+             # check after condition
+             afterdate = job_info_dict[item]['after']
+             if t_end < afterdate: # produced before deadline
+                deadline_cost = (afterdate - t_end).total_seconds() / 3600
+
+        if detail:
+            constraint_cost.append(deadline_cost)
+        elif deadline_cost > 0:
+            constraint_cost += deadline_cost
+
         t_now = t_end
-    return before_cost
+    return constraint_cost
 
 
 # def visualize(individual, start_time, job_dict, product_related_characteristics_dict, down_duration_dict):
@@ -998,46 +1008,16 @@ class Scheduler(object):
         else:
             conversion_cost = [self.wc for i in sub_pop]
         if self.wb:
-            before_cost = [self.wb*np.array(get_before_cost(i, self.start_time, self.job_dict, self.product_related_characteristics_dict, 
+            constraint_cost = [self.wb*np.array(get_constraint_cost(i, self.start_time, self.job_dict, self.product_related_characteristics_dict, 
                                                             self.down_duration_dict, detail=detail, duration_str=self.duration_str, working_method=self.working_method)) for i in sub_pop]
         else:
-            before_cost = [self.wb for i in sub_pop]
+            constraint_cost = [self.wb for i in sub_pop]
         if split_types:
-            total_cost = (failure_cost, energy_cost, conversion_cost, before_cost)
+            total_cost = (failure_cost, energy_cost, conversion_cost, constraint_cost)
         else:
             #import pdb; pdb.set_trace()
-            total_cost = np.array(failure_cost) + np.array(energy_cost) + np.array(conversion_cost) + np.array(before_cost)
-        return total_cost
-
-    def get_detailed_fitness(self, sub_pop, split_jobs=False):
-        ''' Get fitness values for all individuals in a generation.
-        '''
-        # if self.w1:
-        #     failure_cost = [self.w1*get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
-        # else:
-        #     failure_cost = [self.w1 for i in sub_pop]
-        #print(sub_pop)
-        # if self.w1:
-        #     failure_cost = [self.w1*get_detailed_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in sub_pop]
-        # else:
-        #     failure_cost = [self.w1 for i in sub_pop]
-        if self.w2:
-            energy_cost = [self.w2*get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict, detail=True) for i in sub_pop]
-        else:
-            energy_cost = [self.w2 for i in sub_pop]
-        if self.wc:
-            conversion_cost = [self.wc*np.array(get_conversion_cost(i, self.job_dict, self.product_related_characteristics_dict, detail=True)) for i in sub_pop]
-        else:
-            conversion_cost = [self.wc for i in sub_pop]
-        if self.wb:
-            before_cost = [self.wb*np.array(get_before_cost(i, self.start_time, self.job_dict, self.product_related_characteristics_dict,  self.down_duration_dict, detail=True)) for i in sub_pop]
-        else:
-            before_cost = [self.wb for i in sub_pop]
-        if split_jobs:
-            return np.array(energy_cost), np.array(conversion_cost), np.array(before_cost)
-        else:
-            total_cost = np.array(energy_cost) + np.array(conversion_cost) + np.array(before_cost)
-            return total_cost        
+            total_cost = np.array(failure_cost) + np.array(energy_cost) + np.array(conversion_cost) + np.array(constraint_cost)
+        return total_cost     
     
  
 class BF(Scheduler):
@@ -1305,7 +1285,7 @@ class GA(Scheduler):
 
 
 def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
-           scenario, weight_failure=1, weight_conversion=1, weight_before=1, weight_energy=1, duration_str='duration', 
+           scenario, weight_failure=1, weight_conversion=1, weight_constraint=1, weight_energy=1, duration_str='duration', 
            working_method='historical'):
     # Generate raw material unit price
     try:
@@ -1360,7 +1340,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 
     bf = BF(job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
         product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
-        start_time=first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, weightb=weight_before, 
+        start_time=first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, weightb=weight_constraint, 
         scenario=scenario, working_method='historical', duration_str=duration_str)
     
     best_result, worst_result, best_schedule, worst_schedule = bf.check_all()
@@ -1375,7 +1355,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
         
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
-            stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_before = 0, weight_energy = 0, weight_failure = 0,
+            stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
             duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='historical'):
     print('Using', working_method, 'method')
     filestream = open('previousrun.txt', 'w')
@@ -1482,7 +1462,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 
-            weightb = weight_before, scenario=scenario,
+            weightb = weight_constraint, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,
             pre_selection=pre_selection, working_method=working_method)
 
