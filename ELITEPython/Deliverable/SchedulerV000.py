@@ -991,7 +991,8 @@ class Scheduler(object):
         self.working_method = working_method
 
     def get_fitness(self, sub_pop, split_types=False, detail=False):
-        ''' Get fitness values for all individuals in a generation.
+        ''' 
+        Get fitness values for all individuals in a generation.
         '''
         if self.w1:
             failure_cost = [self.w1*np.array(get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario,
