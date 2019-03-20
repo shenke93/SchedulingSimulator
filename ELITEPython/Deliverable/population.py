@@ -1,9 +1,56 @@
-from datetime import timedelta
-from SchedulerV000 import ceil_dt, floor_dt
+from datetime import timedelta, datetime
 import warnings
 
 C1 = 10 # Used for failure cost calculation in run-down scenario
 C2 = 30
+
+def ceil_dt(dt, delta):
+    ''' 
+    Ceil a data time dt according to the measurement delta.
+
+    Parameters
+    ----------
+    dt : datatime
+        Objective date time to ceil.
+    delta : timedelta
+        Measurement precision.
+
+    Returns
+    -------
+    Ceiled date time
+
+    '''
+    tempdelta = dt - datetime.min
+    if tempdelta % delta != 0:
+        return dt + (delta - (tempdelta % delta))
+    else:
+        return tempdelta
+    # q, r = divmod(dt - datetime.min, delta)
+    # return (datetime.min + (q+1)*delta) if r else dt
+
+
+def floor_dt(dt, delta):
+    ''' 
+    Floor a data time dt according to the measurement delta.
+
+    Parameters
+    ----------
+    dt : datatime
+        Objective date time to floor.
+    delta : timedelta
+        Measurement precision.
+
+    Returns
+    -------
+    Floored date time
+    '''
+    tempdelta = dt - datetime.min
+    if tempdelta % delta != 0:
+        return dt - (tempdelta % delta)
+    else:
+        return tempdelta
+    # q, r = divmod(dt - datetime.min, delta)
+    # return (datetime.min + (q)*delta) if r else dt
 
 class Schedule:
     def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict,
@@ -32,6 +79,7 @@ class Schedule:
             t_start = t_now
             
             unit1 = self.job_dict.get(item, -1)
+            
             
             #quantity = unit1['quantity'] # get job objective quantity
             
@@ -69,6 +117,8 @@ class Schedule:
                     if t_start > value[0] and t_end < value[1]:
                         t_end = t_end + (t_end - t_start)
             elif self.working_method == 'expected':
+                product_type = unit1['product'] # get job product type
+                unit2 = self.prc_dict.get(product_type)
                 if 'availability' in unit2:
                     t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
                 else:
@@ -377,12 +427,12 @@ class Schedule:
 
         for item1, item2 in zip(self.order[:-1], self.order[1:]):
             # find product made:
-            first_product = self.order[item1]['product']
-            second_product = self.order[item2]['product']
+            first_product = self.job_dict[item1]['product']
+            second_product = self.job_dict[item2]['product']
 
             try:
-                first_product_type = self.order[item1]['type']
-                second_product_type = self.order[item2]['type']
+                first_product_type = self.job_dict[item1]['type']
+                second_product_type = self.job_dict[item2]['type']
             except KeyError:
                 warnings.warn('No type found, continuing without conversion cost')
                 if detail:
@@ -443,6 +493,8 @@ class Schedule:
                     if t_start > value[0] and t_end < value[1]:
                         t_end = t_end + (t_end - t_start)
             if self.working_method == 'expected':
+                product_type = self.job_dict[item]['product'] # get job product type
+                unit2 = self.prc_dict.get(product_type, -1)
                 if 'availability' in unit2:
                     t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
                 else:
@@ -468,3 +520,34 @@ class Schedule:
 
             t_now = t_end
         return constraint_cost
+
+    def validate(self):
+        # validate time
+        time_dict = self.get_time()
+    #     print(time_dict)
+        flag = True
+        for key, value in time_dict.items():
+            due = self.job_dict[key]['before'] # due date of a job
+            if value[1] > due:
+                print("For candidate schedule:", self.order)
+                print("Job %d will finish at %s over the due date %s" % (key, value[1], due))
+                flag = False
+                break
+        return flag
+    #     # # validate precedence (DISABLED)
+    #     # ind = set(self.order)
+    #     # jobs = ind.copy()
+    # #     for item in ind:
+    # #         if item in precedence_dict:
+    # #             prec = set(precedence_dict[item])
+    # #             jobs.remove(item)
+    # # #             print("Item:", item)
+    # # #             print("Prec:", prec)
+    # # #             print("afters:", jobs)
+    # #             if not prec.isdisjoint(jobs): # prec set and remain jobs have intersections
+    # #                 flag = False
+    # #                 break                
+    # #         else:
+    # #             jobs.remove(item)
+                
+    #     return flag
