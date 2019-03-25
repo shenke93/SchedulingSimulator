@@ -28,7 +28,6 @@ def ceil_dt(dt, delta):
     # q, r = divmod(dt - datetime.min, delta)
     # return (datetime.min + (q+1)*delta) if r else dt
 
-
 def floor_dt(dt, delta):
     ''' 
     Floor a data time dt according to the measurement delta.
@@ -52,8 +51,9 @@ def floor_dt(dt, delta):
     # q, r = divmod(dt - datetime.min, delta)
     # return (datetime.min + (q)*delta) if r else dt
 
+
 class Schedule:
-    def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict,
+    def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict, failure_info, 
                  scenario, duration_str='duration', working_method='historical'):
         self.order = order
         self.start_time = start_time
@@ -62,6 +62,7 @@ class Schedule:
         self.prc_dict = prc_dict
         self.downdur_dict = downdur_dict
         self.price_dict = price_dict
+        self.failure_info = failure_info
         self.scenario = scenario
         self.duration_str = duration_str
         self.working_method = working_method
@@ -72,14 +73,10 @@ class Schedule:
         detailed_dict = {}
         t_now = self.start_time 
 
-        #print(duration_str)
-        #input()
-        
         for item in self.order:
             t_start = t_now
             
             unit1 = self.job_dict.get(item, -1)
-            
             
             #quantity = unit1['quantity'] # get job objective quantity
             
@@ -123,8 +120,14 @@ class Schedule:
                     t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
                 else:
                     raise NameError('Availability column not found, error')
-            
-            detailed_dict.update({item:[t_start, t_end, du, unit1['product'], unit1['type']]})
+            try:
+                detailed_dict.update({item : dict(zip(['start', 'end', 'duration', 'product', 'type'],
+                                                      [t_start, t_end, du, unit1['product'], unit1['type']])
+                                                 )
+                                      })
+            except:
+                import pdb; pdb.set_trace()
+                raise
             t_now = t_end
 
         return detailed_dict
@@ -159,7 +162,7 @@ class Schedule:
         else:
             failure_cost = 0
         t_now = self.start_time
-        if self.scenario == 1:
+        if self.scenario == 1: # based on quantity and unit cost
             for item in self.order:
                 t_start = t_now
                 unit1 = self.job_dict.get(item, -1)
@@ -177,24 +180,18 @@ class Schedule:
                 
                 if self.duration_str == 'duration':
                     du = unit1['duration']
-                if self.duration_str == 'quantity':
+                elif self.duration_str == 'quantity':
                     try:
                         du = quantity / unit2['targetproduction'] # get job duration
                     except:
                         print('Error calculating duration:', du)
                         raise
-                #print("Jobdict:", unit1)
-                #print("Product characteristics:", unit2)
-                #print("Duration:", du)
-                uc = unit2[0] # get job raw material unit price
-                
-                
-        #         print("t_o:", t_o)
+
+                uc = unit2['unitprice'] # get job raw material unit price
 
                 if self.working_method == 'historical':
                     t_o = t_start + timedelta(hours=du) # Without downtime duration
                     t_end = t_o
-
                     #print(down_duration_dict)
                     
                     for key, value in self.downdur_dict.items():
@@ -212,6 +209,7 @@ class Schedule:
                             t_end = t_end + (t_end - t_start)
                         else:
                             break
+                
                 elif self.working_method == 'expected':
                     if 'availability' in unit2:
                         t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
@@ -229,24 +227,24 @@ class Schedule:
         #         if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
         #             raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
                 
-                tmp = (1 - self.failure_dict.get(t_sd, 0)) * (1 - self.failure_dict.get(t_ed, 0))
                 step = timedelta(hours=1)
+                tmp = self.failure_dict.get(t_sd, 0)*((t_su - t_start)/step) + self.failure_dict.get(t_ed, 0)*((t_end - t_ed)/step)
+
                 while t_su < t_ed:
                     if self.failure_dict.get(t_su, -1) == -1:
                         raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
-                    tmp *= (1 - self.failure_dict.get(t_su, 0)) 
+                    tmp += self.failure_dict.get(t_su, 0)
                     t_su += step
         #         
         #         if product_related_characteristics_dict.get(product_type, -1) == -1:
         #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
                 if detail:
-                    failure_cost.append((1-tmp) * quantity * uc)
+                    failure_cost.append(tmp * quantity * uc)
                 else:
-                    failure_cost += (1-tmp) * quantity * uc 
+                    failure_cost += tmp * quantity * uc
                 t_now = t_end
         
-        
-        if self.scenario == 2:
+        if self.scenario == 2: # based on two costs (fixed and variable cost C1 and C2)
             for item in self.order:
                 fc_temp = 0
                 t_start = t_now
@@ -254,8 +252,8 @@ class Schedule:
                 if unit1 == -1:
                     raise ValueError("No matching item in job dict: ", item)
             
-                product_type = unit1['type']    # get job product type
-                quantity = unit1['quant']  # get job quantity
+                product_type = unit1['product']  # get job product type
+                
                 
         #         if du <= 1: # safe period of 1 hour (no failure cost)
         #             continue;
@@ -266,6 +264,7 @@ class Schedule:
                 if self.duration_str == 'duration':
                     du = unit1['duration']
                 if self.duration_str == 'quantity':
+                    quantity = unit1['quantity']  # get job quantity
                     du = quantity / unit2['targetproduction'] # get job duration
                 
         #        du = quantity / unit2[2] # get job duration
@@ -297,6 +296,7 @@ class Schedule:
                 elif self.working_method == 'expected':
                     if 'availability' in unit2:
                         t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
+                        fc_temp += C2 * ((timedelta(hours = float(du)) * (1 / float(unit2['availability']) - 1)) / timedelta(hours=1))
                     else:
                         raise NameError('Availability column not found, error')
                 
@@ -332,10 +332,14 @@ class Schedule:
         -------
         The energy cost of an individual.
         '''
+        #import pdb; pdb.set_trace()
         if detail:
             energy_cost = []
         else:
             energy_cost = 0
+
+
+        
         t_now = self.start_time # current timestamp
         i = 0
         for item in self.order:
@@ -465,60 +469,24 @@ class Schedule:
             constraint_cost = 0
         t_now = self.start_time
 
-        for item in self.order:
-            t_start = t_now
-
-            #duration = job_info_dict[item]['duration']
-
-            if self.duration_str == 'duration':
-                du = self.job_dict[item]['duration']
-            if self.duration_str == 'quantity':
-                quantity = self.job_dict[item]['quantity']
-                product_type = self.job_dict[item]['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type, -1)
-                du = quantity / unit2['targetproduction'] # get job duration
-
-            if self.working_method == 'historical':
-                t_end = t_start + timedelta(hours=du) # Without downtime duration
-                for key, value in self.downdur_dict.items():
-                    # Add the total downtimeduration
-                    if t_end < value[0]:
-                        continue
-                    if t_start > value[1]:
-                        continue
-                    if t_start < value[0] < t_end:
-                        t_end = t_end + (value[1]-value[0])
-                    if t_start > value[0] and t_end > value[1]:
-                        t_end = t_end + (value[1] - t_start)
-                    if t_start > value[0] and t_end < value[1]:
-                        t_end = t_end + (t_end - t_start)
-            if self.working_method == 'expected':
-                product_type = self.job_dict[item]['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type, -1)
-                if 'availability' in unit2:
-                    t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
-                else:
-                    raise NameError('Availability column not found, error')
-
+        for item in self.time_dict:
             deadline_cost = 0
             if 'before' in self.job_dict[item]: # assume not all jobs have deadlines
                 # check deadline condition
                 beforedate = self.job_dict[item]['before']
-                if t_end > beforedate: # did not get deadline
-                    deadline_cost = (t_end-beforedate).total_seconds() / 3600
+                if self.time_dict[item]['end'] > beforedate: # did not get deadline
+                    deadline_cost = (self.time_dict[item]['end'] - beforedate).total_seconds() / 3600
 
             if 'after' in self.job_dict[item]: # assume not all jobs have deadlines
                 # check after condition
                 afterdate = self.job_dict[item]['after']
-                if t_end < afterdate: # produced before deadline
-                    deadline_cost = (afterdate - t_end).total_seconds() / 3600
+                if self.time_dict[item]['end'] < afterdate: # produced before deadline
+                    deadline_cost = (afterdate - self.time_dict[item]['end']).total_seconds() / 3600
 
             if detail:
                 constraint_cost.append(deadline_cost)
             elif deadline_cost > 0:
                 constraint_cost += deadline_cost
-
-            t_now = t_end
         return constraint_cost
 
     def validate(self):

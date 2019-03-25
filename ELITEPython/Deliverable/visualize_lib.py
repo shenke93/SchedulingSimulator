@@ -28,7 +28,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     import warnings
 
     first_index = df_task.index[0]
-    print(first_index)
+    #print(first_index)
     firstdate = df_task.loc[first_index, startdate].floor('D')
     #warnings.filterwarnings("ignore")
     with warnings.catch_warnings():
@@ -82,7 +82,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
 
     lines = []
     import matplotlib.lines as mlines
-    import matplotlib.patches as mpatches
+    #import matplotlib.patches as mpatches
     for item in color_dict:
         line = mlines.Line2D([],[], color=color_dict[item], label=item, linewidth=8, solid_capstyle='butt')
         lines.append(line)

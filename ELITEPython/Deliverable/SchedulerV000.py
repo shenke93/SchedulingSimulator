@@ -162,7 +162,7 @@ def read_product_related_characteristics(productFile):
         with open(productFile, encoding='utf-8') as jobInfo_csv:
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
-                job_entry = dict(zip(['product', 'power', 'targetproduction'],
+                job_entry = dict(zip(['unitprice', 'power', 'targetproduction'],
                 [round(float(row['UnitPrice']),3), float(row['Power']), float(row['TargetProductionRate'])]))
                 product_related_characteristics_dict.update({row['Product']: job_entry})
                 if 'Type' in row:
@@ -281,6 +281,7 @@ def read_jobs(jobFile, get_totaltime=False):
                     job_entry['duration'] = float(row[str_time])
                 if ('Quantity' in row) and row['Quantity'] is not None:
                     job_entry['quantity'] = float(row['Quantity'])
+                    input()
                 
                 if ('Start' in row) and row['Start'] is not None:
                     job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
@@ -373,7 +374,7 @@ def hamming_distance(s1, s2):
 
 
 class Scheduler(object):
-    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
                   start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method):
         # Attributes assignment
         self.dna_size = len(job_dict)
@@ -383,6 +384,7 @@ class Scheduler(object):
         self.failure_dict = failure_dict
         self.product_related_characteristics_dict = product_related_characteristics_dict
         self.down_duration_dict = down_duration_dict
+        self.failure_info = failure_info
         # TODO: replace with input data from precedence file
         self.precedence_dict = {}
         self.start_time = start_time
@@ -432,9 +434,9 @@ class Scheduler(object):
  
 class BF(Scheduler):
     def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
-                  start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method):
+                  start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method, failure_info):
         # Attributes assignment
-        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
                 start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method)
 
     
@@ -451,7 +453,11 @@ class BF(Scheduler):
         i = 0
         while i < totallen:
             test = next(allperm)
-            tot_cost = self.get_fitness([test])[0]
+            tot_cost = self.get_fitness([Schedule(test, 
+                                        self.start_time, self.job_dict, self.failure_dict, 
+                                        self.product_related_characteristics_dict,
+                                        self.down_duration_dict, self.price_dict, self.failure_info,
+                                        self.scenario, self.duration_str, self.working_method)])[0]
             if tot_cost < tot_cost_min:
                 tot_cost_min = tot_cost
                 best_sched = test
@@ -461,11 +467,12 @@ class BF(Scheduler):
             i += 1
             print(str(i) + '/' + str(totallen) + '\t {:}'.format(tot_cost_min), end='\r')
             if msvcrt.kbhit() == True:
-                char = msvcrt.getche()
+                char = msvcrt.getch()
                 if char in [b'c', b'q']:
                     print('User hit c or q button, exiting...')
                     break
         print('\n')
+
         return tot_cost_min, tot_cost_max, best_sched, worst_sched
 
                 
@@ -474,9 +481,9 @@ class GA(Scheduler):
                  product_related_characteristics_dict, down_duration_dict, start_time, weight1, weight2, weightc, 
                  weightb, scenario,
                  num_mutations= 1, duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False,
-                 working_method='historical'):
+                 working_method='historical', failure_info=None):
         # Attributes assignment
-        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
                 start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method)
         self.dna_size = dna_size 
         self.cross_rate = cross_rate
@@ -486,6 +493,7 @@ class GA(Scheduler):
         self.evolution_method = evolution_method
         self.validation = validation
         self.pre_selection = pre_selection
+        self.failure_info = failure_info
         # generate N random individuals (N = pop_size)
         # BETTER METHOD: FUTURE WORK
         # Add functionality: first due date first TODO:
@@ -495,7 +503,7 @@ class GA(Scheduler):
             self.pop = np.array([Schedule(pop, 
                                  self.start_time, self.job_dict, self.failure_dict, 
                                  self.product_related_characteristics_dict,
-                                 self.down_duration_dict, self.price_dict,
+                                 self.down_duration_dict, self.price_dict, self.failure_info,
                                  self.scenario, self.duration_str, self.working_method)
                                  for _ in range(pop_size)])
             #self.pop = np.vstack(pop for _ in range(pop_size))
@@ -503,7 +511,7 @@ class GA(Scheduler):
             self.pop = np.array([Schedule(np.random.choice(pop, size=self.dna_size, replace=False), 
                                  self.start_time, self.job_dict, self.failure_dict, 
                                  self.product_related_characteristics_dict,
-                                 self.down_duration_dict, self.price_dict,
+                                 self.down_duration_dict, self.price_dict, self.failure_info,
                                  self.scenario, self.duration_str, self.working_method)
                                  for _ in range(pop_size)])
             #self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
@@ -607,7 +615,7 @@ class GA(Scheduler):
                     if evolution == 'roulette':
                         detailed_fitness = self.get_fitness([Schedule(loser, self.start_time, self.job_dict, self.failure_dict, 
                                                                       self.product_related_characteristics_dict,
-                                                                      self.down_duration_dict, self.price_dict, 
+                                                                      self.down_duration_dict, self.price_dict, self.failure_info,
                                                                       self.scenario, self.duration_str, self.working_method)], detail=True)[0]
                         #print(detailed_fitness)
                         mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
@@ -630,45 +638,11 @@ class GA(Scheduler):
                         #self.pop[sub_pop_idx] = winner_loser
                         #i = i + 1 # End of an evolution procedure
                         flag = 1
-            
-    #             print('Winner_loser after crossover and mutate: ', winner_loser)
-    #             print('Winner', winner_loser[0])
-    #             print('Loser', winner_loser[1])
-    #             print('Origin2:', origin)
-                
-    #             print(hamming_distance(origin, winner_loser[1]))
-                # Distance evaluation:
-                #if hamming_distance(origin, loser) > (self.dna_size / 5):
-                # Memory search：
-                # child = loser
-                    
-    #             print("Child:", child)           
-    #             print("Current memory:", self.memory)    
-            
-                #flag = 0 # 0 means the new generated child is not in the memory  
-                # for item in self.memory:
-                #     if (item == child).any():
-                #         #print('In memory')
-                #         flag = 1
-                #for item in self.pop:
-                #    if (item == child).any():
-                #        flag = 1
-                #        break
 
                 loser = Schedule(loser, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict,
-                                 self.down_duration_dict, self.price_dict, self.scenario, self.duration_str, self.working_method)
+                                 self.down_duration_dict, self.price_dict, self.failure_info, self.scenario, self.duration_str, self.working_method)
 
                 if flag == 0:
-                    #print("Not in memory!")
-                    # if (len(self.memory) >= self.pop_size*2):
-                    #     self.memory.pop()
-                    # self.memory.append(loser)
-
-                    #logging.info(self.get_fitness(self.pop))
-            
-                    #self.pop[sorted_sub_pop_idx][0] = winner
-                    #print('\nsubpop', winner_loser)
-                    #time.sleep(0.1)
                     if evolution == 'roulette':
                         split_half = int(self.pop_size // 2)
                         bottomlist = list(range(split_half, self.pop_size))
@@ -690,53 +664,45 @@ class GA(Scheduler):
                 #else:
                     #print("Distance too small, start genetic operation again!")
                 #    pass
-                
-#         space = [get_energy_cost(i, self.start_time, self.job_dict, self.price_dict) for i in self.pop]
-        
-        # if self.w1:
-        #     failure_cost_space = [self.w1 * get_failure_cost(i, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict, self.down_duration_dict, self.scenario) for i in self.pop]
-        # else:
-        #     failure_cost_space = [self.w1 for i in self.pop]
-        # if self.w2:
-        #     energy_cost_space = [self.w2 * get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict) for i in self.pop]
-        # else: 
-        #     energy_cost_space = [self.w2 for i in self.pop]
-        # if self.wc:
-        #     energy_cost_space = [self.wc * get_conversion_cost(i, self.job_dict, self.product_related_characteristics_dict) for i in self.pop]
-        # else: 
-        #     energy_cost_space = [self.wc for i in self.pop]
 
         if evolution != 'roulette':
             fitness = self.get_fitness(self.pop)
-        
-#         print(self.start_time)
-#         print(self.pop)
-#         print(space)
-#         print("failure_cost_space:", failure_cost_space)
-#         print("energy_cost_space:", energy_cost_space)
 
         return self.pop, fitness
 
 
 def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
            scenario, weight_failure=1, weight_conversion=1, weight_constraint=1, weight_energy=1, duration_str='duration', 
-           working_method='historical'):
+           working_method='historical', failure_info=None):
     # Generate raw material unit price
-    try:
-        down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
-        failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
-        hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
-
-        with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-            writer = csv.writer(csv_file)
-            for key, value in hourly_failure_dict.items():
-                writer.writerow([key, value])
-    except:
-        warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
-        weight_failure = 0
-        down_duration_dict = {}
-        failure_list = []
+    if working_method == 'historical':
+        try:
+            down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
+            #print('test')
+            if weight_failure != 0:
+                if (failure_file is not None):
+                    failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
+                    print(weight_failure)
+                    hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
+                    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+                        writer = csv.writer(csv_file)
+                        for key, value in hourly_failure_dict.items():
+                            writer.writerow([key, value])
+                    failure_info = None
+                elif (failure_info is not None):
+                    hourly_failure_dict = {}
+                else:
+                    raise ValueError('No failure info found!')
+            else:
+                hourly_failure_dict = {}
+                failure_info = None
+        except:
+            warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
+            failure_downtimes = True
+    if (working_method != 'historical') or failure_downtimes:
+        warnings.warn('No import of downtime durations.')
         hourly_failure_dict = {}
+        down_duration_dict = {}
 
 #     print("down_duration_dict: ", down_duration_dict)
 #     print("hourly_failure_dict: ", hourly_failure_dict)
@@ -775,14 +741,38 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
     bf = BF(job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
         product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
         start_time=first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, weightb=weight_constraint, 
-        scenario=scenario, working_method='historical', duration_str=duration_str)
+        scenario=scenario, working_method=working_method, duration_str=duration_str, failure_info=failure_info)
     
     best_result, worst_result, best_schedule, worst_schedule = bf.check_all()
 
-    best_result_dict = visualize(best_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, 
-                                 down_duration_dict, hourly_failure_dict, energy_on=True, failure_on=True, duration_str=duration_str, working_method=working_method)
-    worst_result_dict = visualize(worst_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, 
-                                  down_duration_dict, hourly_failure_dict, energy_on=True, failure_on=True, duration_str=duration_str, working_method=working_method)
+    best_schedule = Schedule(best_schedule, first_start_time, job_dict_new, hourly_failure_dict, product_related_characteristics_dict,
+                             down_duration_dict, price_dict_new, failure_info, scenario, duration_str, working_method)
+
+    total_cost = bf.get_fitness([best_schedule], split_types=True)
+    total_cost = list(itertools.chain(*total_cost))
+
+    print("Best failure cost:", total_cost[0])
+    print("Best energy cost:", total_cost[1])
+    print("Best conversion cost:", total_cost[2])
+    print("Best deadline cost", total_cost[3])
+    print("Best total cost:", sum(total_cost))
+    
+
+    worst_schedule = Schedule(worst_schedule, first_start_time, job_dict_new, hourly_failure_dict, product_related_characteristics_dict,
+                              down_duration_dict, price_dict_new, failure_info, scenario, duration_str, working_method)
+
+    total_cost = bf.get_fitness([worst_schedule], split_types=True)
+    total_cost = list(itertools.chain(*total_cost))
+
+    print()
+    print("Worst failure cost:", total_cost[0])
+    print("Worst energy cost:", total_cost[1])
+    print("Worst conversion cost:", total_cost[2])
+    print("Worst deadline cost", total_cost[3])
+    print("Worst total cost:", sum(total_cost))
+
+    best_result_dict = best_schedule.get_time()
+    worst_result_dict = worst_schedule.get_time()
 
     return best_result, worst_result, best_result_dict, worst_result_dict
 
@@ -790,7 +780,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
-            duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='historical'):
+            duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None):
     print('Using', working_method, 'method')
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)
@@ -801,24 +791,29 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
             #print('test')
             if weight_failure != 0:
-                failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
-                print(weight_failure)
-                hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
-                with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-                    writer = csv.writer(csv_file)
-                    for key, value in hourly_failure_dict.items():
-                        writer.writerow([key, value])
+                if (failure_file is not None):
+                    failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
+                    print(weight_failure)
+                    hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
+                    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+                        writer = csv.writer(csv_file)
+                        for key, value in hourly_failure_dict.items():
+                            writer.writerow([key, value])
+                    failure_info = None
+                elif (failure_info is not None):
+                    hourly_failure_dict = {}
+                else:
+                    raise ValueError('no failure info found!')
             else:
-                failure_list = []
-                hourly_failure_dict = {}                
+                hourly_failure_dict = {}
+                failure_info = None
         except:
             warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
             failure_downtimes = True
     if (working_method != 'historical') or failure_downtimes:
         warnings.warn('No import of downtime durations.')
-        weight_failure = 0
+        #weight_failure = 0
         down_duration_dict = {}
-        failure_list = []
         hourly_failure_dict = {}
 
 #     print("down_duration_dict: ", down_duration_dict)
@@ -836,15 +831,6 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         job_dict_new = read_jobs(job_file)
     else:
         raise NameError('No start time found!')
-
-    # TODO: change
-#     print("failure_dict", failure_dict)
-#     exit()
-#     # write corresponding failure dict into file
-#     with open('ga_013_failure_plot.csv', 'w', newline='\n') as csv_file:
-#         writer = csv.writer(csv_file)
-#         for key, value in failure_dict_new.items():
-#             writer.writerow([key, value])
 
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]
@@ -866,29 +852,6 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
         except:
             first_start_time = start_time
-    
-#     print("Waiting jobs: ", waiting_jobs)
-#     print("Prices: ", price_dict_new)
-#     print("Failures: ", failure_dict_new)
-
-    # result_dict = {}
-    # original_schedule = waiting_jobs  
-    # total_result = 0
-    # if weight_energy:
-    #     total_result += weight_energy * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
-    # if weight_failure:
-    #     total_result += weight_failure * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-    #                                     product_related_characteristics_dict, down_duration_dict, scenario)
-    # if weight_conversion:
-    #     total_result += weight_conversion * get_conversion_cost(original_schedule, job_dict_new, product_related_characteristics_dict)
-    # if weight_before:
-    #     total_result += weight_before * get_before_cost(original_schedule, first_start_time, job_dict_new)
-    # result_dict.update({0: total_result}) # generation 0 is the original schedule
-
-    #import pdb; pdb.set_trace()
-
-    # Remove the downtimes from the job dict (the product is not produced during this period)
-    #job_dict_new = remove_downtimes(job_dict_new)
 
     
 #     exit()
@@ -898,13 +861,13 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 
             weightb = weight_constraint, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,
-            pre_selection=pre_selection, working_method=working_method)
+            pre_selection=pre_selection, working_method=working_method, failure_info=failure_info)
 
     result_dict = {}
     #original_schedule = waiting_jobs
     #print(original_schedule)
     original_schedule = Schedule(waiting_jobs, first_start_time, job_dict_new, hourly_failure_dict,
-                                 product_related_characteristics_dict, down_duration_dict, price_dict_new, scenario, duration_str, working_method)
+                                 product_related_characteristics_dict, down_duration_dict, price_dict_new, failure_info, scenario, duration_str, working_method)
     total_result = ga.get_fitness([original_schedule])
     result_dict.update({0: total_result})
 
@@ -1031,12 +994,12 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     with open('executionRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict.items():
-            writer.writerow([key, value[0], value[1], value[2]])
+            writer.writerow([key, value['start'], value['end'], value['duration']])
             
     with open('originalRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict_origin.items():
-            writer.writerow([key, value[0], value[1], value[2]])
+            writer.writerow([key, value['start'], value['end'], value['duration']])
             
     with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)

@@ -31,7 +31,7 @@ def make_df(dict):
         all_cols = all_cols[0:len(item)]
         df = pd.DataFrame.from_dict(dict, orient='index')
         df.columns = all_cols
-        #df['ReasonId'] = 100
+        df = df.reindex(list(dict.keys()))
         return df
 
 class writer :
@@ -50,7 +50,7 @@ def main():
         
         # Taking config file path from the user.
         configParser = configparser.RawConfigParser()   
-        configFilePath = 'config.ini'
+        configFilePath = 'config_test.ini'
         configParser.read(configFilePath)
         
         # Read input-config
@@ -59,7 +59,43 @@ def main():
         energy_price_file = os.path.join(original_folder, configParser.get('input-config', 'energy_price_file'))
         historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
         job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
-        failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
+        if configParser.has_option('input-config', 'failure_info_file'):
+                failure_info_file = os.path.join(original_folder, configParser.get('input-config', 'failure_info_file'))
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(failure_info_file)
+                root = tree.getroot()
+                fail_type = root.find('fail_dist').text
+                if fail_type == "weibull":
+                        lamb = float(root.find('fail_dist').get('lambda'))
+                        rho = float(root.find('fail_dist').get('rho'))
+
+                        from probdist import Weibull
+                        fail_dist = Weibull(lamb, rho)
+                elif fail_type == "exp":
+                        lamb = float(root.find('fail_dist').get('lambda'))
+                        from probdist import Exponential
+                        fail_dist = Exponential(1/lamb)
+                else:
+                        print('Faulty distribution detected!')
+                repair_type = root.find('repair_dist').text
+                if repair_type == 'lognormal':
+                        sigma = float(root.find('repair_dist').get('sigma'))
+                        mu = float(root.find('repair_dist').get('mu'))
+                        from probdist import Lognormal
+                        rep_dist = Lognormal(sigma, mu)
+                        mean = float(root.find('repair_dist').get('mean'))
+                else:
+                        print('Faulty distribution detected!')
+                maint_time = int(root.find('maintenance_time').text)
+                repair_time = float(root.find('repair_time').text)
+                failure_rate_file = None
+                failure_info = (fail_dist, rep_dist, mean, maint_time, repair_time)
+        else:
+                try:
+                        failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
+                        failure_info = None
+                except:
+                        pass
         
         # Read output-config
         export_folder = os.getcwd() + configParser.get('output-config', 'export_folder') + strftime("%Y%m%d_%H%M", localtime())
@@ -75,10 +111,10 @@ def main():
         validation = configParser.getboolean('scenario-config', 'validation')
         pre_selection = configParser.getboolean('scenario-config', 'pre_selection')
         
-        weight_energy = configParser.getint('scenario-config', 'weight_energy')
-        weight_constraint = configParser.getint('scenario-config', 'weight_constraint')
-        weight_failure = configParser.getint('scenario-config', 'weight_failure')
-        weight_conversion = configParser.getint('scenario-config', 'weight_conversion')
+        weight_energy = configParser.getfloat('scenario-config', 'weight_energy')
+        weight_constraint = configParser.getfloat('scenario-config', 'weight_constraint')
+        weight_failure = configParser.getfloat('scenario-config', 'weight_failure')
+        weight_conversion = configParser.getfloat('scenario-config', 'weight_conversion')
         
         pop_size = configParser.getint('scenario-config', 'pop_size')
         crossover_rate = configParser.getfloat('scenario-config', 'crossover_rate')
@@ -132,7 +168,7 @@ def main():
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_constraint=weight_constraint, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
                                                         weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
-                                                        pre_selection=pre_selection, working_method=working_method)
+                                                        pre_selection=pre_selection, working_method=working_method, failure_info=failure_info)
                         print('Execution finished.')
                         print('Number of generations was', gen)
                         # print('Start visualization')
@@ -183,6 +219,7 @@ def main():
                                                                                 working_method=working_method)
                         timer1 = time.monotonic()
                         elapsed_time = timer1-timer0
+                        print()
                         print('Elapsed time: {:.2f} s'.format(elapsed_time))
 
                         print('Execution finished.')
