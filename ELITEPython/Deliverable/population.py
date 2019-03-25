@@ -101,18 +101,23 @@ class Schedule:
             
                 for key, value in self.downdur_dict.items():
                     # DowntimeDuration already added
-        
+                    t_down = 0
                     if t_end < value[0]:
                         continue
                     if t_start > value[1]:
                         continue
                     if t_start < value[0] < t_end:
-                        t_end = t_end + (value[1]-value[0])
+                        t_down = value[1] - value[0]
+                        t_end = t_end + t_down
         #                 print("Line 429, t_end:", t_end)
                     if t_start > value[0] and t_end > value[1]:
-                        t_end = t_end + (value[1] - t_start)
+                        t_down = value[1] - t_start
+                        t_end = t_end + t_down
                     if t_start > value[0] and t_end < value[1]:
-                        t_end = t_end + (t_end - t_start)
+                        t_down = t_end - t_start
+                        t_end = t_end + t_down
+
+            
             elif self.working_method == 'expected':
                 product_type = unit1['product'] # get job product type
                 unit2 = self.prc_dict.get(product_type)
@@ -162,150 +167,227 @@ class Schedule:
         else:
             failure_cost = 0
         t_now = self.start_time
-        if self.scenario == 1: # based on quantity and unit cost
-            for item in self.order:
-                t_start = t_now
-                unit1 = self.job_dict.get(item, -1)
-                if unit1 == -1:
-                    raise ValueError("No matching item in job dict: ", item)
-            
-                product_type = unit1['product']    # get job product type
-                quantity = unit1['quantity']  # get job quantity
-                
-        #         if du <= 1: # safe period of 1 hour (no failure cost)
-        #             continue;
-                unit2 = self.prc_dict.get(product_type, -1)
-                if unit2 == -1:
-                    raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-                
-                if self.duration_str == 'duration':
-                    du = unit1['duration']
-                elif self.duration_str == 'quantity':
-                    try:
-                        du = quantity / unit2['targetproduction'] # get job duration
-                    except:
-                        print('Error calculating duration:', du)
-                        raise
 
-                uc = unit2['unitprice'] # get job raw material unit price
+        # two tables: one with the job times and one with the failure times
 
-                if self.working_method == 'historical':
-                    t_o = t_start + timedelta(hours=du) # Without downtime duration
-                    t_end = t_o
-                    #print(down_duration_dict)
-                    
-                    for key, value in self.downdur_dict.items():
-                        # DowntimeDuration already added
-                        if t_end < value[0]:
-                            continue
-                        if t_start > value[1]:
-                            continue
-                        if t_start < value[0] < t_end:
-                            t_end = t_end + (value[1]-value[0])
-            #                 print("Line 429, t_end:", t_end)
-                        if t_start > value[0] and t_end > value[1]:
-                            t_end = t_end + (value[1] - t_start)
-                        if t_start > value[0] and t_end < value[1]:
-                            t_end = t_end + (t_end - t_start)
-                        else:
-                            break
-                
-                elif self.working_method == 'expected':
-                    if 'availability' in unit2:
-                        t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
+        time_dict = self.time_dict
+
+        if self.working_method == 'historical':
+            downdur_dict = self.downdur_dict
+            for item in time_dict:
+                startdate = time_dict[item]['start']
+                enddate = time_dict[item]['end']
+                product_type = time_dict[item]['product']
+                if self.scenario == 1:
+                    prc = self.prc_dict.get(product_type, -1)
+                    prc_up = prc['unitprice']
+                    prc_tpr = prc['targetproduction']
+                    downdur_select = {key: value for key, value in downdur_dict.items() 
+                                                                        if (startdate < value[0] < enddate)
+                                                                        and (startdate < value[1] < enddate) 
+                                    }
+                    if len(downdur_select) > 0:
+                        loss = len(downdur_select) * prc_up * prc_tpr / 6
+                        sum_len = 0
+                        for item in downdur_select:
+                            sum_len += downdur_select[item][2]
+                        extra_loss = loss + sum_len * prc_up * prc_tpr
                     else:
-                        raise NameError('Availability column not found, error')
-                
-        #         t_start = t_start+timedelta(hours=1) # exclude safe period, find start of sensitive period
-        #         t_end = t_start + timedelta(hours=(du-1)) # end of sensitive period
-
-                t_su = ceil_dt(t_start, timedelta(hours=1)) #    t_start right border
-                t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
-                t_sd = floor_dt(t_start, timedelta(hours=1))  #    t_start left border
-                
-            
-        #         if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
-        #             raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
-                
-                step = timedelta(hours=1)
-                tmp = self.failure_dict.get(t_sd, 0)*((t_su - t_start)/step) + self.failure_dict.get(t_ed, 0)*((t_end - t_ed)/step)
-
-                while t_su < t_ed:
-                    if self.failure_dict.get(t_su, -1) == -1:
-                        raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
-                    tmp += self.failure_dict.get(t_su, 0)
-                    t_su += step
-        #         
-        #         if product_related_characteristics_dict.get(product_type, -1) == -1:
-        #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+                        extra_loss = 0
+                if self.scenario == 2:
+                    downdur_select = {key: value for key, value in downdur_dict.items() 
+                                                                        if (startdate < value[0] < enddate)
+                                                                        and (startdate < value[1] < enddate) 
+                                    }
+                    if len(downdur_select) > 0:
+                        loss = len(downdur_select) * C1
+                        sum_len = 0
+                        for item in downdur_select:
+                            sum_len += downdur_select[item][2]
+                        extra_loss = loss + sum_len * C2
+                    else:
+                        extra_loss = 0
                 if detail:
-                    failure_cost.append(tmp * quantity * uc)
+                    failure_cost.append(extra_loss)
                 else:
-                    failure_cost += tmp * quantity * uc
-                t_now = t_end
+                    failure_cost += extra_loss
+                  
         
-        if self.scenario == 2: # based on two costs (fixed and variable cost C1 and C2)
-            for item in self.order:
-                fc_temp = 0
-                t_start = t_now
-                unit1 = self.job_dict.get(item, -1)
-                if unit1 == -1:
-                    raise ValueError("No matching item in job dict: ", item)
-            
-                product_type = unit1['product']  # get job product type
-                
-                
-        #         if du <= 1: # safe period of 1 hour (no failure cost)
-        #             continue;
-                unit2 = self.prc_dict.get(product_type, -1)
-                if unit2 == -1:
-                    raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
-
-                if self.duration_str == 'duration':
-                    du = unit1['duration']
-                if self.duration_str == 'quantity':
-                    quantity = unit1['quantity']  # get job quantity
-                    du = quantity / unit2['targetproduction'] # get job duration
-                
-        #        du = quantity / unit2[2] # get job duration
-        #         print("Duration:", du)
-        #         uc = unit2[0] # get job raw material unit price
-                
-                if self.working_method == 'historical':
-                    t_o = t_start + timedelta(hours=du) # Without downtime duration
-                    #print("t_o:", t_o)
-                    t_end = t_o
-                    for key, value in self.downdur_dict.items():
-                        # DowntimeDuration already added
-                        if t_end < value[0]:
-                            continue
-                        if t_start > value[1]:
-                            continue
-                        if t_start < value[0] < t_end:
-                            t_end = t_end + (value[1]-value[0])
-                            fc_temp += C1 + (value[1] - value[0]) / timedelta(hours=1) * C2
-                            # print("Line 429, t_end:", t_end)
-                        if t_start > value[0] and t_end > value[1]:
-                            t_end = t_end + (value[1] - t_start)
-                            fc_temp += C1 + (value[1] - t_start) / timedelta(hours=1) * C2
-                        if t_start > value[0] and t_end < value[1]:
-                            t_end = t_end + (t_end - t_start)
-                            fc_temp += C1 + (t_end- t_start) / timedelta(hours=1) * C2
-                        else:
-                            break
-                elif self.working_method == 'expected':
-                    if 'availability' in unit2:
-                        t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
-                        fc_temp += C2 * ((timedelta(hours = float(du)) * (1 / float(unit2['availability']) - 1)) / timedelta(hours=1))
-                    else:
-                        raise NameError('Availability column not found, error')
-                
-                t_now = t_end
+        if self.working_method == 'expected':
+            for item in time_dict:
+                #print(time_dict[item])
+                product_type = time_dict[item]['product']
+                prc = self.prc_dict.get(product_type, -1)
+                prc_av = prc['availability']
+                duration = time_dict[item]['duration']
+                if self.scenario == 1: # using unit cost and production rate
+                    prc_up = prc['unitprice']
+                    prc_tpr = prc['targetproduction']
+                    extra_loss = duration * (1/prc_av - 1) * prc_up * prc_tpr
+                    try:
+                        mean_length_downtime = prc['dt_len']
+                        extra_loss += duration * (1/prc_av - 1) / mean_length_downtime * prc_up * prc_tpr / 6
+                    except:
+                        pass
+                if self.scenario == 2: # using fixed cost C1 and variable cost C2
+                    extra_loss = duration * (1/prc_av - 1) * C2
+                    try:
+                        mean_length_downtime = prc['dt_len']
+                        extra_loss += duration * (1/prc_av - 1) / mean_length_downtime * C1
+                    except:
+                        pass
                 if detail:
-                    failure_cost.append(fc_temp)
+                    failure_cost.append(extra_loss)
                 else:
-                    failure_cost += fc_temp  
+                    failure_cost += extra_loss
+
         return failure_cost
+
+        # if self.scenario == 1: # based on quantity and unit cost
+        #     for item in self.order:
+        #         t_start = t_now
+        #         unit1 = self.job_dict.get(item, -1)
+        #         if unit1 == -1:
+        #             raise ValueError("No matching item in job dict: ", item)
+            
+        #         product_type = unit1['product']    # get job product type
+        #         quantity = unit1['quantity']  # get job quantity
+                
+        # #         if du <= 1: # safe period of 1 hour (no failure cost)
+        # #             continue;
+        #         unit2 = self.prc_dict.get(product_type, -1)
+        #         if unit2 == -1:
+        #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+                
+        #         if self.duration_str == 'duration':
+        #             du = unit1['duration']
+        #         elif self.duration_str == 'quantity':
+        #             try:
+        #                 du = quantity / unit2['targetproduction'] # get job duration
+        #             except:
+        #                 print('Error calculating duration:', du)
+        #                 raise
+
+        #         uc = unit2['unitprice'] # get job raw material unit price
+
+        #         if self.working_method == 'historical':
+        #             t_o = t_start + timedelta(hours=du) # Without downtime duration
+        #             t_end = t_o
+        #             #print(down_duration_dict)
+                    
+        #             for key, value in self.downdur_dict.items():
+        #                 # DowntimeDuration already added
+        #                 if t_end < value[0]:
+        #                     continue
+        #                 if t_start > value[1]:
+        #                     continue
+        #                 if t_start < value[0] < t_end:
+        #                     t_end = t_end + (value[1]-value[0])
+        #     #                 print("Line 429, t_end:", t_end)
+        #                 if t_start > value[0] and t_end > value[1]:
+        #                     t_end = t_end + (value[1] - t_start)
+        #                 if t_start > value[0] and t_end < value[1]:
+        #                     t_end = t_end + (t_end - t_start)
+        #                 else:
+        #                     break
+                
+        #         elif self.working_method == 'expected':
+        #             if 'availability' in unit2:
+        #                 t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
+        #             else:
+        #                 raise NameError('Availability column not found, error')
+                
+        # #         t_start = t_start+timedelta(hours=1) # exclude safe period, find start of sensitive period
+        # #         t_end = t_start + timedelta(hours=(du-1)) # end of sensitive period
+
+        #         t_su = ceil_dt(t_start, timedelta(hours=1)) #    t_start right border
+        #         t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
+        #         t_sd = floor_dt(t_start, timedelta(hours=1))  #    t_start left border
+                
+            
+        # #         if health_dict.get(t_sd, -1) == -1 or health_dict.get(t_ed, -1) == -1:
+        # #             raise ValueError("For item %d: In boundary conditions, no matching item in the health dict for %s or %s" % (item, t_sd, t_ed))
+                
+        #         step = timedelta(hours=1)
+        #         tmp = self.failure_dict.get(t_sd, 0)*((t_su - t_start)/step) + self.failure_dict.get(t_ed, 0)*((t_end - t_ed)/step)
+
+        #         while t_su < t_ed:
+        #             if self.failure_dict.get(t_su, -1) == -1:
+        #                 raise ValueError("For item %d: No matching item in the health dict for %s" % (item, t_su))
+        #             tmp += self.failure_dict.get(t_su, 0)
+        #             t_su += step
+        # #         
+        # #         if product_related_characteristics_dict.get(product_type, -1) == -1:
+        # #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+        #         if detail:
+        #             failure_cost.append(tmp * quantity * uc)
+        #         else:
+        #             failure_cost += tmp * quantity * uc
+        #         t_now = t_end
+        
+        # if self.scenario == 2: # based on two costs (fixed and variable cost C1 and)
+        #     for item in self.order:
+        #         fc_temp = 0
+        #         t_start = t_now
+        #         unit1 = self.job_dict.get(item, -1)
+        #         if unit1 == -1:
+        #             raise ValueError("No matching item in job dict: ", item)
+            
+        #         product_type = unit1['product']  # get job product type
+                
+                
+        # #         if du <= 1: # safe period of 1 hour (no failure cost)
+        # #             continue;
+        #         unit2 = self.prc_dict.get(product_type, -1)
+        #         if unit2 == -1:
+        #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+
+        #         if self.duration_str == 'duration':
+        #             du = unit1['duration']
+        #         if self.duration_str == 'quantity':
+        #             quantity = unit1['quantity']  # get job quantity
+        #             du = quantity / unit2['targetproduction'] # get job duration
+                
+        # #        du = quantity / unit2[2] # get job duration
+        # #         print("Duration:", du)
+        # #         uc = unit2[0] # get job raw material unit price
+                
+        #         if self.working_method == 'historical':
+        #             t_o = t_start + timedelta(hours=du) # Without downtime duration
+        #             #print("t_o:", t_o)
+        #             t_end = t_o
+        #             for key, value in self.downdur_dict.items():
+        #                 # DowntimeDuration already added
+        #                 if t_end < value[0]:
+        #                     continue
+        #                 if t_start > value[1]:
+        #                     continue
+        #                 if t_start < value[0] < t_end:
+        #                     t_end = t_end + (value[1]-value[0])
+        #                     fc_temp += C1 + (value[1] - value[0]) / timedelta(hours=1) * C2
+        #                     # print("Line 429, t_end:", t_end)
+        #                 if t_start > value[0] and t_end > value[1]:
+        #                     t_end = t_end + (value[1] - t_start)
+        #                     fc_temp += C1 + (value[1] - t_start) / timedelta(hours=1) * C2
+        #                 if t_start > value[0] and t_end < value[1]:
+        #                     t_end = t_end + (t_end - t_start)
+        #                     fc_temp += C1 + (t_end- t_start) / timedelta(hours=1) * C2
+        #                 else:
+        #                     break
+                
+        #         elif self.working_method == 'expected':
+        #             if 'availability' in unit2:
+        #                 t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
+        #                 fc_temp += C2 * ((timedelta(hours = float(du)) * (1 / float(unit2['availability']) - 1)) / timedelta(hours=1))
+        #             else:
+        #                 raise NameError('Availability column not found, error')
+                
+        #         t_now = t_end
+        #         if detail:
+        #             failure_cost.append(fc_temp)
+        #         else:
+        #             failure_cost += fc_temp  
+        # return failure_cost
 
     def get_energy_cost(self, detail=False):
         ''' 
@@ -338,86 +420,124 @@ class Schedule:
         else:
             energy_cost = 0
 
+        time_dict = self.time_dict
+        price_dict = self.price_dict
+        prc_dict = self.prc_dict
 
-        
-        t_now = self.start_time # current timestamp
-        i = 0
-        for item in self.order:
-    #         print("For job:", item)
-            t_start = t_now
-    #         print("Time start: " + str(t_now))
-            unit1 = self.job_dict.get(item, -1)
-            if unit1 == -1:
-                raise ValueError("No matching item in the job dict for %d" % item)
-        
-            product_type = unit1['product'] # get job product type
-            
-            unit2 = self.prc_dict.get(product_type, -1)
-            if unit2 == -1:
-                raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
 
-            if self.duration_str == 'duration':
-                du = unit1['duration']
-            if self.duration_str == 'quantity':
-                quantity = unit1['quantity']
-                du = quantity / unit2['targetproduction'] # get job duration
-    #         print("Duration:", du)
-            po = unit2['power'] # get job power profile
+        for item in time_dict:
             job_en_cost = 0
-            
-            if self.working_method == 'historical':
-                #print(du)
-                t_o = t_start + timedelta(hours=du) # Without downtime duration
-        #         print("t_o:", t_o)
-                t_end = t_o
-                
-                for key, value in self.downdur_dict.items():
-                    # Add the total downtimeduration
-                    if t_end < value[0]:
-                        continue
-                    if t_start > value[1]:
-                        continue
-                    if t_start < value[0] < t_end:
-                        t_end = t_end + (value[1]-value[0])
-        #                 print("Line 429, t_end:", t_end)
-                    if t_start > value[0] and t_end > value[1]:
-                        t_end = t_end + (value[1] - t_start)
-                    if t_start > value[0] and t_end < value[1]:
-                        t_end = t_end + (t_end - t_start)
-            elif self.working_method == 'expected':
-                if 'availability' in unit2:
-                    t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
-                else:
-                    raise NameError('Availability column not found, error')
-            
-            # calculate sum of head price, tail price and body price
+
+            product_type = time_dict[item]['product'] # get job product type
+            unit2 = prc_dict.get(product_type, -1)
+            power = unit2['power']
+
+            t_start = time_dict[item]['start']
+            t_end = time_dict[item]['end']
 
             t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start right border
             t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
             t_sd = floor_dt(t_start, timedelta(hours=1)) # t_start_left border
-
-            if self.price_dict.get(t_sd, 0) == 0 or self.price_dict.get(t_ed, 0) == 0:
+            if price_dict.get(t_sd, 0) == 0 or price_dict.get(t_ed, 0) == 0:
                 raise ValueError("For item %d: In boundary conditions, no matching item in the price dict for %s or %s" % (item, t_sd, t_ed))
             # calculate the head and tail prices and add them up
-            tmp = self.price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) + self.price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
+            tmp = price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) + price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
 
             step = timedelta(hours=1)
             while t_su < t_ed:
-                if self.price_dict.get(t_su, 0) == 0:
+                if price_dict.get(t_su, 0) == 0:
                     raise ValueError("For item %d: No matching item in the price dict for %s" % (item, t_su))
-                job_en_cost += self.price_dict.get(t_su, 0)
+                job_en_cost += price_dict.get(t_su, 0)
                 t_su += step
             
             job_en_cost += tmp
-            job_en_cost *= po
+            job_en_cost *= power
             
             t_now = t_end
             if detail:
                 energy_cost.append(job_en_cost)
             else:
                 energy_cost += job_en_cost
-            i += 1  
         return energy_cost
+        
+    #     t_now = self.start_time # current timestamp
+    #     i = 0
+    #     for item in self.order:
+    # #         print("For job:", item)
+    #         t_start = t_now
+    # #         print("Time start: " + str(t_now))
+    #         unit1 = self.job_dict.get(item, -1)
+    #         if unit1 == -1:
+    #             raise ValueError("No matching item in the job dict for %d" % item)
+        
+    #         product_type = unit1['product'] # get job product type
+            
+    #         unit2 = self.prc_dict.get(product_type, -1)
+    #         if unit2 == -1:
+    #             raise ValueError("For item %d: No matching item in the product related characteristics dict for %s" % (item, product_type))
+
+    #         if self.duration_str == 'duration':
+    #             du = unit1['duration']
+    #         if self.duration_str == 'quantity':
+    #             quantity = unit1['quantity']
+    #             du = quantity / unit2['targetproduction'] # get job duration
+    # #         print("Duration:", du)
+    #         po = unit2['power'] # get job power profile
+    #         job_en_cost = 0
+            
+    #         if self.working_method == 'historical':
+    #             #print(du)
+    #             t_o = t_start + timedelta(hours=du) # Without downtime duration
+    #     #         print("t_o:", t_o)
+    #             t_end = t_o
+                
+    #             for key, value in self.downdur_dict.items():
+    #                 # Add the total downtimeduration
+    #                 if t_end < value[0]:
+    #                     continue
+    #                 if t_start > value[1]:
+    #                     continue
+    #                 if t_start < value[0] < t_end:
+    #                     t_end = t_end + (value[1]-value[0])
+    #     #                 print("Line 429, t_end:", t_end)
+    #                 if t_start > value[0] and t_end > value[1]:
+    #                     t_end = t_end + (value[1] - t_start)
+    #                 if t_start > value[0] and t_end < value[1]:
+    #                     t_end = t_end + (t_end - t_start)
+    #         elif self.working_method == 'expected':
+    #             if 'availability' in unit2:
+    #                 t_end = t_start + timedelta(hours = float(du) / float(unit2['availability'])) #TODO import availability
+    #             else:
+    #                 raise NameError('Availability column not found, error')
+            
+    #         # calculate sum of head price, tail price and body price
+
+    #         t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start right border
+    #         t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
+    #         t_sd = floor_dt(t_start, timedelta(hours=1)) # t_start_left border
+
+    #         if self.price_dict.get(t_sd, 0) == 0 or self.price_dict.get(t_ed, 0) == 0:
+    #             raise ValueError("For item %d: In boundary conditions, no matching item in the price dict for %s or %s" % (item, t_sd, t_ed))
+    #         # calculate the head and tail prices and add them up
+    #         tmp = self.price_dict.get(t_sd, 0)*((t_su - t_start)/timedelta(hours=1)) + self.price_dict.get(t_ed, 0)*((t_end - t_ed)/timedelta(hours=1))
+
+    #         step = timedelta(hours=1)
+    #         while t_su < t_ed:
+    #             if self.price_dict.get(t_su, 0) == 0:
+    #                 raise ValueError("For item %d: No matching item in the price dict for %s" % (item, t_su))
+    #             job_en_cost += self.price_dict.get(t_su, 0)
+    #             t_su += step
+            
+    #         job_en_cost += tmp
+    #         job_en_cost *= po
+            
+    #         t_now = t_end
+    #         if detail:
+    #             energy_cost.append(job_en_cost)
+    #         else:
+    #             energy_cost += job_en_cost
+    #         i += 1  
+    #     return energy_cost
 
     def get_conversion_cost(self, detail=False):
         if detail:

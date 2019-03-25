@@ -106,8 +106,12 @@ def read_down_durations(downDurationFile):
         with open(downDurationFile, encoding='utf-8') as downDurationInfo_csv:
             reader = csv.DictReader(downDurationInfo_csv)
             for row in reader:
-                down_duration_dict.update({row['ID']:[datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f"), 
-                                                 datetime.strptime(row['EndDateUTC'], "%Y-%m-%d %H:%M:%S.%f")]})
+                start = datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f")
+                end = datetime.strptime(row['EndDateUTC'], "%Y-%m-%d %H:%M:%S.%f")
+                duration = (end - start).total_seconds() / 3600
+                down_duration_dict.update({row['ID']:[start, 
+                                                      end,
+                                                      duration]})
     except:
         print("Unexpected error when reading down duration information from '{}'".format(downDurationFile))
         raise
@@ -168,9 +172,10 @@ def read_product_related_characteristics(productFile):
                 if 'Type' in row:
                     product_related_characteristics_dict[row['Product']]['type'] = row['Type']
                     #print('Added type')
-                
                 if 'Availability' in row:
-                    product_related_characteristics_dict[row['Product']]['availability'] = row['Availability']
+                    product_related_characteristics_dict[row['Product']]['availability'] = float(row['Availability'])
+                if 'Downtime_len' in row:
+                    product_related_characteristics_dict[row['Product']]['dt_len'] = float(row['Downtime_len'])
 
     except:
         print("Unexpected error when reading product related information from '{}'".format(productFile))
@@ -281,8 +286,6 @@ def read_jobs(jobFile, get_totaltime=False):
                     job_entry['duration'] = float(row[str_time])
                 if ('Quantity' in row) and row['Quantity'] is not None:
                     job_entry['quantity'] = float(row['Quantity'])
-                    input()
-                
                 if ('Start' in row) and row['Start'] is not None:
                     job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
                 if ('End' in row) and row['End'] is not None:

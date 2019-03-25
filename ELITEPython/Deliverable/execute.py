@@ -50,7 +50,7 @@ def main():
         
         # Taking config file path from the user.
         configParser = configparser.RawConfigParser()   
-        configFilePath = 'config_test.ini'
+        configFilePath = 'config.ini'
         configParser.read(configFilePath)
         
         # Read input-config
@@ -142,8 +142,8 @@ def main():
                                 configParser.getint('start-end', 'end_minute'), configParser.getint('start-end', 'end_second'))
         elif configParser.has_section('start'):
                 start_time = datetime(configParser.getint('start', 'start_year'), configParser.getint('start', 'start_month'), 
-                                configParser.getint('start', 'start_day'), configParser.getint('start', 'start_hour'), 
-                                configParser.getint('start', 'start_minute'), configParser.getint('start', 'start_second')) # Date range of jobs to choose
+                                      configParser.getint('start', 'start_day'), configParser.getint('start', 'start_hour'), 
+                                      configParser.getint('start', 'start_minute'), configParser.getint('start', 'start_second')) # Date range of jobs to choose
                 end_time = None
         else:
                 raise NameError('No section with start date found!')
