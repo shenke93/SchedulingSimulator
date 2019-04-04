@@ -1,1 +1,0 @@
-<failure-info><files><inputfile>packagingfile_old.csv</inputfile></files><fail_dist lambda="0.9627845274596835" rho="0.41172498978243505">weibull</fail_dist><repair_dist mean="0.3421744324970127" mu="-1.8616702251147512" sigma="1.1853310836782331">lognormal</repair_dist></failure-info>

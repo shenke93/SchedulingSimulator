@@ -226,6 +226,7 @@ def read_failure_data(maintenanceFile):
                 maintenance_influence.append(float(row['Influence']))
     except:
         print("Unexpected error when reading maintenance information from {}:".format(maintenanceFile))
+        print(maintenanceFile)
         raise
                
     return maintenance_influence
@@ -326,6 +327,7 @@ def get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_di
     hourly_failure_dict = {}
     t_sd = floor_dt(start_time, timedelta(hours=1)) # start time left border
     t_eu = ceil_dt(end_time, timedelta(hours=1)) # end time right border
+    print("down duration dict", down_duration_dict)
     
     # Filtering down time, get all down durations longer than one hour
     down_duration_dict_filtered = collections.OrderedDict()
@@ -333,7 +335,7 @@ def get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_di
         if (value[1] - value[0]) / timedelta(hours=1) >= 1:
             down_duration_dict_filtered.update({key:[floor_dt(value[0], timedelta(hours=1)), floor_dt(value[1], timedelta(hours=1))]})
     
-#     print("down_duration_dict_filtered:", down_duration_dict_filtered)
+    print("down_duration_dict_filtered:", down_duration_dict_filtered)
     i = t_sd
     index = 0
     for value in down_duration_dict_filtered.values():
@@ -542,7 +544,10 @@ class GA(Scheduler):
         if np.random.rand() < self.mutation_rate:
             if prob:
                 tmpl = list(range(self.dna_size))
-                point = np.random.choice(tmpl, size=1, replace=False, p=prob)
+                try:
+                    point = np.random.choice(tmpl, size=1, replace=False, p=prob)
+                except:
+                    import pdb; pdb.set_trace()
                 tmpl.pop(int(point))
                 # prob.pop(int(point))
                 # inverse = list(np.array(prob).max() - np.array(prob))
@@ -685,12 +690,12 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
             if weight_failure != 0:
                 if (failure_file is not None):
                     failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
-                    print(weight_failure)
-                    hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
-                    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-                        writer = csv.writer(csv_file)
-                        for key, value in hourly_failure_dict.items():
-                            writer.writerow([key, value])
+                    #print(weight_failure)
+                    #hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
+                    #with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+                    #    writer = csv.writer(csv_file)
+                    #    for key, value in hourly_failure_dict.items():
+                    #        writer.writerow([key, value])
                     failure_info = None
                 elif (failure_info is not None):
                     hourly_failure_dict = {}
@@ -795,13 +800,15 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             #print('test')
             if weight_failure != 0:
                 if (failure_file is not None):
+                    print(failure_file)
                     failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
-                    print(weight_failure)
-                    hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
-                    with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
-                        writer = csv.writer(csv_file)
-                        for key, value in hourly_failure_dict.items():
-                            writer.writerow([key, value])
+                    #print(weight_failure)
+                    #hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
+                    #with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
+                    #    writer = csv.writer(csv_file)
+                    #    for key, value in hourly_failure_dict.items():
+                    #        writer.writerow([key, value])
+                    hourly_failure_dict = {}
                     failure_info = None
                 elif (failure_info is not None):
                     hourly_failure_dict = {}
@@ -813,6 +820,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         except:
             warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
             failure_downtimes = True
+            raise
     if (working_method != 'historical') or failure_downtimes:
         warnings.warn('No import of downtime durations.')
         #weight_failure = 0
@@ -1011,7 +1019,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 
     filestream.close()
 
-    return sum(total_cost), sum(original_cost), result_dict, result_dict_origin, best_result_list, mean_result_list, worst_result_list, generation
+    return sum(total_cost), sum(original_cost), candidate_schedule, original_schedule, best_result_list, mean_result_list, worst_result_list, generation
 
 if __name__ == '__main__':
     

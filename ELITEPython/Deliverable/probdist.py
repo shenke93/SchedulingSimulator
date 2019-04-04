@@ -81,10 +81,6 @@ def make_hist_frame(duration, observed=None, numbins=None, range=None, return_bi
     variance = reliability ** 2 * np.cumsum((1-prob_survive) / (remaining_adj * prob_survive))
     std = variance ** (1/2)
 
-    #print(std)
-
-    #print(remaining)
-
     df_temp = pd.DataFrame({'Remaining': remaining, 'Failures': failures,
                             'Reliability': reliability, 'FailCDF': failure_func,
                             'FailPDF': inst_fail, 'Hazard': hazard, 'Std': variance}, index=new_index)
@@ -267,8 +263,10 @@ def _determine_exp_or_weibull(values, reliability):
     beta = slope
     alpha = np.exp(-(intercept/beta))
 
+    dist_string = ''
+
     if 0.9 < beta < 1.1:
-        exp = True
+        dist_string = 'exp'
         print('This is an exponential distribution with lambda {:.3}'.format(1/alpha))
         plt.plot(values[1:-1], lambdas[:-1], 'o', label='real data') # = lambda * y + c
         slope, intercept, _, _, _, = linregress(values[1:-1], lambdas[:-1])
@@ -280,7 +278,7 @@ def _determine_exp_or_weibull(values, reliability):
         plt.plot(values[1:-1], slope * values[1:-1] + intercept, label='y = {:.3}x + {:.3}'.format(slope, intercept))
         plt.legend()
     else:
-        weib = True
+        dist_string = 'weibull'
         print('This is a Weibull distribution with alpha {:.3} and beta {:.3}'.format(alpha, beta))
         if beta < 1:
             print('This results in a decreasing failure rate')
@@ -294,10 +292,12 @@ def _determine_exp_or_weibull(values, reliability):
         plt.plot(np.log(values[1:-1]), slope * np.log(values[1:-1]) + intercept, label='y = {:.3}x {:+.3}'.format(slope, intercept))
         plt.legend()
     
-    if weib:
-        return alpha, beta, 'weibull'
-    else: #(exp)
-        return lamb, offset, 'exp'
+    if dist_string=='weibull':
+        return alpha, beta, dist_string
+    elif dist_string=='exp': # if exp
+        return lamb, offset, dist_string
+    else:
+        return None
 
 
 def total_cost_maintenance(timearray, model, cp=100, cu=250, return_separate=False):
@@ -383,11 +383,10 @@ class Exponential:
         chi2.pdf(self.durations)
 
 class Weibull:
-    ''' 
+    '''
     Exponential distribution as standard defined
     the PDF of this function is defined as:
     f(t) = (beta/alpha) * (t/alpha)**(beta-1) * exp(-t / alpha)**beta
-
     '''
     def __init__(self, alpha, beta):
         self.alpha = alpha
@@ -412,6 +411,9 @@ class Weibull:
         alpha = param[0]
         beta = param[2]
         return cls(alpha, beta)
+
+    def get_t_from_reliability(self, reliability):
+        return (-np.log(reliability))**(1/self.beta)*self.alpha
 
 
     def reliability_cdf(self, t):

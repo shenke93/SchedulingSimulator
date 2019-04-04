@@ -81,24 +81,26 @@ def add_next_type(df_agg, df, columnname):
     return output
 
 def merge_per_article(df, grouper, reasons_considered):
-    listofDownTimes = ['DownTime' + str(i) for i in reasons_considered]
+    regstr = '|'.join(['[a-zA-Z]' + str(r) + '$' for r in reasons_considered])
+    listofDownTimes = [e for e in df.columns if search(regstr, e)]
+    #print(listofDownTimes)
+
     newdict = dict.fromkeys(listofDownTimes, 'sum')
-    newdict
     newdict['DownTime'] = 'sum'
     newdict['RunTime'] = 'sum'
     newdict['TotalDuration'] = 'sum'
-    newdict
 
     df_plot = df.groupby(grouper).agg(newdict).fillna(0).astype('int')
+    #print(df_plot.head())
     df_plot['DownTimeRate'] = df.groupby(grouper).apply(lambda x: np.average(x['DownTimeRate'],
                                                         weights=x['TotalDuration']))
     df_plot['DownTimeStd'] = df.groupby(grouper).apply(lambda x: np.cov(x['RunTimeRate'],
                                                        aweights=x['TotalDuration'])) ** (1/2)
     df_plot['Availability'] = df.groupby(grouper).apply(lambda x: np.average(x['RunTimeRate'],
                                                         weights=x['TotalDuration']))
-    for i in reasons_considered:
-        tempstr = 'DownTimeRate' + str(i)
-        df_plot[tempstr] = df_plot['DownTime' + str(i)] / df_plot['DownTime'] * df_plot['DownTimeRate']
+    for column in listofDownTimes:
+        tempstr = 'DownTimeRate' + findall('\d', column)[0]
+        df_plot[tempstr] = df_plot[column] / df_plot['DownTime'] * df_plot['DownTimeRate']
     df_plot.DownTimeStd = df_plot.DownTimeStd.astype(np.float)
     df_plot = df_plot.fillna(0)
     return df_plot

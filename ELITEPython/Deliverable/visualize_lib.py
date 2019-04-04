@@ -11,7 +11,7 @@ from matplotlib.ticker import MaxNLocator
 
 def show_results(best_result, worst_result, mean_result):
     plt.plot(best_result, label='best')
-    plt.plot(worst_result, label='worst')
+    #plt.plot(worst_result, label='worst')
     plt.plot(mean_result, label='mean')
     plt.title('Result versus number of iterations')
     plt.xlabel('# iterations')

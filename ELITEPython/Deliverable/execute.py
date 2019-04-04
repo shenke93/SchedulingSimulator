@@ -10,6 +10,7 @@ import time
 import random
 import os, sys
 import configparser
+import logging
 
 #print(sys.path)
 
@@ -25,7 +26,7 @@ def print_ul(strin):
     print('-'*len(strin))
 
 def make_df(dict):
-        all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
+        all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration']
         key = random.choice(list(dict))
         item = dict[key]
         all_cols = all_cols[0:len(item)]
@@ -44,152 +45,258 @@ class writer :
         
         def flush(self):
                 pass
+
+def read_failure_info(file):
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(file)
+        root = tree.getroot()
+        fail_type = root.find('fail_dist').text
+        if fail_type == "weibull":
+                fail_dist = root.find('fail_dist')
+                fail_dict = {}
+                for dist in fail_dist:
+                        text = dist.text
+                        lamb = float(dist.get('lambda'))
+                        rho = float(dist.get('rho'))
+                        from probdist import Weibull
+                        fail_dist = Weibull(lamb, rho)
+                        fail_dict[text] = fail_dist
+        elif fail_type == "exp":
+                fail_dist = root.find('fail_dist')
+                fail_dict = {}
+                for dist in fail_dist:
+                        text = dist.text
+                        lamb = float(dist.get('lambda'))
+                        from probdist import Exponential
+                        fail_dist = Exponential(1/lamb)
+                        fail_dict[text] = fail_dist
+        else:
+                print('Faulty distribution detected!')
+        repair_type = root.find('repair_dist').text
+        if repair_type == 'lognormal':
+                sigma = float(root.find('repair_dist').get('sigma'))
+                mu = float(root.find('repair_dist').get('mu'))
+                from probdist import Lognormal
+                rep_dist = Lognormal(sigma, mu)
+                mean = float(root.find('repair_dist').get('mean'))
+        else:
+                print('Faulty distribution detected!')
+                raise NameError("Error")
+        maint_time = int(root.find('maint_time').text)
+        repair_time = float(root.find('repair_time').text)
+
+        conversion_file = root.find('files').find('conversion_times').text
+        conversion_times = pd.read_csv(os.path.join(os.path.split(file)[0], conversion_file), index_col = 0)
+
+        cleaning_file = root.find('files').find('cleaning_time').text
+        cleaning_time = pd.read_csv(os.path.join(os.path.split(file)[0], cleaning_file), index_col = 0)        
+
+        failure_info = (fail_dict, rep_dist, mean, maint_time, repair_time, conversion_times, cleaning_time)
+        return failure_info
+
+def read_config_file(path):
+        config = configparser.ConfigParser()
+        config.read(path)
+        sections = config.sections()
+        return_sections = {}
+        if 'input-config' in sections:
+                input_config = {}
+                this_section = config['input-config']
+                input_config['original'] = orig_folder =  this_section['original_folder']
+                input_config['prc_file'] = os.path.join(orig_folder, this_section['product_related_characteristics_file'])
+                input_config['ep_file'] = os.path.join(orig_folder, this_section['energy_price_file'])
+                input_config['hdp_file'] = os.path.join(orig_folder, this_section['historical_down_periods_file'])
+                input_config['ji_file'] = os.path.join(orig_folder, this_section['job_info_file'])
+                if 'failure_info_path' in this_section:
+                        failure_info_path = os.path.join(orig_folder, this_section['failure_info_path'])
+                        if os.path.exists(failure_info_path):
+                                input_config['failure_info'] = read_failure_info(os.path.join(failure_info_path, 'outputfile.xml'))
+                else:
+                        input_config['failure_info'] = None
+                if 'failure_rate_file' in this_section:
+                        input_config['fr_file'] = os.path.join(orig_folder, this_section['failure_rate_file'])
+                else:
+                        input_config['fr_file'] = None
+                return_sections['input_config'] = input_config
+        
+        if 'output-config' in sections:
+                output_config = {}
+                this_section = config['output-config']
+                output_config['export_folder'] = export_folder = os.getcwd() + this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M", localtime())
+                os.makedirs(export_folder, exist_ok=True)
+                output_config['output_init'] = os.path.join(export_folder, this_section['output_init'])
+                output_config['output_final'] = os.path.join(export_folder, this_section['output_final'])
+                output_config['interactive'] = config.getboolean('output-config', 'interactive')
+                output_config['export'] = config.getboolean('output-config', 'export')
+                return_sections['output_config'] = output_config
+
+        if 'scenario-config' in sections:
+                scenario_config = {}
+                this_section = config['scenario-config']
+                # Read scenario-config
+                scenario_config['test'] = config.get('scenario-config', 'test').replace(' ', '').split(',')
+                scenario_config['scenario'] = config.getint('scenario-config', 'scenario')
+                scenario_config['validation'] = config.getboolean('scenario-config', 'validation')
+                scenario_config['pre_selection'] = config.getboolean('scenario-config', 'pre_selection')
+                
+                scenario_config['weight_energy'] = config.getfloat('scenario-config', 'weight_energy')
+                scenario_config['weight_constraint'] = config.getfloat('scenario-config', 'weight_constraint')
+                scenario_config['weight_failure'] = config.getfloat('scenario-config', 'weight_failure')
+                scenario_config['weight_conversion'] = config.getfloat('scenario-config', 'weight_conversion')
+                
+                scenario_config['pop_size'] = config.getint('scenario-config', 'pop_size')
+                scenario_config['crossover_rate'] = config.getfloat('scenario-config', 'crossover_rate')
+                scenario_config['mutation_rate'] = config.getfloat('scenario-config', 'mutation_rate')
+                scenario_config['num_mutations'] = config.getint('scenario-config', 'num_mutations')
+                scenario_config['iterations'] = config.getint('scenario-config', 'iterations')
+                
+                scenario_config['stop_condition'] = config.get('scenario-config', 'stop_condition')
+                scenario_config['stop_value'] = config.getint('scenario-config', 'stop_value')
+                scenario_config['duration_str'] = config.get('scenario-config', 'duration_str')
+                scenario_config['evolution_method'] = config.get('scenario-config', 'evolution_method')
+                scenario_config['working_method'] = config.get('scenario-config', 'working_method')
+                
+                adapt_ifin_low = config.getint('scenario-config', 'adapt_ifin_low')
+                adapt_ifin_high = config.getint('scenario-config', 'adapt_ifin_high')
+                adapt_ifin_step = config.getint('scenario-config', 'adapt_ifin_step')
+                scenario_config['adapt_ifin'] = [i for i in range(adapt_ifin_low, adapt_ifin_high+adapt_ifin_step, adapt_ifin_step)]
+                return_sections['scenario_config'] = scenario_config
+        
+        if ('start-end' in sections):
+                start_end = {}
+                start_end['start_time'] = datetime(config.getint('start-end', 'start_year'), config.getint('start-end', 'start_month'), 
+                                config.getint('start-end', 'start_day'), config.getint('start-end', 'start_hour'), 
+                                config.getint('start-end', 'start_minute'), config.getint('start-end', 'start_second')) # Date range of jobs to choose
+                start_end['end_time'] = datetime(config.getint('start-end', 'end_year'), config.getint('start-end', 'end_month'), 
+                                        config.getint('start-end', 'end_day'), config.getint('start-end', 'end_hour'), 
+                                        config.getint('start-end', 'end_minute'), config.getint('start-end', 'end_second'))
+                return_sections['start_end'] = start_end
+        elif 'start' in sections:
+                start_end = {}
+                start_end['start_time'] = datetime(config.getint('start', 'start_year'), config.getint('start', 'start_month'), 
+                                      config.getint('start', 'start_day'), config.getint('start', 'start_hour'), 
+                                      config.getint('start', 'start_minute'), config.getint('start', 'start_second')) # Date range of jobs to choose
+                start_end['end_time'] = None
+                return_sections['start_end'] = start_end
+        else:
+                raise NameError('No section with start date found!')
+        
+        return return_sections
+
+def start_logging(filename):
+        f = open(filename, "a", encoding="utf-8")
+        logger = logging.getLogger('simple')
+        logger.setLevel(logging.DEBUG)
+        # create file handler
+        fh = logging.StreamHandler(f)
+        fh.setLevel(logging.DEBUG)
+        # create console handler
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        # add handlers
+        logger.addHandler(ch)
+        logger.addHandler(fh)
+        return logger
+
     
 def main():
         print_ul('Scheduler v0.0.0')
         
         # Taking config file path from the user.
-        configParser = configparser.RawConfigParser()   
+        #configParser = configparser.RawConfigParser()   
         configFilePath = 'config.ini'
-        configParser.read(configFilePath)
-        
-        # Read input-config
-        original_folder = configParser.get('input-config', 'original_folder')
-        product_related_characteristics_file = os.path.join(original_folder, configParser.get('input-config', 'product_related_characteristics_file'))
-        energy_price_file = os.path.join(original_folder, configParser.get('input-config', 'energy_price_file'))
-        historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
-        job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
-        if configParser.has_option('input-config', 'failure_info_file'):
-                failure_info_file = os.path.join(original_folder, configParser.get('input-config', 'failure_info_file'))
-                import xml.etree.ElementTree as ET
-                tree = ET.parse(failure_info_file)
-                root = tree.getroot()
-                fail_type = root.find('fail_dist').text
-                if fail_type == "weibull":
-                        lamb = float(root.find('fail_dist').get('lambda'))
-                        rho = float(root.find('fail_dist').get('rho'))
-
-                        from probdist import Weibull
-                        fail_dist = Weibull(lamb, rho)
-                elif fail_type == "exp":
-                        lamb = float(root.find('fail_dist').get('lambda'))
-                        from probdist import Exponential
-                        fail_dist = Exponential(1/lamb)
-                else:
-                        print('Faulty distribution detected!')
-                repair_type = root.find('repair_dist').text
-                if repair_type == 'lognormal':
-                        sigma = float(root.find('repair_dist').get('sigma'))
-                        mu = float(root.find('repair_dist').get('mu'))
-                        from probdist import Lognormal
-                        rep_dist = Lognormal(sigma, mu)
-                        mean = float(root.find('repair_dist').get('mean'))
-                else:
-                        print('Faulty distribution detected!')
-                maint_time = int(root.find('maintenance_time').text)
-                repair_time = float(root.find('repair_time').text)
-                failure_rate_file = None
-                failure_info = (fail_dist, rep_dist, mean, maint_time, repair_time)
+        if os.path.exists(configFilePath):
+                config = read_config_file(configFilePath)
         else:
-                try:
-                        failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
-                        failure_info = None
-                except:
-                        pass
-        
-        # Read output-config
-        export_folder = os.getcwd() + configParser.get('output-config', 'export_folder') + strftime("%Y%m%d_%H%M", localtime())
-        os.makedirs(export_folder, exist_ok=True)
-        output_init = os.path.join(export_folder, configParser.get('output-config', 'output_init'))
-        output_final = os.path.join(export_folder, configParser.get('output-config', 'output_final'))
-        interactive = configParser.getboolean('output-config', 'interactive')
-        export = configParser.getboolean('output-config', 'export')
-        
-        # Read scenario-config
-        test = configParser.get('scenario-config', 'test').replace(' ', '').split(',')
-        scenario = configParser.getint('scenario-config', 'scenario')
-        validation = configParser.getboolean('scenario-config', 'validation')
-        pre_selection = configParser.getboolean('scenario-config', 'pre_selection')
-        
-        weight_energy = configParser.getfloat('scenario-config', 'weight_energy')
-        weight_constraint = configParser.getfloat('scenario-config', 'weight_constraint')
-        weight_failure = configParser.getfloat('scenario-config', 'weight_failure')
-        weight_conversion = configParser.getfloat('scenario-config', 'weight_conversion')
-        
-        pop_size = configParser.getint('scenario-config', 'pop_size')
-        crossover_rate = configParser.getfloat('scenario-config', 'crossover_rate')
-        mutation_rate = configParser.getfloat('scenario-config', 'mutation_rate')
-        num_mutations = configParser.getint('scenario-config', 'num_mutations')
-        iterations = configParser.getint('scenario-config', 'iterations')
-        
-        stop_condition = configParser.get('scenario-config', 'stop_condition')
-        stop_value = configParser.getint('scenario-config', 'stop_value')
-        duration_str = configParser.get('scenario-config', 'duration_str')
-        evolution_method = configParser.get('scenario-config', 'evolution_method')
-        working_method = configParser.get('scenario-config', 'working_method')
-        
-        adapt_ifin_low = configParser.getint('scenario-config', 'adapt_ifin_low')
-        adapt_ifin_high = configParser.getint('scenario-config', 'adapt_ifin_high')
-        adapt_ifin_step = configParser.getint('scenario-config', 'adapt_ifin_step')
-        adapt_ifin = [i for i in range(adapt_ifin_low, adapt_ifin_high+adapt_ifin_step, adapt_ifin_step)]
-        
-        if configParser.has_section('start-end'):
-                start_time = datetime(configParser.getint('start-end', 'start_year'), configParser.getint('start-end', 'start_month'), 
-                                configParser.getint('start-end', 'start_day'), configParser.getint('start-end', 'start_hour'), 
-                                configParser.getint('start-end', 'start_minute'), configParser.getint('start-end', 'start_second')) # Date range of jobs to choose
-                end_time = datetime(configParser.getint('start-end', 'end_year'), configParser.getint('start-end', 'end_month'), 
-                                configParser.getint('start-end', 'end_day'), configParser.getint('start-end', 'end_hour'), 
-                                configParser.getint('start-end', 'end_minute'), configParser.getint('start-end', 'end_second'))
-        elif configParser.has_section('start'):
-                start_time = datetime(configParser.getint('start', 'start_year'), configParser.getint('start', 'start_month'), 
-                                      configParser.getint('start', 'start_day'), configParser.getint('start', 'start_hour'), 
-                                      configParser.getint('start', 'start_minute'), configParser.getint('start', 'start_second')) # Date range of jobs to choose
-                end_time = None
-        else:
-                raise NameError('No section with start date found!')
+                raise ValueError("{} not found!".format(configFilePath))
 
-        print('Execution Start!')
+        print('Execution Starts!')
+        # logger.info('Execution Start!')
+        # logger.info('Test')
 
-        fout = open(os.path.join(export_folder, 'out.log'), 'w+')
+        fout = open(os.path.join(config['output_config']['export_folder'], 'out.log'), 'w+')
         sys.stdout = writer(sys.stdout, fout)
 
         downtimes = None
-        if weight_failure and working_method=='historical':
+        if config['scenario_config']['weight_failure'] and config['scenario_config']['working_method']=='historical':
                 try:
-                        downtimes = pd.read_csv(historical_down_periods_file, parse_dates=['StartDateUTC', 'EndDateUTC'])
-                        downtimes = downtimes[downtimes.StartDateUTC.between(start_time, end_time)]
+                        downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['StartDateUTC', 'EndDateUTC'])
+                        downtimes = downtimes[downtimes.StartDateUTC.between(config['start_end']['start_time'], 
+                                                                             config['start_end']['end_time'])]
                 except:
                         pass
-        for value in test:
+
+        #import pdb; pdb.set_trace()
+        #print(config)
+
+        for value in config['scenario_config']['test']:
                 if value == 'GA':
                         best_result, orig_result, best_sched, orig_sched, best_curve, mean_curve, worst_curve, gen = \
-                                                        run_opt(start_time, end_time, historical_down_periods_file, failure_rate_file, 
-                                                        product_related_characteristics_file, energy_price_file, job_info_file, 
-                                                        scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
-                                                        weight_constraint=weight_constraint, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
-                                                        weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
-                                                        pre_selection=pre_selection, working_method=working_method, failure_info=failure_info)
+                                                        run_opt(config['start_end']['start_time'], config['start_end']['end_time'], 
+                                                        config['input_config']['hdp_file'], config['input_config']['fr_file'], 
+                                                        config['input_config']['prc_file'], config['input_config']['ep_file'], config['input_config']['ji_file'], 
+                                                        config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
+                                                        config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
+                                                        config['scenario_config']['pop_size'], weight_conversion=config['scenario_config']['weight_conversion'], 
+                                                        num_mutations=config['scenario_config']['num_mutations'],
+                                                        weight_constraint=config['scenario_config']['weight_constraint'], 
+                                                        adaptive=config['scenario_config']['adapt_ifin'], 
+                                                        stop_condition=config['scenario_config']['stop_condition'], 
+                                                        stop_value=config['scenario_config']['stop_value'], 
+                                                        weight_energy=config['scenario_config']['weight_energy'],
+                                                        weight_failure=config['scenario_config']['weight_failure'], 
+                                                        duration_str=config['scenario_config']['duration_str'], 
+                                                        evolution_method=config['scenario_config']['evolution_method'], 
+                                                        validation=config['scenario_config']['validation'], 
+                                                        pre_selection=config['scenario_config']['pre_selection'], 
+                                                        working_method=config['scenario_config']['working_method'], 
+                                                        failure_info=config['input_config']['failure_info']
+                                                        )
+
+                        
+                        #logger = start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
+
+                        logger = start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
+
                         print('Execution finished.')
                         print('Number of generations was', gen)
                         # print('Start visualization')
 
-                        print('Best:', best_result, '\t', * best_sched)
-                        print('Original:', orig_result, '\t', * orig_sched)
+                        result_dict = best_sched.get_time()
+                        result_dict_origin = orig_sched.get_time()
+
+                        #import pdb; pdb.set_trace()
+
+                        outputlist = ' '.join([str(l) for l in list(result_dict.keys())])
+                        outputlist_orig = ' '.join([str(l) for l in list(result_dict.keys())])
+
+                        print('Best: {}\t {}'.format(best_result, outputlist))
+                        print('Original: {}\t {}'.format(orig_result, outputlist_orig))
 
                         fig = show_results(best_curve, worst_curve, mean_curve)
+                        export = config['output_config']['export']
+                        interactive = config['output_config']['interactive']
                         if export is True:
+                                export_folder = config['output_config']['export_folder']
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
-                        if interactive:
+                        if config['output_config']['interactive']:
                                 fig.show()
-                        best = make_df(best_sched)
-                        orig = make_df(orig_sched)
+
+                        #import pdb; pdb.set_trace()
+
+
+                        
+                        # make dataframes from dicts
+                        best = make_df(result_dict)
+                        orig = make_df(result_dict_origin)
+                        
 
                         # output files to csv's
-                        orig.to_csv(output_init)
-                        best.to_csv(output_final)
+                        orig.to_csv(config['output_config']['output_init'])
+                        best.to_csv(config['output_config']['output_final'])
 
-                        energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
-                        prod_char = pd.read_csv(product_related_characteristics_file)
+                        energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
+                        prod_char = pd.read_csv(config['input_config']['prc_file'])
                         
                         plt.figure(dpi=50, figsize=[20, 15])
                         if 'Type' in best.columns:
@@ -197,26 +304,32 @@ def main():
                         else:
                                 namecolor='ArticleName'
                         show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes)
-                        if export is True:
-                                print('Export to', export_folder)
+                        if export:
+                                print('Export to {}'.format(export_folder))
                                 plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
                         if interactive:
                                 plt.show()
 
                         plt.figure(dpi=50, figsize=[20, 15])
                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
-                        if export is True:
+                        if export:
                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
                         if interactive:
                                 plt.show()
 
                 if value == 'BF':
                         timer0 = time.monotonic()
-                        best_result, worst_result, best_sched, worst_sched = run_bf(start_time, end_time, historical_down_periods_file, failure_rate_file, 
-                                                                                product_related_characteristics_file, energy_price_file, job_info_file,
-                                                                                scenario, weight_failure=weight_failure, weight_conversion=weight_conversion, 
-                                                                                weight_constraint=weight_constraint, weight_energy=weight_energy, duration_str=duration_str,
-                                                                                working_method=working_method)
+                        best_result, worst_result, best_sched, worst_sched = run_bf(config['start_end']['start_time'], config['start_end']['end_time'], 
+                                                                                config['input_config']['hdp_file'], config['input_config']['fr_file'], 
+                                                                                config['input_config']['prc_file'], config['input_config']['ep_file'], 
+                                                                                config['input_config']['ji_file'], 
+                                                                                config['scenario_config']['scenario'],
+                                                                                weight_failure=config['scenario_config']['weight_failure'],
+                                                                                weight_conversion=config['scenario_config']['weight_conversion'], 
+                                                                                weight_constraint=config['scenario_config']['weight_constraint'], 
+                                                                                weight_energy=config['scenario_config']['weight_energy'], 
+                                                                                duration_str=config['scenario_config']['duration_str'],
+                                                                                working_method=config['scenario_config']['working_method'])
                         timer1 = time.monotonic()
                         elapsed_time = timer1-timer0
                         print()
@@ -231,8 +344,8 @@ def main():
                         best = make_df(best_sched)
                         worst = make_df(worst_sched)
 
-                        energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
-                        prod_char = pd.read_csv(product_related_characteristics_file)
+                        energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
+                        prod_char = pd.read_csv(config['input_config']['prc_file'])
 
                         if 'Type' in best.columns:
                                 namecolor='Type'
@@ -240,7 +353,11 @@ def main():
                                 namecolor='ArticleName'
                         plt.figure(dpi=50, figsize=[20, 15])
                         show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF)', namecolor, downtimes=downtimes)
+
+                        export = config['output_config']['export']
+                        interactive = config['output_config']['interactive']
                         if export is True:
+                                export_folder = config['output_config']['export_folder']
                                 plt.savefig(os.path.join(export_folder, r"best_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
@@ -251,10 +368,11 @@ def main():
                                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
-                
-                if export:
+                if config['output_config']['export']:
                         import shutil
                         shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
+                
+                logging.shutdown()
 
 if __name__ == "__main__":
         main()
