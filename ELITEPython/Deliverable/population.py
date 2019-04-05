@@ -324,26 +324,31 @@ class Schedule:
         if self.working_method == 'historical':
             downdur_dict = self.downdur_dict
             for item in time_dict:
+                # get one product
                 startdate = time_dict[item]['start']
                 enddate = time_dict[item]['end']
                 product_type = time_dict[item]['product']
                 if self.scenario == 1: # using unit cost and production rate
+                    # get product info
                     prc = self.prc_dict.get(product_type, -1)
                     prc_up = prc['unitprice']
                     prc_tpr = prc['targetproduction']
+                    # get total downtime duration
                     downdur_select = {key: value for key, value in downdur_dict.items() 
                                                                         if (startdate < value[0] < enddate)
                                                                         and (startdate < value[1] < enddate) 
                                     }
                     if len(downdur_select) > 0:
-                        loss = len(downdur_select) * prc_up * prc_tpr / 6
+                        # len downdur_select means the number of failures during a certain production
+                        loss = len(downdur_select) * prc_up * prc_tpr / 6 # suppose for each failure 10 minutes of production gets lost
                         sum_len = 0
-                        for item in downdur_select:
+                        for item in downdur_select: # add up all failure times
                             sum_len += downdur_select[item][2]
-                        extra_loss = loss + sum_len * prc_up * prc_tpr
+                        extra_loss = loss + sum_len * prc_up * prc_tpr # add the failure time X the production loss cost
                     else:
                         extra_loss = 0
                 if self.scenario == 2: # using fixed cost C1 and variable cost C2
+                    # same method, but with fixed prices
                     downdur_select = {key: value for key, value in downdur_dict.items() 
                                                                         if (startdate < value[0] < enddate)
                                                                         and (startdate < value[1] < enddate) 
@@ -377,8 +382,10 @@ class Schedule:
                         else:
                             failure_info = self.failure_info
                             mean_length_downtime = failure_info[2]
+                        # get the total calculated downtime and divide by the mean downtime length = estimated number of downtimes
                         extra_loss += down_duration / mean_length_downtime * prc_up * prc_tpr
-                if self.scenario == 2: 
+                if self.scenario == 2:
+                    # same, but with C1 and C2 as constants
                     extra_loss = down_duration * C2
                     try:
                         if 'dt_len' in prc:
@@ -393,53 +400,11 @@ class Schedule:
                 
                 if detail:
                     if product_type == 'MAINTENANCE':
-                        failure_cost[-1] += extra_loss
+                        failure_cost[-1] += extra_loss # add maintenance cost to the task before the maintenance
                     else:
                         failure_cost.append(extra_loss)
                 else:
                     failure_cost += extra_loss
-
-
-        
-        # if self.working_method == 'expected':
-        #     for item in time_dict:
-        #         #print(time_dict[item])
-        #         product_type = time_dict[item]['product']
-        #         try:
-        #             prc = self.prc_dict.get(product_type, -1)
-        #             prc_av = prc['availability']
-        #         except:
-        #             print(product_type)
-        #             print(prc)
-        #             raise
-        #         duration = time_dict[item]['duration']
-        #         if self.scenario == 1: # using unit cost and production rate
-        #             prc_up = prc['unitprice']
-        #             prc_tpr = prc['targetproduction']
-        #             extra_loss = duration * (1/prc_av - 1) * prc_up * prc_tpr
-        #             if self.failure_info is not None:
-        #                 if 'dt_len' in prc:
-        #                     mean_length_downtime = prc['dt_len']
-        #                     extra_loss += duration * (1/prc_av - 1) / mean_length_downtime * prc_up * prc_tpr / 6
-        #                 else:
-        #                     failure_info = self.failure_info
-        #                     mean_length_downtime = failure_info[2]
-        #                 extra_loss += duration * (1/prc_av - 1) / mean_length_downtime * prc_up * prc_tpr / 6
-        #         if self.scenario == 2: # using fixed cost C1 and variable cost C2
-        #             extra_loss = duration * (1/prc_av - 1) * C2
-        #             try:
-        #                 mean_length_downtime = prc['dt_len']
-        #                 extra_loss += duration * (1/prc_av - 1) / mean_length_downtime * C1
-        #             except:
-        #                 pass
-        #         if detail:
-        #             if product_type == 'MAINTENANCE':
-        #                 failure_cost[-1] += extra_loss
-        #             else:
-        #                 failure_cost.append(extra_loss)
-        #         else:
-        #             failure_cost += extra_loss
-
         return failure_cost
 
     def get_energy_cost(self, detail=False):
@@ -541,7 +506,7 @@ class Schedule:
                 first_product_type = self.job_dict[item1]['type']
                 second_product_type = self.job_dict[item2]['type']
                 fi = self.failure_info[5]
-                conversion_time = int(fi.loc[first_product_type, second_product_type]) / 3600
+                conversion_time = int(fi.loc[first_product_type, second_product_type]) / 3600 # get the conversion time and convert to hours
                 #import pdb; pdb.set_trace()
                 first_product = self.job_dict[item1]['product']
                 prc_up = self.prc_dict[first_product]['unitprice']
@@ -585,6 +550,7 @@ class Schedule:
         return conversion_cost
 
     def get_constraint_cost(self, detail=False):
+        #import pdb; pdb.set_trace()
         if detail:
             constraint_cost = []
         else:
@@ -598,17 +564,19 @@ class Schedule:
                     # check deadline condition
                     beforedate = self.job_dict[item]['before']
                     if self.time_dict[item]['end'] > beforedate: # did not get deadline
-                        deadline_cost = (self.time_dict[item]['end'] - beforedate).total_seconds() / 3600
+                        deadline_cost += (self.time_dict[item]['end'] - beforedate).total_seconds() / 3600
 
                 if 'after' in self.job_dict[item]: # assume not all jobs have deadlines
                     # check after condition
                     afterdate = self.job_dict[item]['after']
                     if self.time_dict[item]['end'] < afterdate: # produced before deadline
-                        deadline_cost = (afterdate - self.time_dict[item]['end']).total_seconds() / 3600
+                        deadline_cost += (afterdate - self.time_dict[item]['end']).total_seconds() / 3600
+                #if beforedate < afterdate:
+                    #import pdb; pdb.set_trace()
                 if detail:
                     constraint_cost.append(deadline_cost)
-            elif deadline_cost > 0:
-                constraint_cost += deadline_cost
+                elif deadline_cost > 0:
+                    constraint_cost += deadline_cost
         return constraint_cost
 
     def validate(self):
