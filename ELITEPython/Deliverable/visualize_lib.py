@@ -27,6 +27,8 @@ def show_results(best_result, worst_result, mean_result):
 def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', enddate='EndDateUTC', order=False, downtimes=None):
     import warnings
 
+    df_task = df_task.reset_index(drop=True) # make index unique (necessary)
+
     first_index = df_task.index[0]
     #print(first_index)
     firstdate = df_task.loc[first_index, startdate].floor('D')
@@ -35,7 +37,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         #warnings.simplefilter("ignore")
         df_task.loc[:, 'Start'] = (df_task.loc[:, startdate] - firstdate).dt.total_seconds()/3600
         df_task.loc[:, 'End'] = (df_task.loc[:, enddate] - firstdate).dt.total_seconds()/3600
-        if isinstance(downtimes, pd.DataFrame):
+        if isinstance(downtimes, pd.DataFrame): # if downtimes included in the correct format
             #print(downtimes)
             downtimes.loc[:, 'Start'] = (downtimes.loc[:, startdate] - firstdate).dt.total_seconds()/3600
             downtimes.loc[:, 'End'] = (downtimes.loc[:, enddate] - firstdate).dt.total_seconds()/3600
@@ -48,6 +50,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
                                               'rosybrown', 'coral', 'wheat',
                                               'linen']*10).by_key()['color']
     reasons = list(df_task[reason_str].unique())
+    #import pdb; pdb.set_trace()
     if order:
         reasons = list(order)
     else:
@@ -64,12 +67,14 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         articles.pop(i)
         articles.insert(0, exception)
     i = 0
+    # plot the jobs in the Gantt chart
     for article in articles:
         df_temp = df_task[df_task[articlename] == article]
         for item in df_temp.T:
             entry = df_temp.loc[item]
             plt.hlines(i, entry['Start'], entry['End'], lw=12, label=entry[reason_str], colors=color_dict[entry[reason_str]])
         i += 1
+    # plot the downtimes as grey zones
     if isinstance(downtimes, pd.DataFrame):
         for item in downtimes.T:
             entry = downtimes.loc[item]
@@ -80,6 +85,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     plt.margins(0.1)
     #plt.legend(loc=4)
 
+    # make a custom legend
     lines = []
     import matplotlib.lines as mlines
     #import matplotlib.patches as mpatches

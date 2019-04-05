@@ -12,6 +12,8 @@ import os, sys
 import configparser
 import logging
 
+configFilePath = 'config.ini'
+
 #print(sys.path)
 
 # Deprecated configurtaion
@@ -204,7 +206,7 @@ def main():
         
         # Taking config file path from the user.
         #configParser = configparser.RawConfigParser()   
-        configFilePath = 'config.ini'
+        
         if os.path.exists(configFilePath):
                 config = read_config_file(configFilePath)
         else:
