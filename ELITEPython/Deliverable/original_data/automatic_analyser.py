@@ -159,7 +159,6 @@ def add_breaks(production, maxtime=7200):
     return production
 
 # PREPARATION
-
 def add_breaks(production, maxtime=7200):
     add_df = pd.DataFrame([], columns = production.columns)
     prid = -1
@@ -319,7 +318,7 @@ def energy_per_production(group, file_speed, choice=None, df_merged=None):
     fs = pd.read_csv(file_speed, index_col=0)
     fs = fs[fs.ProductDescription.isin(list(group.ArticleName))].reset_index(drop=True)
     #print(fs.ProductDescription)
-    rand1 = pd.Series(np.random.random_sample((len(fs),)) * 1 + 2)    # unit price
+    rand1 = pd.Series(np.random.random_sample((len(fs),)) * 0.2 + 0.5)    # unit price
     rand2 = pd.Series(np.random.random_sample((len(fs),)) * 2 + 0.5)  # power
     energycons = pd.concat([pd.Series(fs.ProductDescription), 
                             rand1,
@@ -349,6 +348,9 @@ def energy_per_production(group, file_speed, choice=None, df_merged=None):
     return energycons
 
 energycons = energy_per_production(group, file_speed, choice=choice_type, df_merged=df_merged)
+tempmean = energycons[(energycons.loc[:, 'Product'] != 'NONE') | (energycons.loc[:, 'Product'] != 'MAINTENANCE')].median()
+tempmean['Product'] = 'MEAN'
+energycons = energycons.append(tempmean, ignore_index=True)
 energycons.to_csv(join(outfolder, 'generated_productRelatedCharacteristics.csv'), index=False)
 
 

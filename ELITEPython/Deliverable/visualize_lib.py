@@ -72,7 +72,11 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         df_temp = df_task[df_task[articlename] == article]
         for item in df_temp.T:
             entry = df_temp.loc[item]
-            plt.hlines(i, entry['Start'], entry['End'], lw=12, label=entry[reason_str], colors=color_dict[entry[reason_str]])
+            #plt.hlines(i, entry['Start']-(1/6), entry['End']+(1/6), lw=12, label=entry[reason_str], 
+            #           colors='k')
+            plt.hlines(i, entry['Start'], entry['End'], lw=11, label=entry[reason_str], 
+                       colors=color_dict[entry[reason_str]])
+
         i += 1
     # plot the downtimes as grey zones
     if isinstance(downtimes, pd.DataFrame):
@@ -129,7 +133,6 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
     startind = df_cost.index[df_cost.index < df_tasks.index[0]].max()
     out_table = out_table[startind: df_tasks.index[-1]]
     
-    
     # Determine the length of each time interval
     # Make a new index with all changes and their length in hours
     alldates = out_table.index
@@ -151,7 +154,7 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
     else:
         return total_sum
 
-def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None):
+def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None, failure_rate=None):
     c, table = calculate_energy_cost(tasks, prices, energy, True)
     
     plt.subplot(5,1,(4,5))
@@ -170,7 +173,16 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
 
     plt.plot(table.Power, drawstyle='steps-post')
     plt.ylim(bottom=-table.Power.max()*0.05, top=table.Power.max()*1.05)
+    
+    if failure_rate is not None:
+        plt.subplot(5,1,3)
+        plt.title('Failure rate')
+        plt.plot(failure_rate, drawstyle='steps-post')
+        plt.xlim(timerange[0], timerange[-1])
+        plt.ylim(bottom=-0.05, top=1.05)
+
     plt.tight_layout()
+
 
 def show_gantt(df, start, end):
     plt.figure(figsize=(20, 10))

@@ -144,6 +144,10 @@ def read_config_file(path):
                 scenario_config['weight_energy'] = config.getfloat('scenario-config', 'weight_energy')
                 scenario_config['weight_constraint'] = config.getfloat('scenario-config', 'weight_constraint')
                 scenario_config['weight_failure'] = config.getfloat('scenario-config', 'weight_failure')
+                if 'weight_virtual_failure' in this_section:
+                        scenario_config['weight_virtual_failure'] = config.getfloat('scenario-config', 'weight_virtual_failure')
+                else:
+                        scenario_config['weight_virtual_failure'] = scenario_config['weight_failure']
                 scenario_config['weight_conversion'] = config.getfloat('scenario-config', 'weight_conversion')
                 
                 scenario_config['pop_size'] = config.getint('scenario-config', 'pop_size')
@@ -213,8 +217,7 @@ def main():
                 raise ValueError("{} not found!".format(configFilePath))
 
         print('Execution Starts!')
-        # logger.info('Execution Start!')
-        # logger.info('Test')
+        #logger = start_logging('Output_file')
 
         fout = open(os.path.join(config['output_config']['export_folder'], 'out.log'), 'w+')
         sys.stdout = writer(sys.stdout, fout)
@@ -222,7 +225,8 @@ def main():
         downtimes = None
         if config['scenario_config']['weight_failure'] and config['scenario_config']['working_method']=='historical':
                 try:
-                        downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['StartDateUTC', 'EndDateUTC'])
+                        downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['StartDateUTC', 'EndDateUTC'], index_col=0)
+
                         downtimes = downtimes[downtimes.StartDateUTC.between(config['start_end']['start_time'], 
                                                                              config['start_end']['end_time'])]
                 except:
@@ -239,14 +243,16 @@ def main():
                                                         config['input_config']['prc_file'], config['input_config']['ep_file'], config['input_config']['ji_file'], 
                                                         config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
                                                         config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
-                                                        config['scenario_config']['pop_size'], weight_conversion=config['scenario_config']['weight_conversion'], 
+                                                        config['scenario_config']['pop_size'],  
                                                         num_mutations=config['scenario_config']['num_mutations'],
-                                                        weight_constraint=config['scenario_config']['weight_constraint'], 
                                                         adaptive=config['scenario_config']['adapt_ifin'], 
                                                         stop_condition=config['scenario_config']['stop_condition'], 
                                                         stop_value=config['scenario_config']['stop_value'], 
                                                         weight_energy=config['scenario_config']['weight_energy'],
-                                                        weight_failure=config['scenario_config']['weight_failure'], 
+                                                        weight_failure=config['scenario_config']['weight_failure'],
+                                                        weight_virtual_failure=config['scenario_config']['weight_virtual_failure'],
+                                                        weight_conversion=config['scenario_config']['weight_conversion'],
+                                                        weight_constraint=config['scenario_config']['weight_constraint'], 
                                                         duration_str=config['scenario_config']['duration_str'], 
                                                         evolution_method=config['scenario_config']['evolution_method'], 
                                                         validation=config['scenario_config']['validation'], 
@@ -267,10 +273,20 @@ def main():
                         result_dict = best_sched.get_time()
                         result_dict_origin = orig_sched.get_time()
 
+                        if config['scenario_config']['working_method'] == 'expected' and config['input_config']['failure_info'] is not None:
+                                #import pdb; pdb.set_trace()
+
+                                orig_failure = orig_sched.get_failure_prob()
+                                best_failure = best_sched.get_failure_prob()
+                        else:
+                                orig_failure = None
+                                best_failure = None
+                        
+
                         #import pdb; pdb.set_trace()
 
                         outputlist = ' '.join([str(l) for l in list(result_dict.keys())])
-                        outputlist_orig = ' '.join([str(l) for l in list(result_dict.keys())])
+                        outputlist_orig = ' '.join([str(l) for l in list(result_dict_origin.keys())])
 
                         print('Best: {}\t {}'.format(best_result, outputlist))
                         print('Original: {}\t {}'.format(orig_result, outputlist_orig))
@@ -283,9 +299,6 @@ def main():
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
                         if config['output_config']['interactive']:
                                 fig.show()
-
-                        #import pdb; pdb.set_trace()
-
 
                         
                         # make dataframes from dicts
@@ -305,7 +318,9 @@ def main():
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
-                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes)
+
+                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes, failure_rate=best_failure)
+                        
                         if export:
                                 print('Export to {}'.format(export_folder))
                                 plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
@@ -313,7 +328,7 @@ def main():
                                 plt.show()
 
                         plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
+                        show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes, failure_rate=orig_failure)
                         if export:
                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
                         if interactive:
@@ -327,6 +342,7 @@ def main():
                                                                                 config['input_config']['ji_file'], 
                                                                                 config['scenario_config']['scenario'],
                                                                                 weight_failure=config['scenario_config']['weight_failure'],
+                                                                                weight_virtual_failure=config['scenario_config']['weight_virtual_failure'],
                                                                                 weight_conversion=config['scenario_config']['weight_conversion'], 
                                                                                 weight_constraint=config['scenario_config']['weight_constraint'], 
                                                                                 weight_energy=config['scenario_config']['weight_energy'], 
