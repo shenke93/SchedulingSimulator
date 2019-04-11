@@ -6,6 +6,12 @@ import pandas as pd
 C1 = 10 # Used for failure cost calculation in run-down scenario
 C2 = 30
 
+standard_weights = {'weight_energy': 1,
+                    'weight_virtual_failure': 0,
+                    'weight_failure': 1,
+                    'weight_constraint': 0,
+                    'weight_constraint': 0}
+
 def ceil_dt(dt, delta):
     ''' 
     Ceil a data time dt according to the measurement delta.
@@ -56,7 +62,7 @@ def floor_dt(dt, delta):
 
 class Schedule:
     def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict, failure_info, 
-                 scenario, duration_str='duration', working_method='historical'):
+                 scenario, duration_str='duration', working_method='historical', weights={}):
         self.order = order
         self.start_time = start_time
         self.job_dict = job_dict
@@ -68,8 +74,8 @@ class Schedule:
         self.scenario = scenario
         self.duration_str = duration_str
         self.working_method = working_method
+        self.weights = weights
         self.time_dict = self.get_time()
-        #self.failure_prob = []
     
     def get_failure_prob(self):
         # Assistant function to visualize the processing of a candidate schedule throughout the time horizon
@@ -200,78 +206,6 @@ class Schedule:
         cumulative_failure_prob.index = [(t_start_begin + timedelta(hours = ( l / 3600))) for l in cumulative_failure_prob.index.tolist()]
 
         return cumulative_failure_prob
-
-
-    # def get_failure_prob(self):
-    #     t_now = self.start_time
-    #     t_last_maint = t_now
-    #     total_duration_nofail = 0
-    #     cur_rel = 1
-    #     cumulative_failure_prob = []
-
-    #     for item in self.order:
-    #         t_start = t_now
-            
-    #         unit1 = self.job_dict.get(item, -1)
-            
-    #         if self.duration_str == 'duration':
-    #             du = unit1['duration']
-    #         elif self.duration_str == 'quantity':
-    #             quantity = unit1['quantity']
-    #             product_type = unit1['product'] # get job product type
-    #             unit2 = self.prc_dict.get(product_type)
-    #             try:
-    #                 du = quantity / unit2['targetproduction'] # get job duration
-    #             except:
-    #                 print(quantity, unit2['targetproduction'])
-    #                 raise
-    #         else:
-    #             raise NameError('Faulty value inserted')
-
-    #         if self.working_method == 'expected':
-    #             product_type = unit1['product'] # get job product type
-    #             product_cat = unit1['type']
-    #             #print(self.prc_dict)
-    #             unit2 = self.prc_dict.get(product_type)
-    #             if self.failure_info is not None:
-    #                 failure_info = self.failure_info
-    #                 # suppose we started just after maintenance
-    #                 t_repair = failure_info[2]
-                    
-    #                 # if there would be no failure (suppose)
-    #                 #total_duration_nofail += du
-    #                 t_end = t_start + timedelta(hours = float(du))
-    #                 val2 = (total_duration_nofail + du)
-    #                 val1 = total_duration_nofail
-    #                 if val2 >= failure_info[3]:
-    #                     t_end_maint = t_start + timedelta(hours=failure_info[4])
-    #                     t_start = t_end_maint
-    #                     t_end = t_end + timedelta(hours=failure_info[4])
-    #                     ran = np.arange(0, failure_info[4], 1/3)
-    #                     fp = [0 for i in ran]
-    #                     cumulative_failure_prob.extend(fp)
-    #                     t_last_maint = t_start
-    #                     total_duration_nofail = 0
-    #                     val2 = (t_end - t_last_maint).total_seconds() / 3600
-    #                     val1 = (t_start - t_last_maint).total_seconds() / 3600
-    #                     cur_rel = 1
-    #                 if product_cat != 'NONE':
-    #                     #import pdb; pdb.set_trace()
-    #                     fail_dist = failure_info[0][product_cat]
-    #                     duration = val2 - val1
-    #                     v_start_time = fail_dist.get_t_from_reliability(cur_rel)
-    #                     t_down = t_repair * (fail_dist.failure_cdf(v_start_time+duration) - fail_dist.failure_cdf(v_start_time))
-    #                     ran = np.arange(v_start_time, v_start_time + duration, 1/3)
-    #                     fp = [fail_dist.failure_cdf(i) for i in ran]
-    #                     #print(fp)
-    #                     cumulative_failure_prob.extend(fp)
-    #                     cur_rel = fail_dist.reliability_cdf(v_start_time + duration)
-    #                     #print(t_repair, (fail_dist[product_cat].failure_cdf(val2) - fail_dist[product_cat].failure_cdf(val1)))
-    #                 else:
-    #                     t_down = 0
-    #                 t_end = t_start + timedelta(hours = float(du)) + timedelta(hours = t_down)
-    #                 total_duration_nofail += du
-    #                 #t_downtime += t_down
             
     
     def get_time(self):
@@ -812,3 +746,48 @@ class Schedule:
     # #             jobs.remove(item)
                 
     #     return flag
+
+    def get_fitness(self, split_types=False, detail=False):
+        ''' 
+        Get fitness values for all individuals in a generation.
+        '''
+        wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
+        we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
+        wb = self.weights.get('weight_constraint', 0)
+        factors = (wf, wvf, we, wc, wb)
+        if wf or wvf:
+            #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
+            #for i in sub_pop:
+            failure_cost, virtual_failure_cost = self.get_failure_cost(detail=detail, split_costs=True)
+            #failure_cost.append(np.array(f_cost)); virtual_failure_cost.append(np.array(vf_cost))
+        else:
+            failure_cost = 0
+            virtual_failure_cost = 0
+        if we:
+            #energy_cost = [self.w2*np.array(get_energy_cost(i, self.start_time, self.job_dict, self.price_dict, self.product_related_characteristics_dict, self.down_duration_dict,
+            #                detail=detail, duration_str=self.duration_str, working_method=self.working_method)) for i in sub_pop]
+            energy_cost = self.get_energy_cost(detail=detail)
+        else:
+            energy_cost = 0
+        if wc:
+            conversion_cost = self.get_conversion_cost(detail=detail)
+        else:
+            conversion_cost = 0
+        if wb:
+            constraint_cost = self.get_constraint_cost(detail=detail)
+        else:
+            constraint_cost = 0
+        if split_types:
+            total_cost = (np.array(failure_cost), np.array(virtual_failure_cost), np.array(energy_cost), 
+                          np.array(conversion_cost), np.array(constraint_cost), factors)
+        else:
+            try:
+                total_cost = wf * np.array(failure_cost) + wvf * np.array(virtual_failure_cost) +\
+                             we * np.array(energy_cost) + wc * np.array(conversion_cost) + wb * np.array(constraint_cost)
+            except:
+                print(np.array(failure_cost).shape, np.array(virtual_failure_cost).shape, np.array(energy_cost).shape,
+                      np.array(conversion_cost).shape, np.array(constraint_cost).shape)
+                print(detail)
+                print(constraint_cost)
+                raise
+        return total_cost    

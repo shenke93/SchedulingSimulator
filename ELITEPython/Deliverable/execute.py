@@ -4,7 +4,7 @@ from time import localtime, strftime
 from visualize_lib import show_results, plot_gantt, show_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
-from configfile import adapt_ifin
+#from configfile import adapt_ifin
 plt.style.use('seaborn-darkgrid')
 import time
 import random
@@ -12,7 +12,9 @@ import os, sys
 import configparser
 import logging
 
-configFilePath = 'config.ini'
+pathname = os.path.dirname(sys.argv[0]) 
+
+configFile = os.path.join(pathname, 'config.ini')
 
 #print(sys.path)
 
@@ -105,6 +107,7 @@ def read_config_file(path):
                 input_config = {}
                 this_section = config['input-config']
                 input_config['original'] = orig_folder =  this_section['original_folder']
+                orig_folder = os.path.join(pathname, orig_folder)
                 input_config['prc_file'] = os.path.join(orig_folder, this_section['product_related_characteristics_file'])
                 input_config['ep_file'] = os.path.join(orig_folder, this_section['energy_price_file'])
                 input_config['hdp_file'] = os.path.join(orig_folder, this_section['historical_down_periods_file'])
@@ -141,14 +144,17 @@ def read_config_file(path):
                 scenario_config['validation'] = config.getboolean('scenario-config', 'validation')
                 scenario_config['pre_selection'] = config.getboolean('scenario-config', 'pre_selection')
                 
-                scenario_config['weight_energy'] = config.getfloat('scenario-config', 'weight_energy')
-                scenario_config['weight_constraint'] = config.getfloat('scenario-config', 'weight_constraint')
-                scenario_config['weight_failure'] = config.getfloat('scenario-config', 'weight_failure')
+                scenario_config['weights'] = {}
+                scenario_config['weights']['weight_energy'] = config.getfloat('scenario-config', 'weight_energy')
+                scenario_config['weights']['weight_constraint'] = config.getfloat('scenario-config', 'weight_constraint')
+                scenario_config['weights']['weight_failure'] = config.getfloat('scenario-config', 'weight_failure')
                 if 'weight_virtual_failure' in this_section:
-                        scenario_config['weight_virtual_failure'] = config.getfloat('scenario-config', 'weight_virtual_failure')
+                        scenario_config['weights']['weight_virtual_failure'] = config.getfloat('scenario-config', 'weight_virtual_failure')
                 else:
-                        scenario_config['weight_virtual_failure'] = scenario_config['weight_failure']
-                scenario_config['weight_conversion'] = config.getfloat('scenario-config', 'weight_conversion')
+                        scenario_config['weights']['weight_virtual_failure'] = scenario_config['weight_failure']
+                scenario_config['weights']['weight_conversion'] = config.getfloat('scenario-config', 'weight_conversion')
+
+                 
                 
                 scenario_config['pop_size'] = config.getint('scenario-config', 'pop_size')
                 scenario_config['crossover_rate'] = config.getfloat('scenario-config', 'crossover_rate')
@@ -210,11 +216,13 @@ def main():
         
         # Taking config file path from the user.
         #configParser = configparser.RawConfigParser()   
+
+        pathname = os.path.dirname(sys.argv[0]) 
         
-        if os.path.exists(configFilePath):
-                config = read_config_file(configFilePath)
+        if os.path.exists(configFile):
+                config = read_config_file(configFile)
         else:
-                raise ValueError("{} not found!".format(configFilePath))
+                raise ValueError("{} not found!".format(configFile))
 
         print('Execution Starts!')
         #logger = start_logging('Output_file')
@@ -223,7 +231,7 @@ def main():
         sys.stdout = writer(sys.stdout, fout)
 
         downtimes = None
-        if config['scenario_config']['weight_failure'] and config['scenario_config']['working_method']=='historical':
+        if config['scenario_config']['weights']['weight_failure'] and config['scenario_config']['working_method']=='historical':
                 try:
                         downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['StartDateUTC', 'EndDateUTC'], index_col=0)
 
@@ -233,7 +241,7 @@ def main():
                         pass
 
         #import pdb; pdb.set_trace()
-        #print(config)
+        print(config)
 
         for value in config['scenario_config']['test']:
                 if value == 'GA':
@@ -248,11 +256,7 @@ def main():
                                                         adaptive=config['scenario_config']['adapt_ifin'], 
                                                         stop_condition=config['scenario_config']['stop_condition'], 
                                                         stop_value=config['scenario_config']['stop_value'], 
-                                                        weight_energy=config['scenario_config']['weight_energy'],
-                                                        weight_failure=config['scenario_config']['weight_failure'],
-                                                        weight_virtual_failure=config['scenario_config']['weight_virtual_failure'],
-                                                        weight_conversion=config['scenario_config']['weight_conversion'],
-                                                        weight_constraint=config['scenario_config']['weight_constraint'], 
+                                                        weights = config['scenario_config']['weights'],
                                                         duration_str=config['scenario_config']['duration_str'], 
                                                         evolution_method=config['scenario_config']['evolution_method'], 
                                                         validation=config['scenario_config']['validation'], 
@@ -341,11 +345,7 @@ def main():
                                                                                 config['input_config']['prc_file'], config['input_config']['ep_file'], 
                                                                                 config['input_config']['ji_file'], 
                                                                                 config['scenario_config']['scenario'],
-                                                                                weight_failure=config['scenario_config']['weight_failure'],
-                                                                                weight_virtual_failure=config['scenario_config']['weight_virtual_failure'],
-                                                                                weight_conversion=config['scenario_config']['weight_conversion'], 
-                                                                                weight_constraint=config['scenario_config']['weight_constraint'], 
-                                                                                weight_energy=config['scenario_config']['weight_energy'], 
+                                                                                weights = config['scenario_config']['weights'], 
                                                                                 duration_str=config['scenario_config']['duration_str'],
                                                                                 working_method=config['scenario_config']['working_method'])
                         timer1 = time.monotonic()
@@ -388,7 +388,7 @@ def main():
                                 plt.show()
                 if config['output_config']['export']:
                         import shutil
-                        shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
+                        shutil.copy2(configFile, os.path.join(export_folder, r"config_bu.ini"))
                 
                 logging.shutdown()
 

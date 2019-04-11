@@ -380,7 +380,7 @@ def hamming_distance(s1, s2):
 
 class Scheduler(object):
     def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
-                  start_time, weightf, weightvf, weighte, weightc, weightb, scenario, duration_str, working_method):
+                  start_time, weights, scenario, duration_str, working_method):
         # Attributes assignment
         self.dna_size = len(job_dict)
         self.pop = job_dict.keys()
@@ -393,11 +393,7 @@ class Scheduler(object):
         # TODO: replace with input data from precedence file
         self.precedence_dict = {}
         self.start_time = start_time
-        self.wf = weightf
-        self.wvf = weightvf
-        self.we = weighte
-        self.wc = weightc
-        self.wb = weightb
+        self.weights = weights
         self.scenario = scenario
         self.duration_str = duration_str
         self.working_method = working_method 
@@ -406,7 +402,10 @@ class Scheduler(object):
         ''' 
         Get fitness values for all individuals in a generation.
         '''
-        wf = self.wf; wvf = self.wvf; we = self.we; wc = self.wc; wb = self.wb
+        wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
+        we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
+        wb = self.weights.get('weight_constraint', 0)
+        factors = (wf, wvf, we, wc, wb)
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             failure_cost = []
@@ -432,8 +431,8 @@ class Scheduler(object):
         else:
             constraint_cost = [0 for i in sub_pop]
         if split_types:
-            total_cost = (wf * np.array(failure_cost), wvf * np.array(virtual_failure_cost), we * np.array(energy_cost), 
-                          wc * np.array(conversion_cost), wb * np.array(constraint_cost))
+            total_cost = (np.array(failure_cost), np.array(virtual_failure_cost), np.array(energy_cost), 
+                          np.array(conversion_cost), np.array(constraint_cost), factors)
         else:
             try:
                 total_cost = wf * np.array(failure_cost) + wvf * np.array(virtual_failure_cost) +\
@@ -449,10 +448,10 @@ class Scheduler(object):
  
 class BF(Scheduler):
     def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
-                  start_time, weightf, weightvf, weighte, weightc, weightb, scenario, duration_str, working_method, failure_info):
+                  start_time, weights, scenario, duration_str, working_method, failure_info):
         # Attributes assignment
         super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
-                start_time, weightf, weightvf, weighte, weightc, weightb, scenario, duration_str, working_method)
+                start_time, weights, scenario, duration_str, working_method)
 
     
     def check_all(self):
@@ -472,7 +471,7 @@ class BF(Scheduler):
                                         self.start_time, self.job_dict, self.failure_dict, 
                                         self.product_related_characteristics_dict,
                                         self.down_duration_dict, self.price_dict, self.failure_info,
-                                        self.scenario, self.duration_str, self.working_method)])[0]
+                                        self.scenario, self.duration_str, self.working_method, self.weights)])[0]
             if tot_cost < tot_cost_min:
                 tot_cost_min = tot_cost
                 best_sched = test
@@ -493,13 +492,12 @@ class BF(Scheduler):
                 
 class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
-                 product_related_characteristics_dict, down_duration_dict, start_time, weightf, weightvf, weighte, weightc, 
-                 weightb, scenario,
+                 product_related_characteristics_dict, down_duration_dict, start_time, weights, scenario,
                  num_mutations= 1, duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False,
                  working_method='historical', failure_info=None):
         # Attributes assignment
         super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
-                start_time, weightf, weightvf, weighte, weightc, weightb, scenario, duration_str, working_method)
+                start_time, weights, scenario, duration_str, working_method)
         self.dna_size = dna_size 
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
@@ -519,7 +517,7 @@ class GA(Scheduler):
                                  self.start_time, self.job_dict, self.failure_dict, 
                                  self.product_related_characteristics_dict,
                                  self.down_duration_dict, self.price_dict, self.failure_info,
-                                 self.scenario, self.duration_str, self.working_method)
+                                 self.scenario, self.duration_str, self.working_method, self.weights)
                                  for _ in range(pop_size)])
             #self.pop = np.vstack(pop for _ in range(pop_size))
         else:
@@ -527,7 +525,7 @@ class GA(Scheduler):
                                  self.start_time, self.job_dict, self.failure_dict, 
                                  self.product_related_characteristics_dict,
                                  self.down_duration_dict, self.price_dict, self.failure_info,
-                                 self.scenario, self.duration_str, self.working_method)
+                                 self.scenario, self.duration_str, self.working_method, self.weights)
                                  for _ in range(pop_size)])
             #self.pop = np.vstack([np.random.choice(pop, size=self.dna_size, replace=False) for _ in range(pop_size)])
         self.memory = []
@@ -639,7 +637,7 @@ class GA(Scheduler):
                         detailed_fitness = self.get_fitness([Schedule(loser, self.start_time, self.job_dict, self.failure_dict, 
                                                                       self.product_related_characteristics_dict,
                                                                       self.down_duration_dict, self.price_dict, self.failure_info,
-                                                                      self.scenario, self.duration_str, self.working_method)], detail=True)[0]
+                                                                      self.scenario, self.duration_str, self.working_method, self.weights)], detail=True)[0]
                         #print(detailed_fitness)
                         mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
                         loser = self.mutate(loser, mutation_prob)
@@ -663,7 +661,7 @@ class GA(Scheduler):
                         flag = 1
 
                 loser = Schedule(loser, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict,
-                                 self.down_duration_dict, self.price_dict, self.failure_info, self.scenario, self.duration_str, self.working_method)
+                                 self.down_duration_dict, self.price_dict, self.failure_info, self.scenario, self.duration_str, self.working_method, self.weights)
 
                 if flag == 0:
                     if evolution == 'roulette':
@@ -695,7 +693,7 @@ class GA(Scheduler):
 
 
 def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
-           scenario, weight_failure=1, weight_virtual_failure=1, weight_conversion=1, weight_constraint=1, weight_energy=1, duration_str='duration', 
+           scenario, weights, duration_str='duration', 
            working_method='historical', failure_info=None):
     # Generate raw material unit price
     if working_method == 'historical':
@@ -763,14 +761,13 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 
     bf = BF(job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
-            start_time=first_start_time, weightf=weight_failure, weightvf=weight_virtual_failure, weighte=weight_energy, 
-            weightc=weight_conversion, weightb=weight_constraint, scenario=scenario, working_method=working_method, 
+            start_time=first_start_time, weights=weights, scenario=scenario, working_method=working_method, 
             duration_str=duration_str, failure_info=failure_info)
     
     best_result, worst_result, best_schedule, worst_schedule = bf.check_all()
 
     best_schedule = Schedule(best_schedule, first_start_time, job_dict_new, hourly_failure_dict, product_related_characteristics_dict,
-                             down_duration_dict, price_dict_new, failure_info, scenario, duration_str, working_method)
+                             down_duration_dict, price_dict_new, failure_info, scenario, duration_str, working_method, weights)
 
     total_cost = (f_cost, vf_cost, e_cost, c_cost, d_cost) = bf.get_fitness([best_schedule], split_types=True)
     total_cost = list(itertools.chain(*total_cost))
@@ -805,7 +802,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
         
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
-            stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0, weight_virtual_failure = 0,
+            stop_condition='num_iterations', stop_value=None, weights={},
             duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None):
     print('Using', working_method, 'method')
     # filestream = open('previousrun.txt', 'w')
@@ -887,8 +884,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
-            start_time = first_start_time, weightf=weight_failure, weightvf=weight_virtual_failure, weighte=weight_energy, weightc=weight_conversion, 
-            weightb = weight_constraint, scenario=scenario,
+            start_time = first_start_time, weights=weights, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,
             pre_selection=pre_selection, working_method=working_method, failure_info=failure_info)
 
@@ -896,10 +892,11 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     #original_schedule = waiting_jobs
     #print(original_schedule)
     original_schedule = Schedule(waiting_jobs, first_start_time, job_dict_new, hourly_failure_dict,
-                                 product_related_characteristics_dict, down_duration_dict, price_dict_new, failure_info, scenario, duration_str, working_method)
+                                 product_related_characteristics_dict, down_duration_dict, price_dict_new, failure_info, scenario, duration_str, working_method, weights=weights)
 
     #import pdb; pdb.set_trace()
-    total_result = ga.get_fitness([original_schedule])
+    total_result = original_schedule.get_fitness()
+    #total_result = ga.get_fitness([original_schedule])
     result_dict.update({0: total_result})
 
     best_result_list = []
@@ -963,8 +960,9 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     candidate_schedule = pop[best_index]
 
 
-    total_cost = (f_cost, vf_cost, e_cost, c_cost, d_cost) = ga.get_fitness([candidate_schedule], split_types=True)
-    total_cost = list(itertools.chain(*total_cost))
+    f_cost, vf_cost, e_cost, c_cost, d_cost, factors = ga.get_fitness([candidate_schedule], split_types=True)
+    total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3] + d_cost * factors[4]
+    #total_cost = list(itertools.chain(*total_cost))
     #import pdb; pdb.set_trace()
 
     print("Candidate failure cost: " + str(*f_cost))
@@ -972,6 +970,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     print("Candidate energy cost: " + str(*e_cost))    
     print("Candidate conversion cost: " + str(*c_cost))
     print("Candidate deadline cost: " + str(*d_cost))
+    print("Factors: " + str(factors))
     print("Candidate total cost: " + str(sum(total_cost)))
     
 #     print("Most fitted cost: ", res[best_index])
@@ -992,8 +991,8 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     #     original_conversion_cost = weight_conversion * get_conversion_cost(original_schedule, job_dict_new, product_related_characteristics_dict)
     # else:
     #     original_conversion_cost = weight_conversion
-    original_cost = (f_cost, vf_cost, e_cost, c_cost, d_cost) = ga.get_fitness([original_schedule], split_types=True)
-    original_cost = list(itertools.chain(*original_cost))
+    f_cost, vf_cost, e_cost, c_cost, d_cost, factors = ga.get_fitness([original_schedule], split_types=True)
+    original_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3] + d_cost * factors[4]
     print("Original failure cost: " + str(*f_cost))
     print("Original virtual failure cost: " + str(*vf_cost))
     print("Original energy cost: " + str(*e_cost))    
