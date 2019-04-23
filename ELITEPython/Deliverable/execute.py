@@ -1,11 +1,14 @@
 from SchedulerV000 import run_opt, run_bf
 from datetime import datetime
 from time import localtime, strftime
-from visualize_lib import show_results, plot_gantt, show_energy_plot
+from visualize_lib import show_ga_results, plot_gantt, show_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
 #from configfile import adapt_ifin
+
 plt.style.use('seaborn-darkgrid')
+plt.rcParams.update({'figure.autolayout': True, 'figure.dpi': 144})
+
 import time
 import random
 import os, sys
@@ -14,11 +17,11 @@ import logging
 
 pathname = os.path.dirname(sys.argv[0]) 
 
-configFile = os.path.join(pathname, 'config.ini')
+configFile = os.path.join(pathname, 'config_test.ini')
 
 #print(sys.path)
 
-# Deprecated configurtaion
+# Deprecated configuration
 # from configfile import * # default configuration file
 # from configfile_test2 import * # customized configuration file
 
@@ -127,12 +130,16 @@ def read_config_file(path):
         if 'output-config' in sections:
                 output_config = {}
                 this_section = config['output-config']
-                output_config['export_folder'] = export_folder = os.getcwd() + this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M", localtime())
+                output_config['export_folder'] = export_folder = os.path.abspath(this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M", localtime()))
                 os.makedirs(export_folder, exist_ok=True)
                 output_config['output_init'] = os.path.join(export_folder, this_section['output_init'])
                 output_config['output_final'] = os.path.join(export_folder, this_section['output_final'])
                 output_config['interactive'] = config.getboolean('output-config', 'interactive')
                 output_config['export'] = config.getboolean('output-config', 'export')
+                if 'export_paper' in this_section:
+                        output_config['export_paper'] = config.getboolean('output-config', 'export_paper')
+                else:
+                        output_config['export_paper'] = False
                 return_sections['output_config'] = output_config
 
         if 'scenario-config' in sections:
@@ -152,6 +159,8 @@ def read_config_file(path):
                         scenario_config['weights']['weight_virtual_failure'] = config.getfloat('scenario-config', 'weight_virtual_failure')
                 else:
                         scenario_config['weights']['weight_virtual_failure'] = scenario_config['weight_failure']
+                if 'weight_flowtime' in this_section:
+                        scenario_config['weights']['weight_flowtime'] = config.getfloat('scenario-config', 'weight_flowtime')
                 scenario_config['weights']['weight_conversion'] = config.getfloat('scenario-config', 'weight_conversion')
 
                  
@@ -240,8 +249,13 @@ def main():
                 except:
                         pass
 
-        #import pdb; pdb.set_trace()
         print(config)
+
+        # copy the config file to the export folder
+        if config['output_config']['export']:
+                import shutil
+                export_folder = config['output_config']['export_folder']
+                shutil.copy2(configFile, os.path.join(export_folder, r"config_bu.ini"))
 
         for value in config['scenario_config']['test']:
                 if value == 'GA':
@@ -268,7 +282,7 @@ def main():
                         
                         #logger = start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
 
-                        logger = start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
+                        #logger = start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
 
                         print('Execution finished.')
                         print('Number of generations was', gen)
@@ -278,8 +292,6 @@ def main():
                         result_dict_origin = orig_sched.get_time()
 
                         if config['scenario_config']['working_method'] == 'expected' and config['input_config']['failure_info'] is not None:
-                                #import pdb; pdb.set_trace()
-
                                 orig_failure = orig_sched.get_failure_prob()
                                 best_failure = best_sched.get_failure_prob()
                         else:
@@ -295,12 +307,14 @@ def main():
                         print('Best: {}\t {}'.format(best_result, outputlist))
                         print('Original: {}\t {}'.format(orig_result, outputlist_orig))
 
-                        fig = show_results(best_curve, worst_curve, mean_curve)
+                        fig = show_ga_results(best_curve, mean_curve, worst_curve)
                         export = config['output_config']['export']
+                        export_paper = config['output_config']['export_paper']
                         interactive = config['output_config']['interactive']
                         if export is True:
-                                export_folder = config['output_config']['export_folder']
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
+                        if export_paper is True:
+                                plt.savefig(os.path.join(export_folder, r"evolution.pdf"))
                         if config['output_config']['interactive']:
                                 fig.show()
 
@@ -317,24 +331,42 @@ def main():
                         energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(config['input_config']['prc_file'])
                         
-                        plt.figure(dpi=50, figsize=[20, 15])
+                        
                         if 'Type' in best.columns:
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
 
-                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes, failure_rate=best_failure)
+                        if export_paper is True:
+                                print('Export to {}'.format(export_folder))
+                                fig = plt.figure(figsize=(10, 6), dpi=50)
+                                plot_gantt(best, namecolor, namecolor, downtimes=downtimes)
+                                plt.title('Gantt plot')
+                                plt.savefig(os.path.join(export_folder, r"gantt_plot.pdf"))
+                                plt.close()
+
+                        fitn = best_sched.get_fitness()
+
+                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen) - Fitness {:.1f} €'.format(gen, fitn), namecolor, downtimes=downtimes, failure_rate=best_failure)
                         
+
+
                         if export:
                                 print('Export to {}'.format(export_folder))
                                 plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
+                        if export_paper is True:
+                                print('Export to {}'.format(export_folder))
+                                plt.savefig(os.path.join(export_folder, r"best_sched.pdf"))
                         if interactive:
                                 plt.show()
 
-                        plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes, failure_rate=orig_failure)
+                        fitn = best_sched.get_fitness()
+
+                        show_energy_plot(orig, energy_price, prod_char, 'Original schedule - Fitness {:.1f} €'.format(fitn), namecolor, downtimes=downtimes, failure_rate=orig_failure)
                         if export:
                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
+                        if export_paper is True:
+                                plt.savefig(os.path.join(export_folder, r"orig_sched.pdf"))
                         if interactive:
                                 plt.show()
 
@@ -347,7 +379,8 @@ def main():
                                                                                 config['scenario_config']['scenario'],
                                                                                 weights = config['scenario_config']['weights'], 
                                                                                 duration_str=config['scenario_config']['duration_str'],
-                                                                                working_method=config['scenario_config']['working_method'])
+                                                                                working_method=config['scenario_config']['working_method'],
+                                                                                failure_info=config['input_config']['failure_info'])
                         timer1 = time.monotonic()
                         elapsed_time = timer1-timer0
                         print()
@@ -370,25 +403,27 @@ def main():
                         else:
                                 namecolor='ArticleName'
                         plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF)', namecolor, downtimes=downtimes)
+
+                        fitn = best_sched.get_fitness()
+
+                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF) - Fitness {.1f}'.format(fitn), namecolor, downtimes=downtimes)
 
                         export = config['output_config']['export']
                         interactive = config['output_config']['interactive']
                         if export is True:
-                                export_folder = config['output_config']['export_folder']
                                 plt.savefig(os.path.join(export_folder, r"best_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
 
                         plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF)', namecolor, downtimes=downtimes)
+
+                        fitn = worst_sched.get_fitness()
+
+                        show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF)- Fitness {.1f}'.format(fitn), namecolor, downtimes=downtimes)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
-                if config['output_config']['export']:
-                        import shutil
-                        shutil.copy2(configFile, os.path.join(export_folder, r"config_bu.ini"))
                 
                 logging.shutdown()
 

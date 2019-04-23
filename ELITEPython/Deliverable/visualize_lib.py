@@ -9,19 +9,15 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
 
-def show_results(best_result, worst_result, mean_result):
-    plt.plot(best_result, label='best')
-    #plt.plot(worst_result, label='worst')
-    plt.plot(mean_result, label='mean')
-    plt.title('Result versus number of iterations')
-    plt.xlabel('# iterations')
-    plt.ylabel('Predicted result')
-    plt.legend()
-
-    figure = plt.gcf()
-    ax = figure.gca()
+def show_ga_results(best_result, mean_result, worst_result=None):
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.plot(best_result, label='best')
+    ax.plot(mean_result, label='mean')
+    if worst_result is not None:
+        ax.plot(worst_result, label='worst')
+    ax.set(title='Fitness evolution graph', xlabel='# iterations', ylabel='Predicted cost')
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-
+    ax.legend()
     return plt.gcf()
 
 def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', enddate='EndDateUTC', order=False, downtimes=None):
@@ -113,6 +109,46 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     plt.xlim(timerange.min(), timerange.max())
     return label
 
+def calculate_energy_table(df_tasks, df_cost, df_cons):
+    lastenddate = df_tasks.iloc[-1]['EndDateUTC']
+    new_row = pd.Series({'ProductionRequestId': -1000,
+                     'StartDateUTC': lastenddate,
+                     'EndDateUTC': lastenddate + pd.Timedelta(1, 's'),
+                     'Duration': 1,
+                     'ReasonId': 0,
+                     'ArticleName': 'NONE'})
+    df_tasks = df_tasks.append(new_row, ignore_index=True)
+    #print(df_tasks)
+    
+    # Set timedateindex
+    df_tasks = df_tasks.merge(df_cons, how='left', left_on='ArticleName', right_on='Product').set_index('StartDateUTC', drop=True)
+    
+    # Concatenate the list of tasks and the energy cost on axis 0
+    out_table = pd.concat([df_tasks, df_cost]).sort_index()
+
+    startind = df_cost.index[df_cost.index < df_tasks.index[0]].max()
+    out_table = out_table[startind: df_tasks.index[-1]]
+    
+    # Determine the length of each time interval
+    # Make a new index with all changes and their length in hours
+    alldates = out_table.index
+    times = -pd.Series(((alldates - pd.Timestamp("1970-01-01")) / pd.Timedelta('1s'))).diff(-1)
+    out_table = out_table.reset_index(drop=True)
+    out_table['Difftime'] = times
+    out_table.index = alldates
+    out_table = out_table.iloc[:-1]
+    out_table = out_table[['Product', 'Difftime', 'Euro', 'Power']].ffill().bfill()
+
+    out_table = out_table[out_table.Difftime > 0]
+    
+    out_table['Price'] = (out_table['Difftime'] * out_table['Euro'] * out_table['Power']) / 3600
+    out_table = out_table[df_tasks.index[0]: df_tasks.index[-1]]
+
+    # Obsolete: calculates the total sum of the cost
+    total_sum = out_table['Price'].sum()
+    
+    return out_table
+
 def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
     lastenddate = df_tasks.iloc[-1]['EndDateUTC']
     new_row = pd.Series({'ProductionRequestId': -1000,
@@ -155,27 +191,30 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
         return total_sum
 
 def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None, failure_rate=None):
-    c, table = calculate_energy_cost(tasks, prices, energy, True)
-    
-    plt.subplot(5,1,(4,5))
-    timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
-    plt.title(title + ' (Result: {:.2f} €)'.format(c), y=1.15)
+    table = calculate_energy_table(tasks, prices, energy)
 
-    plt.subplot(5,1,1)
+    fig = plt.figure(dpi=50, figsize=(20, 15))
+    # first plot the gantt chart and its title
+    ax1 = fig.add_subplot(5, 1, (4,5))
+    timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
+    plt.title(title, y=1.15)
+
+    # now plot the energy prices
+    ax2 = fig.add_subplot(5, 1, 1)
     plt.title('Energy price')
     plt.xlim(timerange[0], timerange[-1])
     plt.plot(table.Euro, drawstyle='steps-post')
     plt.ylim(bottom=-table.Euro.max()*0.05, top=table.Euro.max()*1.05)
-
-    plt.subplot(5,1,2)
+    # and the energy consumption
+    fig.add_subplot(5, 1, 2)
     plt.title('Energy consumption')
     plt.xlim(timerange[0], timerange[-1])
 
     plt.plot(table.Power, drawstyle='steps-post')
     plt.ylim(bottom=-table.Power.max()*0.05, top=table.Power.max()*1.05)
-    
+    # and the failure rate if available
     if failure_rate is not None:
-        plt.subplot(5,1,3)
+        fig.add_subplot(5, 1, 3)
         plt.title('Failure rate')
         plt.plot(failure_rate, drawstyle='steps-post')
         plt.xlim(timerange[0], timerange[-1])

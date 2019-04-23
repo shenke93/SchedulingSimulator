@@ -644,8 +644,13 @@ class Schedule:
                 # first_product = self.job_dict[item1]['product']
                 # prc_up = self.prc_dict[first_product]['unitprice']
                 # prc_tp = self.prc_dict[first_product]['targetproduction']
-                mean = self.prc_dict.get('MEAN', -1)
-                mean_up = mean['unitprice']; mean_tpr = mean['targetproduction']
+                if 'MEAN' in self.prc_dict:
+                    mean = self.prc_dict.get('MEAN', -1)
+                    mean_up = mean['unitprice']; mean_tpr = mean['targetproduction']
+                else:
+                    temp_df = pd.DataFrame.from_dict(self.prc_dict).T
+                    temp_mean = temp_df.mean(axis=0)
+                    mean_up = temp_mean['unitprice']; mean_tpr = temp_mean['targetproduction']
                 total_availability = conversion_time * mean_up * mean_tpr
                 if detail:
                     conversion_cost.append(total_availability)
@@ -716,6 +721,28 @@ class Schedule:
                 constraint_cost += deadline_cost
         return constraint_cost
 
+    def get_flowtime_cost(self, detail=False):
+        if detail:
+            flowtime_cost = []
+        else:
+            flowtime_cost = 0
+        t_now = self.start_time
+
+        for item in self.time_dict:
+            flowtime = 0
+            if item in self.job_dict:
+                item_type = self.time_dict[item]['type']
+                if item_type != 'NONE':
+                    enddate = self.time_dict[item]['end']
+                    flowtime += (enddate - t_now).total_seconds() / 3600
+                #if beforedate < afterdate:
+                    #import pdb; pdb.set_trace()
+            if detail:
+                flowtime_cost.append(flowtime)
+            elif flowtime > 0:
+                flowtime_cost += flowtime
+        return flowtime_cost
+
     def validate(self):
         # validate time
         time_dict = self.get_time()
@@ -753,8 +780,8 @@ class Schedule:
         '''
         wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
         we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
-        wb = self.weights.get('weight_constraint', 0)
-        factors = (wf, wvf, we, wc, wb)
+        wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
+        factors = (wf, wvf, we, wc, wb, wft)
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             #for i in sub_pop:
@@ -777,16 +804,22 @@ class Schedule:
             constraint_cost = self.get_constraint_cost(detail=detail)
         else:
             constraint_cost = 0
+        if wft:
+            flowtime_cost = self.get_flowtime_cost(detail=detail)
+        else:
+            flowtime_cost = 0
         if split_types:
             total_cost = (np.array(failure_cost), np.array(virtual_failure_cost), np.array(energy_cost), 
-                          np.array(conversion_cost), np.array(constraint_cost), factors)
+                          np.array(conversion_cost), np.array(constraint_cost),
+                          np.array(flowtime_cost), factors)
         else:
             try:
                 total_cost = wf * np.array(failure_cost) + wvf * np.array(virtual_failure_cost) +\
-                             we * np.array(energy_cost) + wc * np.array(conversion_cost) + wb * np.array(constraint_cost)
+                             we * np.array(energy_cost) + wc * np.array(conversion_cost) + wb * np.array(constraint_cost) +\
+                             wft * np.array(flowtime_cost)
             except:
                 print(np.array(failure_cost).shape, np.array(virtual_failure_cost).shape, np.array(energy_cost).shape,
-                      np.array(conversion_cost).shape, np.array(constraint_cost).shape)
+                      np.array(conversion_cost).shape, np.array(constraint_cost).shape, np.array(flowtime_cost).shape)
                 print(detail)
                 print(constraint_cost)
                 raise
