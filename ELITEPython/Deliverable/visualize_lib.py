@@ -79,7 +79,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         for item in downtimes.T:
             entry = downtimes.loc[item]
             plt.axvspan(entry['Start'], entry['End'], alpha=0.3, facecolor='k')
-    plt.yticks(range(0, i), articles)
+    plt.yticks(range(0, i), articles, fontsize='x-small')
     #plt.hlines(cps, s_process, f_process, colors="green", lw=4)
     #plt.hlines(cps, s_unload, f_unload, color="blue", lw=4)
     plt.margins(0.1)

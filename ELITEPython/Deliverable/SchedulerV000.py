@@ -807,10 +807,10 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
     print("Factors: " + str(factors))
     print("Worst total cost: " + str(total_cost))
 
-    best_result_dict = best_schedule.get_time()
-    worst_result_dict = worst_schedule.get_time()
+    # best_result_dict = best_schedule.get_time()
+    # worst_result_dict = worst_schedule.get_time()
 
-    return best_result, worst_result, best_result_dict, worst_result_dict
+    return best_result, worst_result, best_schedule, worst_schedule 
 
         
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
@@ -826,6 +826,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         try:
             down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
             #print('test')
+            weight_failure = weights.get('weight_failure', 0)
             if weight_failure != 0:
                 if (failure_file is not None):
                     print(failure_file)
@@ -972,48 +973,18 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     print("Candidate schedule " + str(pop[best_index].order))
     candidate_schedule = pop[best_index]
 
+    candidate_schedule.print_fitness()
 
-    f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, factors = candidate_schedule.get_fitness(split_types=True)
-    total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3] + d_cost * factors[4] + ft_cost * factors[5]
-    #total_cost = list(itertools.chain(*total_cost))
-    #import pdb; pdb.set_trace()
-
-    print("Candidate failure cost: " + str(f_cost))
-    print("Candidate virtual failure cost: " + str(vf_cost))
-    print("Candidate energy cost: " + str(e_cost))    
-    print("Candidate conversion cost: " + str(c_cost))
-    print("Candidate deadline cost: " + str(d_cost))
-    print("Candidate flowtime cost: " + str(ft_cost))
-    print("Factors: " + str(factors))
-    print("Candidate total cost: " + str(total_cost))
+    total_cost = candidate_schedule.get_fitness()
     
 #     print("Most fitted cost: ", res[best_index])
 
     print("\nOriginal schedule: ", original_schedule.order)
 #     print("DNA_SIZE:", DNA_SIZE) 
     print("Original schedule start time:", first_start_time)
-    # if weight_energy:
-    #     original_energy_cost = weight_energy * get_energy_cost(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, down_duration_dict)
-    # else:
-    #     original_energy_cost = 0
-    # if weight_failure:
-    #     original_failure_cost = weight_failure * get_failure_cost(original_schedule, first_start_time, job_dict_new, hourly_failure_dict,
-    #                                                             product_related_characteristics_dict, down_duration_dict, scenario=scenario)
-    # else:
-    #     original_failure_cost = weight_failure
-    # if weight_conversion:
-    #     original_conversion_cost = weight_conversion * get_conversion_cost(original_schedule, job_dict_new, product_related_characteristics_dict)
-    # else:
-    #     original_conversion_cost = weight_conversion
-    f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, factors = original_schedule.get_fitness(split_types=True)
-    original_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3] + d_cost * factors[4] + ft_cost * factors[5]
-    print("Original failure cost: " + str(f_cost))
-    print("Original virtual failure cost: " + str(vf_cost))
-    print("Original energy cost: " + str(e_cost))    
-    print("Original conversion cost: " + str(c_cost))
-    print("Original deadline cost: " + str(d_cost))
-    print("Original flowtime cost: " + str(ft_cost))
-    print("Original total cost: " + str(original_cost))
+    original_schedule.print_fitness()
+
+    original_cost = original_schedule.get_fitness()
     
     #print(duration_str)
     result_dict = candidate_schedule.get_time()

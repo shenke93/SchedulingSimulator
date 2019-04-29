@@ -4,6 +4,7 @@ from time import localtime, strftime
 from visualize_lib import show_ga_results, plot_gantt, show_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
 #from configfile import adapt_ifin
 
 plt.style.use('seaborn-darkgrid')
@@ -17,7 +18,7 @@ import logging
 
 pathname = os.path.dirname(sys.argv[0]) 
 
-configFile = os.path.join(pathname, 'config_test.ini')
+configFile = os.path.join(pathname, 'config.ini')
 
 #print(sys.path)
 
@@ -33,7 +34,7 @@ def print_ul(strin):
     print('-'*len(strin))
 
 def make_df(dict):
-        all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration']
+        all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration', 'Cleaning_duration']
         key = random.choice(list(dict))
         item = dict[key]
         all_cols = all_cols[0:len(item)]
@@ -347,10 +348,9 @@ def main():
 
                         fitn = best_sched.get_fitness()
 
-                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen) - Fitness {:.1f} €'.format(gen, fitn), namecolor, downtimes=downtimes, failure_rate=best_failure)
+                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen) - Fitness {:.1f} €'.format(gen, fitn), 
+                                                                                             namecolor, downtimes=downtimes, failure_rate=best_failure)
                         
-
-
                         if export:
                                 print('Export to {}'.format(export_folder))
                                 plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
@@ -360,7 +360,7 @@ def main():
                         if interactive:
                                 plt.show()
 
-                        fitn = best_sched.get_fitness()
+                        fitn = orig_sched.get_fitness()
 
                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule - Fitness {:.1f} €'.format(fitn), namecolor, downtimes=downtimes, failure_rate=orig_failure)
                         if export:
@@ -389,11 +389,14 @@ def main():
                         print('Execution finished.')
                         # print('Start visualization')
 
-                        print('Best:',best_result, '\t', * best_sched)
-                        print('Worst:', worst_result, '\t', * worst_sched)
+                        best_result_dict = best_sched.get_time()
+                        worst_result_dict = worst_sched.get_time()
 
-                        best = make_df(best_sched)
-                        worst = make_df(worst_sched)
+                        print('Best:',best_result, '\t', * best_result_dict)
+                        print('Worst:', worst_result, '\t', * worst_result_dict)
+
+                        best = make_df(best_result_dict)
+                        worst = make_df(worst_result_dict)
 
                         energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(config['input_config']['prc_file'])
@@ -406,7 +409,9 @@ def main():
 
                         fitn = best_sched.get_fitness()
 
-                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF) - Fitness {.1f}'.format(fitn), namecolor, downtimes=downtimes)
+                        poss = math.factorial(len(best_sched.job_dict))
+
+                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF) {:} possiblities - Fitness {:.1f}'.format(poss, fitn), namecolor, downtimes=downtimes)
 
                         export = config['output_config']['export']
                         interactive = config['output_config']['interactive']
@@ -419,7 +424,7 @@ def main():
 
                         fitn = worst_sched.get_fitness()
 
-                        show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF)- Fitness {.1f}'.format(fitn), namecolor, downtimes=downtimes)
+                        show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF) - Fitness {:.1f}'.format(fitn), namecolor, downtimes=downtimes)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
                         if interactive:
