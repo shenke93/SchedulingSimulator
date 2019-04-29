@@ -298,9 +298,6 @@ def main():
                         else:
                                 orig_failure = None
                                 best_failure = None
-                        
-
-                        #import pdb; pdb.set_trace()
 
                         outputlist = ' '.join([str(l) for l in list(result_dict.keys())])
                         outputlist_orig = ' '.join([str(l) for l in list(result_dict_origin.keys())])

@@ -5,6 +5,7 @@ import pandas as pd
 
 C1 = 10 # Used for failure cost calculation in run-down scenario
 C2 = 30
+num_minutes_lost = 10
 
 standard_weights = {'weight_energy': 1,
                     'weight_virtual_failure': 0,
@@ -430,7 +431,7 @@ class Schedule:
                         # len downdur_select means the number of failures during a certain production
 
                         # product loss
-                        loss = len(downdur_select) * prc_up * prc_tpr / 6 # suppose for each failure 10 minutes of production gets lost
+                        loss = len(downdur_select) * prc_up * prc_tpr / 60 * num_minutes_lost # suppose for each failure 10 minutes of production gets lost
                         sum_len = 0
                         for item in downdur_select: # add up all failure times
                             sum_len += downdur_select[item][2]
@@ -492,7 +493,7 @@ class Schedule:
                         # = estimated number of downtimes
                         #
                         # item loss
-                        loss += (down_duration / mean_length_downtime) * (prc_up * prc_tpr / 6)
+                        loss += (down_duration / mean_length_downtime) * (prc_up * prc_tpr / 60 * num_minutes_lost)
                 if self.scenario == 2:
                     # same, but with C1 and C2 as constants
                     # time loss
