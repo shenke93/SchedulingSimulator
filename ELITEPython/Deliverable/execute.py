@@ -1,7 +1,7 @@
 from SchedulerV000 import run_opt, run_bf
 from datetime import datetime
 from time import localtime, strftime
-from visualize_lib import show_results, plot_gantt, show_energy_plot
+from visualize_lib import show_results, plot_gantt, show_energy_plot, save_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
 from configfile import adapt_ifin
@@ -160,17 +160,21 @@ def main():
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
-                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes)
+#                         show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes)
                         if export is True:
                                 print('Export to', export_folder)
-                                plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
+#                                 plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
+                                save_energy_plot(best, energy_price, prod_char, name='Best', folder=export_folder, title='Best schedule (GA) ({:} gen)'.format(gen), colors=namecolor, downtimes=downtimes)
+
                         if interactive:
                                 plt.show()
 
                         plt.figure(dpi=50, figsize=[20, 15])
-                        show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
+#                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
                         if export is True:
-                                plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
+#                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
+                                save_energy_plot(best, energy_price, prod_char, name='Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
+
                         if interactive:
                                 plt.show()
 

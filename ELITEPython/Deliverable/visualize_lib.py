@@ -8,14 +8,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
+import os
 
 def show_results(best_result, worst_result, mean_result):
     plt.plot(best_result, label='best')
     plt.plot(worst_result, label='worst')
     plt.plot(mean_result, label='mean')
-    plt.title('Result versus number of iterations')
-    plt.xlabel('# iterations')
-    plt.ylabel('Predicted result')
+#     plt.title('Result versus number of iterations')
+    plt.xlabel('Iterations')
+    plt.ylabel('Cost(€)')
     plt.legend()
 
     figure = plt.gcf()
@@ -151,7 +152,7 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
     plt.subplot(5,1,(4,5))
     timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
     plt.title(title + ' (Result: {:.2f} €)'.format(c), y=1.15)
-
+    
     plt.subplot(5,1,1)
     plt.title('Energy price')
     plt.xlim(timerange[0], timerange[-1])
@@ -165,6 +166,31 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
     plt.plot(table.Power, drawstyle='steps-post')
     plt.ylim(bottom=-table.Power.max()*0.05, top=table.Power.max()*1.05)
     plt.tight_layout()
+
+def save_energy_plot(tasks, prices, energy, name, folder, title='Schedule', colors='ArticleName', downtimes=None):
+    c, table = calculate_energy_cost(tasks, prices, energy, True)
+    
+    plt.figure(figsize=[20, 15])
+    timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
+    plt.title(title + ' (Result: {:.2f} €)'.format(c), y=1.15)
+    plt.savefig(os.path.join(folder, name+"Sched.png"), dpi=300)
+
+#     plt.title('Energy price')
+    plt.figure(figsize=[20, 15])
+    plt.xlim(timerange[0], timerange[-1])
+    plt.plot(table.Euro, drawstyle='steps-post')
+    plt.ylim(bottom=table.Euro.min()*0.95, top=table.Euro.max()*1.05)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder, name+"EnergyPrice.png"), dpi=300)
+
+
+#     plt.title('Energy consumption')
+    plt.figure(figsize=[20, 15])
+    plt.xlim(timerange[0], timerange[-1])
+    plt.plot(table.Power, drawstyle='steps-post')
+    plt.ylim(bottom=table.Power.min()*0.95, top=table.Power.max()*1.05)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder, name+"EnergyConsumption.png"), dpi=300)
 
 def show_gantt(df, start, end):
     plt.figure(figsize=(20, 10))
