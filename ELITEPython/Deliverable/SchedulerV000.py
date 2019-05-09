@@ -21,6 +21,7 @@ import time
 import msvcrt
 from population import Schedule
 from collections import OrderedDict
+from helperfunctions import JobInfo
 
 # import pickle
 # duration_str = 'quantity' 
@@ -116,36 +117,6 @@ def read_down_durations(downDurationFile):
         print("Unexpected error when reading down duration information from '{}'".format(downDurationFile))
         raise
     return down_duration_dict
-
-
-def select_from_range(dateRange1, dateRange2, dict, pos1, pos2):
-    '''
-    Select items of dict from a time range.
-    
-    Parameters
-    ----------
-    dateRange1: Date
-        Start timestamp of the range.
-    
-    dateRange2: Date
-        End timestamp of the range.
-        
-    dict: Dict
-        Original dictionary.
-        
-    Returns
-    -------
-    A dict containing selected items.
-    '''
-    res_dict = collections.OrderedDict()
-    for key, value in dict.items():
-        try:
-            if value[pos1] >= dateRange1 and value[pos2] <= dateRange2:
-                res_dict.update({key:value})
-        except TypeError:
-            print(value[pos1], dateRange1, value[pos2], dateRange2)
-            raise
-    return res_dict
 
 
 def read_product_related_characteristics(productFile):
@@ -255,69 +226,6 @@ def read_price(priceFile):
         print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
         exit()
     return price_dict
-
-
-def read_jobs(jobFile, get_totaltime=False):
-    ''' 
-    Create a dictionary to restore job information.
-
-    Parameters
-    ----------
-    jobFile: string
-        Name of file containing job information.
-    
-    Returns
-    -------
-    A dictionary containing job indexes and characteristics, key: int, value: list.
-    '''
-    job_dict = {}
-    if get_totaltime:
-        str_time = 'Totaltime'
-    else:
-        str_time = 'Uptime'
-    try:
-        with open(jobFile, encoding='utf-8') as jobInfo_csv:
-            reader = csv.DictReader(jobInfo_csv)
-            for row in reader:
-                job_num = int(row['ID'])
-                # insert product name
-                job_entry = dict({'product': row['Product']})
-                # time string or quantity should be in the row
-                if (str_time in row) and row[str_time] is not None:
-                    job_entry['duration'] = float(row[str_time])
-                if ('Quantity' in row) and row['Quantity'] is not None:
-                    job_entry['quantity'] = float(row['Quantity'])
-                if ('Start' in row) and row['Start'] is not None:
-                    job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
-                if ('End' in row) and row['End'] is not None:
-                    job_entry['end'] = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
-                
-                # Add product type
-                if ('Type' in row) and row['Type'] is not None:
-                    job_entry['type'] = row['Type']
-                    #print('Added type')
-                else:
-                    job_entry['type'] = 'unknown'
-
-                # Add due date
-                if ('Before' in row) and (row['Before'] is not None):
-                    job_entry['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
-                    #print('Before date read')
-                else:
-                    job_entry['before'] = datetime.max
-
-                # Add after date
-                if ('After' in row) and (row['After'] is not None):
-                    job_entry['after'] = datetime.strptime(row['After'], "%Y-%m-%d %H:%M:%S.%f")
-                else:
-                    job_entry['after'] = datetime.min
-
-                # add the item to the job dictionary
-                job_dict[job_num] = job_entry
-    except:
-        print("Unexpected error when reading job information from {}:".format(jobFile))
-        raise
-    return job_dict
 
 
 def get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict):
@@ -745,6 +653,8 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
     else:
         raise NameError('No start time found!')
 
+    job_dict_new = job_dict_new.astype(job_dict)
+
     # TODO: change
 #     print("failure_dict", failure_dict)
 #     exit()
@@ -816,7 +726,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weights={},
-            duration_str='expected', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None):
+            duration_str='expected', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None, add_time=0):
     print('Using', working_method, 'method')
     # filestream = open('previousrun.txt', 'w')
     # logging.basicConfig(level=20, stream=filestream)
@@ -865,12 +775,22 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
 
+    ji = JobInfo()
+    ji.read_from_file(job_file)
+    
     if (start_time != None) and (end_time != None):
-        job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+        #job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+        ji.limit_range(start_time, end_time)
     elif (start_time != None):
-        job_dict_new = read_jobs(job_file)
+        #job_dict_new = read_jobs(job_file)
+        pass
     else:
         raise NameError('No start time found!')
+
+    if add_time > 0:
+        ji.add_breaks(add_time)
+    
+    job_dict_new = ji.job_dict
 
     DNA_SIZE = len(job_dict_new)
     waiting_jobs = [*job_dict_new]

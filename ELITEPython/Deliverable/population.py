@@ -737,18 +737,20 @@ class Schedule:
         t_now = self.start_time
 
         for item in self.time_dict:
-            flowtime = 0
-            if item in self.job_dict:
-                item_type = self.time_dict[item]['type']
-                if item_type != 'NONE':
+            count = True
+            if item in self.job_dict: # this function eliminates all maintenance jobs
+                product = self.time_dict[item]['product']
+                if (product != 'NONE') and (product != 'MAINTENANCE'):
                     enddate = self.time_dict[item]['end']
-                    flowtime += (enddate - t_now).total_seconds() / 3600
-                #if beforedate < afterdate:
-                    #import pdb; pdb.set_trace()
-            if detail:
-                flowtime_cost.append(flowtime)
-            elif flowtime > 0:
-                flowtime_cost += flowtime
+                    flowtime = (enddate - t_now).total_seconds() / 3600
+                elif product == 'NONE':
+                    flowtime = 0
+                else:
+                    print('Error')
+                if detail:
+                    flowtime_cost.append(flowtime)
+                elif flowtime > 0:
+                    flowtime_cost += flowtime
         return flowtime_cost
 
     def validate(self):

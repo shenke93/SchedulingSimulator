@@ -310,15 +310,18 @@ def total_cost_maintenance(timearray, model, cp=100, cu=250, return_separate=Fal
 
     Cp = cp
     Cu = cu
+    # calculate expected time if there is unexpected breakdown
     expectedvalue = np.array([scipy.integrate.quad(model.reliability_cdf, 0, t)[0] for t in timearray])
+    # summate the expectation of preventive maintenance * time of maintenance +
+    # the expectation of unexpected maintenance * expected value of unexpected breakdown
     denum = model.reliability_cdf(timearray) * timearray + expectedvalue * (1 - model.reliability_cdf(timearray))
     cput = (Cp * model.reliability_cdf(timearray) + Cu * (1 - model.reliability_cdf(timearray))) / denum
-    preventive = Cp * model.reliability_cdf(timearray) / denum
-    unexpected = Cu * (1 - model.reliability_cdf(timearray)) / denum
     if return_separate:
+        preventive = Cp * model.reliability_cdf(timearray) / denum
+        unexpected = Cu * (1 - model.reliability_cdf(timearray)) / denum
         return cput, preventive, unexpected
-    else: # don't return separate
-        return cput
+    # don't return separate
+    return cput
 
 def pm_recommend(model, cp=100, cu=250):
     minimum = scipy.optimize.fmin(total_cost_maintenance, 0.5, args=(model, cp, cu))
