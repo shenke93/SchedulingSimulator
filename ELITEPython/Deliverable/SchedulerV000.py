@@ -314,6 +314,62 @@ def read_jobs(jobFile, get_totaltime=False):
     return job_dict
 
 
+# def read_urgent_jobs(jobFile, get_totaltime=False):
+#     """
+#     TODO: Add attribute checks.
+#     """
+#     job_dict = {}
+#     if get_totaltime:
+#         str_time = 'Totaltime'
+#     else:
+#         str_time = 'Uptime'
+#     try:
+#         with open(jobFile, encoding='utf-8') as jobInfo_csv:
+#             reader = csv.DictReader(jobInfo_csv)
+#             for row in reader:
+#                 job_num = int(row['ID'])
+#                 # insert product name
+#                 job_entry = dict({'product': row['Product']})
+#                 # time string or quantity should be in the row
+#                 if (str_time in row) and row[str_time] is not None:
+#                     job_entry['duration'] = float(row[str_time])
+#                 if ('Quantity' in row) and row['Quantity'] is not None:
+#                     job_entry['quantity'] = float(row['Quantity'])
+#                 
+#                 if ('Start' in row) and row['Start'] is not None:
+#                     job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
+#                 if ('End' in row) and row['End'] is not None:
+#                     job_entry['end'] = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
+#                 
+#                 # Add product type
+#                 if ('Type' in row) and row['Type'] is not None:
+#                     job_entry['type'] = row['Type']
+#                     #print('Added type')
+#                 else:
+#                     job_entry['type'] = 'unknown'
+# 
+#                 # Add due date
+#                 if ('Before' in row) and (row['Before'] is not None):
+#                     job_entry['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
+#                     #print('Before date read')
+#                 else:
+#                     job_entry['before'] = datetime.max
+# 
+#                 # Add after date
+#                 if ('After' in row) and (row['After'] is not None):
+#                     job_entry['after'] = datetime.strptime(row['After'], "%Y-%m-%d %H:%M:%S.%f")
+#                 else:
+#                     job_entry['after'] = datetime.min
+# 
+#                 # add the item to the job dictionary
+#                 job_dict[job_num] = job_entry
+#     except:
+#         print("Unexpected error when reading job information from {}:".format(jobFile))
+#         raise
+#     return job_dict
+
+
+
 def get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict):
     ''' 
     Get the hourly failure rate between a determined start time and end time.
@@ -731,9 +787,9 @@ def get_constraint_cost(schedule, start_time, job_info_dict, product_related_cha
                 deadline_cost = (t_end-beforedate).total_seconds() / 3600
 
         if 'after' in job_info_dict[item]: # assume not all jobs have deadlines
-             # check after condition
-             afterdate = job_info_dict[item]['after']
-             if t_end < afterdate: # produced before deadline
+            # check after condition
+            afterdate = job_info_dict[item]['after']
+            if t_end < afterdate: # produced before deadline
                 deadline_cost = (afterdate - t_end).total_seconds() / 3600
 
         if detail:
@@ -1356,7 +1412,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
-            duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='historical'):
+            duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
     print('Using', working_method, 'method')
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)

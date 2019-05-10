@@ -223,5 +223,101 @@ def main():
                         import shutil
                         shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
 
+def executeUrgentJobs():
+    # Reuse read_jobs to read urgent job information
+    print_ul('Scheduler v0.0.0 for urgent jobs')
+        
+    # Taking config file path from the user.
+    configParser = configparser.RawConfigParser()   
+    configFilePath = 'config.ini'
+    configParser.read(configFilePath)
+    
+    # Read input-config
+    original_folder = configParser.get('input-config', 'original_folder')
+    product_related_characteristics_file = os.path.join(original_folder, configParser.get('input-config', 'product_related_characteristics_file'))
+    energy_price_file = os.path.join(original_folder, configParser.get('input-config', 'energy_price_file'))
+    historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
+    urgent_job_info_file = os.path.join(original_folder, configParser.get('input-config', 'urgent_job_info_file'))
+    failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
+  
+    # Read output-config
+    export_folder = os.getcwd() + configParser.get('output-config', 'export_folder') + strftime("%Y%m%d_%H%M", localtime())
+    os.makedirs(export_folder, exist_ok=True)
+    output_init = os.path.join(export_folder, configParser.get('output-config', 'output_init_urgent')) # New output files for urgent jobs
+    output_final = os.path.join(export_folder, configParser.get('output-config', 'output_final_urgent')) # New output files for urgent jobs
+    interactive = configParser.getboolean('output-config', 'interactive')
+    export = configParser.getboolean('output-config', 'export')  
+    
+    # Read scenario-config
+    test = configParser.get('scenario-config', 'test').replace(' ', '').split(',')
+    scenario = configParser.getint('scenario-config', 'scenario')
+    validation = configParser.getboolean('scenario-config', 'validation')
+    pre_selection = configParser.getboolean('scenario-config', 'pre_selection')
+        
+    weight_energy = configParser.getint('scenario-config', 'weight_energy')
+    weight_constraint = configParser.getint('scenario-config', 'weight_constraint')
+    weight_failure = configParser.getint('scenario-config', 'weight_failure')
+    weight_conversion = configParser.getint('scenario-config', 'weight_conversion')
+        
+    pop_size = configParser.getint('scenario-config', 'pop_size')
+    crossover_rate = configParser.getfloat('scenario-config', 'crossover_rate')
+    mutation_rate = configParser.getfloat('scenario-config', 'mutation_rate')
+    num_mutations = configParser.getint('scenario-config', 'num_mutations')
+    iterations = configParser.getint('scenario-config', 'iterations')
+        
+    stop_condition = configParser.get('scenario-config', 'stop_condition')
+    stop_value = configParser.getint('scenario-config', 'stop_value')
+    duration_str = configParser.get('scenario-config', 'duration_str')
+    evolution_method = configParser.get('scenario-config', 'evolution_method')
+    working_method = configParser.get('scenario-config', 'working_method')
+        
+    adapt_ifin_low = configParser.getint('scenario-config', 'adapt_ifin_low')
+    adapt_ifin_high = configParser.getint('scenario-config', 'adapt_ifin_high')
+    adapt_ifin_step = configParser.getint('scenario-config', 'adapt_ifin_step')
+    adapt_ifin = [i for i in range(adapt_ifin_low, adapt_ifin_high+adapt_ifin_step, adapt_ifin_step)]
+    
+    if configParser.has_section('start-end'):
+            start_time = datetime(configParser.getint('start-end', 'start_year'), configParser.getint('start-end', 'start_month'), 
+                                configParser.getint('start-end', 'start_day'), configParser.getint('start-end', 'start_hour'), 
+                                configParser.getint('start-end', 'start_minute'), configParser.getint('start-end', 'start_second')) # Date range of jobs to choose
+            end_time = datetime(configParser.getint('start-end', 'end_year'), configParser.getint('start-end', 'end_month'), 
+                                configParser.getint('start-end', 'end_day'), configParser.getint('start-end', 'end_hour'), 
+                                configParser.getint('start-end', 'end_minute'), configParser.getint('start-end', 'end_second'))
+    elif configParser.has_section('start'):
+            start_time = datetime(configParser.getint('start', 'start_year'), configParser.getint('start', 'start_month'), 
+                                configParser.getint('start', 'start_day'), configParser.getint('start', 'start_hour'), 
+                                configParser.getint('start', 'start_minute'), configParser.getint('start', 'start_second')) # Date range of jobs to choose
+            end_time = None
+    else:
+            raise NameError('No section with start date found!')
+
+    print('Execution Start!')  
+    
+    fout = open(os.path.join(export_folder, 'out_urgent_jobs.log'), 'w+')
+    sys.stdout = writer(sys.stdout, fout)
+    
+    downtimes = None
+    if weight_failure and working_method=='historical':
+            try:
+                    downtimes = pd.read_csv(historical_down_periods_file, parse_dates=['StartDateUTC', 'EndDateUTC'])
+                    downtimes = downtimes[downtimes.StartDateUTC.between(start_time, end_time)]
+            except:
+                    pass    
+                    
+    for value in test:
+            if value == 'GA':
+                print("Using GA")
+            else:
+                print("No matching method!")              
+    pass
+    
 if __name__ == "__main__":
-        main()
+    while True:
+#         main()
+        print('Dealing with urgent jobs?')
+        n = input("Your answer:")
+        if n.strip() in ['Yes', 'yes', 'y', 'Y']: 
+            print('Do next step')
+            executeUrgentJobs()
+        break
+        
