@@ -32,8 +32,8 @@ def main():
 
         if not os.path.exists(config['output_config']['export_folder']):
                 os.mkdir(config['output_config']['export_folder'])
-        logger = start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
-        logger.info('Starting logging')
+        start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
+        logging.info('Starting logging')
 
         downtimes = None
         if config['scenario_config']['weights']['weight_failure'] and config['scenario_config']['working_method']=='historical':
@@ -77,8 +77,8 @@ def main():
                         add_time=config['scenario_config']['add_time']
                         )
 
-                        logger.info('Execution finished.')
-                        logger.info('Number of generations was', gen)
+                        logging.info('Execution finished.')
+                        logging.info('Number of generations was '+ str(gen))
                         # print('Start visualization')
 
                         result_dict = best_sched.get_time()
@@ -245,14 +245,16 @@ def main():
                                 add_time=time
                                 )
 
-                                logger.info('Execution finished.')
-                                logger.info('Number of generations was', gen)
+                                logging.info('Execution finished.')
+                                logging.info('Number of generations was ' +  str(gen))
                                 # print('Start visualization')
 
                                 fitn = best_sched.get_fitness()
 
                                 list_added.append(time)
                                 list_result.append(fitn)
+
+                                logging.info("When adding {:} hours of breaks, the result is {:.1f}".format(time, fitn))
                         
                         print(list_added)
                         print(list_result)

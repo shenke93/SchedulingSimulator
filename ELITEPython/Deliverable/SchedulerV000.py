@@ -13,7 +13,7 @@ import warnings
 from datetime import timedelta, datetime
 from operator import add
 import operator
-import logging
+#import logging
 import os
 import math
 import itertools
@@ -29,6 +29,9 @@ from helperfunctions import JobInfo
 # 3rd-party modules
 import numpy as np
 import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Global variables
 # POP_SIZE = 8   
@@ -727,7 +730,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weights={},
             duration_str='expected', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None, add_time=0):
-    print('Using', working_method, 'method')
+    logging.info('Using '+ str(working_method) + ' method')
     # filestream = open('previousrun.txt', 'w')
     # logging.basicConfig(level=20, stream=filestream)
     # Generate raw material unit price

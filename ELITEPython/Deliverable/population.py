@@ -2,6 +2,7 @@ from datetime import timedelta, datetime
 import warnings
 import numpy as np
 import pandas as pd
+import logging
 
 C1 = 10 # Used for failure cost calculation in run-down scenario
 C2 = 30
@@ -841,13 +842,13 @@ class Schedule:
         #total_cost = list(itertools.chain(*total_cost))
         #import pdb; pdb.set_trace()
 
-        print(inputstr + " failure cost: " + str(f_cost))
-        print(inputstr + " virtual failure cost: " + str(vf_cost))
-        print(inputstr + " energy cost: " + str(e_cost))    
-        print(inputstr + " conversion cost: " + str(c_cost))
-        print(inputstr + " deadline cost: " + str(d_cost))
-        print(inputstr + " flowtime cost: " + str(ft_cost))
-        print("Factors: " + str(factors))
-        print("Total cost: " + str(total_cost))
+        logging.info(inputstr + " failure cost: " + str(f_cost))
+        logging.info(inputstr + " virtual failure cost: " + str(vf_cost))
+        logging.info(inputstr + " energy cost: " + str(e_cost))    
+        logging.info(inputstr + " conversion cost: " + str(c_cost))
+        logging.info(inputstr + " deadline cost: " + str(d_cost))
+        logging.info(inputstr + " flowtime cost: " + str(ft_cost))
+        logging.info("Factors: " + str(factors))
+        logging.info("Total cost: " + str(total_cost))
 
-        print("Number of changeovers: " + str(self.get_num_conversions()))
+        logging.info("Number of changeovers: " + str(self.get_num_conversions()))
