@@ -1,4 +1,4 @@
-from SchedulerV000 import run_opt, run_bf
+from SchedulerV000 import run_opt, run_opt_urgent, run_bf
 from datetime import datetime
 from time import localtime, strftime
 from visualize_lib import show_results, plot_gantt, show_energy_plot, save_energy_plot
@@ -10,6 +10,8 @@ import time
 import random
 import os, sys
 import configparser
+import collections
+import csv
 
 #print(sys.path)
 
@@ -33,7 +35,7 @@ def make_df(dict):
         df.columns = all_cols
         #df['ReasonId'] = 100
         return df
-
+    
 class writer :
         def __init__(self, *writers) :
                 self.writers = writers
@@ -237,6 +239,7 @@ def executeUrgentJobs():
     product_related_characteristics_file = os.path.join(original_folder, configParser.get('input-config', 'product_related_characteristics_file'))
     energy_price_file = os.path.join(original_folder, configParser.get('input-config', 'energy_price_file'))
     historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
+    job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
     urgent_job_info_file = os.path.join(original_folder, configParser.get('input-config', 'urgent_job_info_file'))
     failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
   
@@ -307,6 +310,65 @@ def executeUrgentJobs():
     for value in test:
             if value == 'GA':
                 print("Using GA")
+                # TODO: Generate new urgent job file, using original job file and urgent job file
+                
+                best_result, orig_result, best_sched, orig_sched, best_curve, mean_curve, worst_curve, gen = \
+                                                        run_opt_urgent(start_time, end_time, historical_down_periods_file, failure_rate_file, 
+                                                        product_related_characteristics_file, energy_price_file, job_info_file, urgent_job_info_file,
+                                                        scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
+                                                        weight_constraint=weight_constraint, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
+                                                        weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
+                                                        pre_selection=pre_selection, working_method=working_method)
+                print('Execution finished.')
+                print('Number of generations was', gen)
+                        # print('Start visualization')
+
+                print('Best:', best_result, '\t', * best_sched)
+                print('Original:', orig_result, '\t', * orig_sched)
+                
+                fig = show_results(best_curve, worst_curve, mean_curve)
+                if export is True:
+                        plt.savefig(os.path.join(export_folder, r"evolution_emerge_jobs.png"), dpi=300)
+                if interactive:
+                        fig.show()
+                best = make_df(best_sched)
+                orig = make_df(orig_sched)
+                
+                # output files to csv's
+                orig.to_csv(output_init)
+                best.to_csv(output_final)
+                
+                energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
+                prod_char = pd.read_csv(product_related_characteristics_file)
+                        
+                plt.figure(dpi=50, figsize=[20, 15])
+                if 'Type' in best.columns:
+                        namecolor='Type'
+                else:
+                        namecolor='ArticleName'
+#                         show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen)'.format(gen), namecolor, downtimes=downtimes)
+                if export is True:
+                        print('Export to', export_folder)
+#                                 plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
+                        save_energy_plot(best, energy_price, prod_char, name='Emerge_Best', folder=export_folder, title='Best schedule (GA) ({:} gen)'.format(gen), colors=namecolor, downtimes=downtimes)
+
+                if interactive:
+                        plt.show()
+
+                plt.figure(dpi=50, figsize=[20, 15])
+#                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
+                if export is True:
+#                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
+                        save_energy_plot(best, energy_price, prod_char, name='Emerge_Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
+
+                if interactive:
+                        plt.show()        
+                        
+                        
+                        
+                        
+                        
+                        
             else:
                 print("No matching method!")              
     pass
