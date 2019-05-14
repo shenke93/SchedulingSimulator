@@ -729,7 +729,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weights={},
-            duration_str='expected', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None, add_time=0):
+            duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None, add_time=0):
     logging.info('Using '+ str(working_method) + ' method')
     # filestream = open('previousrun.txt', 'w')
     # logging.basicConfig(level=20, stream=filestream)

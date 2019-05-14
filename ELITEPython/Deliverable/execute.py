@@ -18,7 +18,7 @@ import logging
 from helperfunctions import *
 
 pathname = os.path.dirname(sys.argv[0])
-configFile = os.path.join(pathname, 'config_pareto.ini')
+configFile = os.path.join(pathname, 'config.ini')
 
 def main():
         print_ul('Scheduler v0.0.0')
@@ -246,7 +246,7 @@ def main():
                                 )
 
                                 logging.info('Execution finished.')
-                                logging.info('Number of generations was ' +  str(gen))
+                                logging.info('Number of generations was {:}'.format(gen))
                                 # print('Start visualization')
 
                                 fitn = best_sched.get_fitness()

@@ -32,6 +32,7 @@ class JobInfo(object):
         A dictionary containing job indexes and characteristics, key: int, value: list.
         '''
         job_dict = {}
+        # Choose between total time and uptime
         if get_totaltime:
             str_time = 'Totaltime'
         else:
@@ -52,21 +53,18 @@ class JobInfo(object):
                         job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
                     if ('End' in row) and row['End'] is not None:
                         job_entry['end'] = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
-                    
                     # Add product type
                     if ('Type' in row) and row['Type'] is not None:
                         job_entry['type'] = row['Type']
                         #print('Added type')
                     else:
                         job_entry['type'] = 'unknown'
-
                     # Add due date
                     if ('Before' in row) and (row['Before'] is not None):
                         job_entry['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
                         #print('Before date read')
                     else:
                         job_entry['before'] = datetime.max
-
                     # Add after date
                     if ('After' in row) and (row['After'] is not None):
                         job_entry['after'] = datetime.strptime(row['After'], "%Y-%m-%d %H:%M:%S.%f")
@@ -351,7 +349,7 @@ def start_logging(filename):
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     # set a format which is simpler for console use
-    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(name)-12s: %(levelname)-8s %(message)s')
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
