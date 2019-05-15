@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
+import os
 
 def show_ga_results(best_result, mean_result, worst_result=None):
     fig, ax = plt.subplots(figsize=(6, 4))
@@ -222,6 +223,30 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
 
     plt.tight_layout()
 
+def save_energy_plot(tasks, prices, energy, name, folder, title='Schedule', colors='ArticleName', downtimes=None):
+    c, table = calculate_energy_cost(tasks, prices, energy, True)
+    
+    plt.figure(figsize=[20, 15])
+    timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
+    plt.title(title + ' (Result: {:.2f} €)'.format(c), y=1.15)
+    plt.savefig(os.path.join(folder, name+"Sched.png"), dpi=300)
+
+#     plt.title('Energy price')
+    plt.figure(figsize=[20, 15])
+    plt.xlim(timerange[0], timerange[-1])
+    plt.plot(table.Euro, drawstyle='steps-post')
+    plt.ylim(bottom=table.Euro.min()*0.95, top=table.Euro.max()*1.05)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder, name+"EnergyPrice.png"), dpi=300)
+
+
+#     plt.title('Energy consumption')
+    plt.figure(figsize=[20, 15])
+    plt.xlim(timerange[0], timerange[-1])
+    plt.plot(table.Power, drawstyle='steps-post')
+    plt.ylim(bottom=table.Power.min()*0.95, top=table.Power.max()*1.05)
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder, name+"EnergyConsumption.png"), dpi=300)
 
 def show_gantt(df, start, end):
     plt.figure(figsize=(20, 10))
