@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['execute.py'],
+a = Analysis(['execute.dist'],
              pathex=['D:\\users\\jdavid\\Programming\\GitHub\\SchedulingSimulator\\ELITEPython\\Deliverable'],
              binaries=[],
              datas=[],

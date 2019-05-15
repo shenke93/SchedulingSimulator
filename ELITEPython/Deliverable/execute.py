@@ -17,8 +17,8 @@ import logging
 
 from helperfunctions import *
 
-pathname = os.path.dirname(sys.argv[0])
-configFile = os.path.join(pathname, 'config.ini')
+#pathname = os.path.dirname(sys.argv[0])
+configFile = 'config.ini'
 
 def main():
         print_ul('Scheduler v0.0.0')
@@ -30,9 +30,11 @@ def main():
 
         print('Execution Starts!')
 
-        if not os.path.exists(config['output_config']['export_folder']):
-                os.mkdir(config['output_config']['export_folder'])
-        start_logging(os.path.join(config['output_config']['export_folder'], 'out.log'))
+        export_folder = config['output_config']['export_folder']
+
+        if not os.path.exists(export_folder):
+                os.makedirs(export_folder)
+        start_logging(os.path.join(export_folder, 'out.log'))
         logging.info('Starting logging')
 
         downtimes = None
