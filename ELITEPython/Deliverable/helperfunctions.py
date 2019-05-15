@@ -18,6 +18,18 @@ class JobInfo(object):
         Initialise the job dictionary
         '''
         self.job_dict = {}
+        self.job_order = []
+    
+    def __str__(self):
+        return ("Job order: " + str(self.job_order))
+
+    def __add__(self, other):
+        job_dict = self.job_dict + other.job_dict
+        job_order = self.job_order + other.job_order
+        new_ji = JobInfo()
+        new_ji.job_dict = job_dict
+        new_ji.job_order = job_order
+        return new_ji
 
     def read_from_file(self, job_file, get_totaltime=False):
         '''
@@ -32,6 +44,7 @@ class JobInfo(object):
         A dictionary containing job indexes and characteristics, key: int, value: list.
         '''
         job_dict = {}
+        job_order = []
         # Choose between total time and uptime
         if get_totaltime:
             str_time = 'Totaltime'
@@ -73,10 +86,29 @@ class JobInfo(object):
 
                     # add the item to the job dictionary
                     job_dict[job_num] = job_entry
+                    job_order.append(job_num)
         except:
             print("Unexpected error when reading job information from {}:".format(job_file))
             raise
         self.job_dict = job_dict
+        self.job_order = job_order
+
+
+    def insert_urgent_jobs(self, urgent_dict):
+        stamp = min(x.get('ReleaseDate') for x in urgent_dict.values()) # Find the smallest release date
+        print(stamp)
+        res_dict = {}
+        for key, value in origin_dict.items():
+            try:
+                if value['start'] >= stamp: # All jobs whose start time after the stamp needs to be re-organized
+                    res_dict.update({key:value})
+            except TypeError:
+                print("Wrong type when comparing jobs.")
+                raise
+        
+        res_dict.update(urgent_dict)
+
+        return res_dict
 
     def limit_range(self, date_range1, date_range2):
         '''
@@ -99,15 +131,21 @@ class JobInfo(object):
         '''
         #res_dict = collections.OrderedDict()
         job_dict = self.job_dict
-        res_dict = {}
+        job_dict_copy = self.job_dict.copy()
+        job_order = self.job_order
+        #res_dict = {}
+        assert date_range1 < date_range2, "The end date should be larger then the start date"
         for key, value in job_dict.items():
-            try:
-                if value['start'] >= date_range1 and value['end'] <= date_range2:
-                    res_dict.update({key:value})
-            except TypeError:
-                print(value['start'], date_range1, value['end'], date_range2)
-                raise
-        self.job_dict = res_dict
+            if value['start'] < date_range1 or value['end'] > date_range2:
+                try:
+                    del job_dict_copy[key]
+                    job_order.remove(key)
+                except KeyError:
+                    print(value['start'], date_range1, value['end'], date_range2)
+                    print("Key {} not found".format(key))
+                    raise
+        self.job_dict = job_dict_copy
+        self.job_order = job_order
 
     def add_breaks(self, break_hours):
         ''' 
@@ -115,15 +153,17 @@ class JobInfo(object):
         '''
         job_dict = self.job_dict
         min_key = min(job_dict.keys())
+        job_order = self.job_order
         while break_hours > 0:
             min_key -= 1
             dur = 2 if break_hours > 2 else break_hours
             new_dict = {'product': 'NONE', 'duration': dur, 'quantity': dur, 'type': 'NONE', 
                         'before': datetime.max, 'after': datetime.min}
             job_dict[min_key] = new_dict
+            job_order.append(min_key)
             break_hours -= 2
         self.job_dict = job_dict
-
+        self.job_order = job_order
 
 
 # Construct energy two tariffs between two dates
@@ -241,6 +281,10 @@ def read_config_file(path):
         input_config['ep_file'] = os.path.join(orig_folder, this_section['energy_price_file'])
         input_config['hdp_file'] = os.path.join(orig_folder, this_section['historical_down_periods_file'])
         input_config['ji_file'] = os.path.join(orig_folder, this_section['job_info_file'])
+        if 'urgent_job_info_file' in this_section:
+            input_config['urgent_ji_file'] = os.path.join(orig_folder, this_section['urgent_job_info_file'])
+        else:
+            input_config['urgent_ji_file'] = None
         if 'failure_info_path' in this_section:
             failure_info_path = os.path.join(orig_folder, this_section['failure_info_path'])
             if os.path.exists(failure_info_path):

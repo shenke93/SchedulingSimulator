@@ -409,7 +409,7 @@ class BF(Scheduler):
 class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
                  product_related_characteristics_dict, down_duration_dict, start_time, weights, scenario,
-                 num_mutations= 1, duration_str='expected', evolution_method='roulette', validation=False, pre_selection=False,
+                 num_mutations=1, duration_str='expected', evolution_method='roulette', validation=False, pre_selection=False,
                  working_method='historical', failure_info=None):
         # Attributes assignment
         super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
@@ -729,7 +729,8 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weights={},
-            duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None, add_time=0):
+            duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None, add_time=0,
+            urgent_job_info=None):
     logging.info('Using '+ str(working_method) + ' method')
     # filestream = open('previousrun.txt', 'w')
     # logging.basicConfig(level=20, stream=filestream)
@@ -789,6 +790,11 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         pass
     else:
         raise NameError('No start time found!')
+    
+    if urgent_job_info:
+        urgent_ji = JobInfo()
+        urgent_ji.read_from_file(urgent_job_info)
+        ji = ji + urgent_ji
 
     if add_time > 0:
         ji.add_breaks(add_time)
@@ -796,17 +802,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     job_dict_new = ji.job_dict
 
     DNA_SIZE = len(job_dict_new)
-    waiting_jobs = [*job_dict_new]
-    
-#     print(job_dict_new)
-    if pre_selection == True:
-        sorted_jobs = OrderedDict(sorted(job_dict_new.items(), key=lambda kv: kv[1].get('before')))
-        waiting_jobs = [*sorted_jobs]
-#         print("Sorted_job:", sorted_job)
-    
-#     print(sorted_job)
-#     print(waiting_jobs)
-#     exit()
+    waiting_jobs = ji.job_order
     
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
@@ -942,27 +938,10 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     return total_cost, original_cost, candidate_schedule, original_schedule, best_result_list, mean_result_list, worst_result_list, generation
 
 
-def make_new_jobs_dict(origin_dict, urgent_dict):
-    stamp = min(x.get('ReleaseDate') for x in urgent_dict.values()) # Find the smallest release date
-    print(stamp)
-    res_dict = {}
-    for key, value in origin_dict.items():
-        try:
-            if value['start'] >= stamp: # All jobs whose start time after the stamp needs to be re-organized
-                res_dict.update({key:value})
-        except TypeError:
-            print("Wrong type when comparing jobs.")
-            raise
-    
-    res_dict.update(urgent_dict)
-
-    return res_dict
-
-
 def run_opt_urgent(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, urgent_job_file,
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
-            duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
+            duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
     print('Using', working_method, 'method')
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)
@@ -1073,7 +1052,7 @@ def run_opt_urgent(start_time, end_time, down_duration_file, failure_file, prod_
 
     
 #     exit()
-    ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
+    ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop=waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 

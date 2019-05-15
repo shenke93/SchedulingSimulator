@@ -1,7 +1,7 @@
 from SchedulerV000 import run_opt, run_opt_urgent, run_bf
 from datetime import datetime
 from time import localtime, strftime
-from visualize_lib import show_results, plot_gantt, show_energy_plot, save_energy_plot
+from visualize_lib import show_ga_results, plot_gantt, show_energy_plot, save_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
@@ -62,7 +62,7 @@ def main():
                         config['input_config']['prc_file'], config['input_config']['ep_file'], config['input_config']['ji_file'], 
                         config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
                         config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
-                        config['scenario_config']['pop_size'],  
+                        config['scenario_config']['pop_size'], 
                         num_mutations=config['scenario_config']['num_mutations'],
                         adaptive=config['scenario_config']['adapt_ifin'], 
                         stop_condition=config['scenario_config']['stop_condition'], 
@@ -74,7 +74,8 @@ def main():
                         pre_selection=config['scenario_config']['pre_selection'], 
                         working_method=config['scenario_config']['working_method'], 
                         failure_info=config['input_config']['failure_info'],
-                        add_time=config['scenario_config']['add_time']
+                        add_time=config['scenario_config']['add_time'],
+                        urgent_job_info = config['input_config']['urgent_ji_file']
                         )
 
                         logging.info('Execution finished.')
@@ -365,7 +366,7 @@ def executeUrgentJobs():
                 print('Best:', best_result, '\t', * best_sched)
                 print('Original:', orig_result, '\t', * orig_sched)
                 
-                fig = show_results(best_curve, worst_curve, mean_curve)
+                fig = show_ga_results(best_curve, worst_curve, mean_curve)
                 if export is True:
                         plt.savefig(os.path.join(export_folder, r"evolution_emerge_jobs.png"), dpi=300)
                 if interactive:
@@ -414,11 +415,11 @@ def executeUrgentJobs():
     
 if __name__ == "__main__":
     while True:
-#         main()
-        print('Dealing with urgent jobs?')
-        n = input("Your answer:")
-        if n.strip() in ['Yes', 'yes', 'y', 'Y']: 
-            print('Do next step')
-            executeUrgentJobs()
-        break
+        main()
+        #print('Dealing with urgent jobs?')
+        #n = input("Your answer:")
+        #if n.strip() in ['Yes', 'yes', 'y', 'Y']: 
+        #    print('Do next step')
+        #    executeUrgentJobs()
+        #break
         
