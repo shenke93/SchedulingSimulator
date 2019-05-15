@@ -173,7 +173,8 @@ def construct_energy_2tariffs(ran, daytarif=12, nighttarif=8, starttime=21, endt
     '''
     ind = pd.date_range(freq='H', start=ran[0], end=ran[1])
     prices = pd.DataFrame([daytarif] * len(ind), index=ind)
-    night = (ind.weekday >= 5) | (ind.hour < endtime) | (ind.hour >= starttime) # saturday or sunday, after 21 and before 6
+    night = (ind.weekday >= 5) | (ind.hour < endtime) | (ind.hour >= starttime) 
+    # saturday or sunday, after 21 and before 6 is nighttarif
     prices[night] = nighttarif
     prices.columns = ['Euro']
     prices.index.name = 'Date'
