@@ -27,6 +27,7 @@ from configfile import duration_str
 # 3rd-party modules
 import numpy as np
 import pandas as pd
+from sympy.printing.precedence import precedence
 
 # Global variables
 # POP_SIZE = 8   
@@ -1027,7 +1028,7 @@ def hamming_distance(s1, s2):
 
 
 class Scheduler(object):
-    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict,
                   start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method):
         # Attributes assignment
         self.dna_size = len(job_dict)
@@ -1038,7 +1039,7 @@ class Scheduler(object):
         self.product_related_characteristics_dict = product_related_characteristics_dict
         self.down_duration_dict = down_duration_dict
         # TODO: replace with input data from precedence file
-        self.precedence_dict = {}
+        self.precedence_dict = precedence_dict
         self.start_time = start_time
         self.w1 = weight1
         self.w2 = weight2
@@ -1079,10 +1080,10 @@ class Scheduler(object):
     
  
 class BF(Scheduler):
-    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+    def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict,
                   start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method):
         # Attributes assignment
-        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict,
                 start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method)
 
     
@@ -1119,12 +1120,12 @@ class BF(Scheduler):
                 
 class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
-                 product_related_characteristics_dict, down_duration_dict, start_time, weight1, weight2, weightc, 
+                 product_related_characteristics_dict, down_duration_dict, precedence_dict, start_time, weight1, weight2, weightc, 
                  weightb, scenario,
                  num_mutations= 1, duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False,
                  working_method='historical'):
         # Attributes assignment
-        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict,
+        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict,
                 start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method)
         self.dna_size = dna_size 
         self.cross_rate = cross_rate
@@ -1342,7 +1343,7 @@ class GA(Scheduler):
         return self.pop, fitness
 
 
-def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file,
+def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file, precedence_file, energy_file, job_file,
            scenario, weight_failure=1, weight_conversion=1, weight_constraint=1, weight_energy=1, duration_str='duration', 
            working_method='historical'):
     # Generate raw material unit price
@@ -1350,6 +1351,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
         down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
         failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
         hourly_failure_dict = get_hourly_failure_dict(start_time, end_time, failure_list, down_duration_dict)
+        precedence_dict = read_precedence(precedence_file)
 
         with open('range_hourly_failure_rate.csv', 'w', newline='\n') as csv_file:
             writer = csv.writer(csv_file)
@@ -1397,7 +1399,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
             first_start_time = start_time
 
     bf = BF(job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
-        product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
+        product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict, precedence_dict=precedence_dict,
         start_time=first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, weightb=weight_constraint, 
         scenario=scenario, working_method='historical', duration_str=duration_str)
     
@@ -1411,7 +1413,7 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
     return best_result, worst_result, best_result_dict, worst_result_dict
 
         
-def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, 
+def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, precedence_file, energy_file, job_file, 
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
             duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
@@ -1450,7 +1452,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 #     exit()
     
     product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
-    
+    precedence_dict = read_precedence(precedence_file)
     price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
 
@@ -1519,6 +1521,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
+            precedence_dict = precedence_dict,
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 
             weightb = weight_constraint, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,
@@ -1685,7 +1688,7 @@ def make_new_jobs_dict(origin_dict, urgent_dict):
     return res_dict
 
 
-def run_opt_urgent(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, urgent_job_file,
+def run_opt_urgent(start_time, end_time, down_duration_file, failure_file, prod_rel_file, precedence_file, energy_file, job_file, urgent_job_file,
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
             duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
@@ -1724,7 +1727,7 @@ def run_opt_urgent(start_time, end_time, down_duration_file, failure_file, prod_
 #     exit()
     
     product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
-    
+    precedence_dict = read_precedence(precedence_file)
     price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
 
@@ -1802,6 +1805,7 @@ def run_opt_urgent(start_time, end_time, down_duration_file, failure_file, prod_
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
+            precedence_dict = precedence_dict,
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 
             weightb = weight_constraint, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,
@@ -1976,7 +1980,7 @@ def make_new_jobs_dict_breakdown(origin_dict, timestamp):
     return res_dict
 
 
-def run_opt_breakdowns(start_time, end_time, down_duration_file, failure_file, prod_rel_file, energy_file, job_file, breakdown_record_file,
+def run_opt_breakdowns(start_time, end_time, down_duration_file, failure_file, prod_rel_file, precedence_file, energy_file, job_file, breakdown_record_file,
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
             duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
@@ -2015,7 +2019,7 @@ def run_opt_breakdowns(start_time, end_time, down_duration_file, failure_file, p
 #     exit()
     
     product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
-    
+    precedence_dict = read_precedence(precedence_file)
     price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
 
@@ -2095,6 +2099,7 @@ def run_opt_breakdowns(start_time, end_time, down_duration_file, failure_file, p
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
+            precedence_dict = precedence_dict,
             start_time = first_start_time, weight1=weight_failure, weight2=weight_energy, weightc=weight_conversion, 
             weightb = weight_constraint, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,

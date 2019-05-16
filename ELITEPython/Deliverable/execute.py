@@ -62,6 +62,7 @@ def main():
         historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
         job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
         failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
+        precedence_file = os.path.join(original_folder, configParser.get('input-config', 'precedence_file'))
         
         # Read output-config
         export_folder = os.getcwd() + configParser.get('output-config', 'export_folder') + strftime("%Y%m%d_%H%M", localtime())
@@ -130,7 +131,7 @@ def main():
                 if value == 'GA':
                         best_result, orig_result, best_sched, orig_sched, best_curve, mean_curve, worst_curve, gen = \
                                                         run_opt(start_time, end_time, historical_down_periods_file, failure_rate_file, 
-                                                        product_related_characteristics_file, energy_price_file, job_info_file, 
+                                                        product_related_characteristics_file, precedence_file, energy_price_file, job_info_file, 
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_constraint=weight_constraint, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
                                                         weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
@@ -183,7 +184,7 @@ def main():
                 if value == 'BF':
                         timer0 = time.monotonic()
                         best_result, worst_result, best_sched, worst_sched = run_bf(start_time, end_time, historical_down_periods_file, failure_rate_file, 
-                                                                                product_related_characteristics_file, energy_price_file, job_info_file,
+                                                                                product_related_characteristics_file, precedence_file, energy_price_file, job_info_file,
                                                                                 scenario, weight_failure=weight_failure, weight_conversion=weight_conversion, 
                                                                                 weight_constraint=weight_constraint, weight_energy=weight_energy, duration_str=duration_str,
                                                                                 working_method=working_method)
@@ -242,7 +243,8 @@ def executeUrgentJobs():
     job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
     urgent_job_info_file = os.path.join(original_folder, configParser.get('input-config', 'urgent_job_info_file'))
     failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
-  
+    precedence_file = os.path.join(original_folder, configParser.get('input-config', 'precedence_file'))
+
     # Read output-config
     export_folder = os.getcwd() + configParser.get('output-config', 'export_folder') + strftime("%Y%m%d_%H%M", localtime())
     os.makedirs(export_folder, exist_ok=True)
@@ -314,7 +316,7 @@ def executeUrgentJobs():
                 
                 best_result, orig_result, best_sched, orig_sched, best_curve, mean_curve, worst_curve, gen = \
                                                         run_opt_urgent(start_time, end_time, historical_down_periods_file, failure_rate_file, 
-                                                        product_related_characteristics_file, energy_price_file, job_info_file, urgent_job_info_file,
+                                                        product_related_characteristics_file, precedence_file, energy_price_file, job_info_file, urgent_job_info_file,
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_constraint=weight_constraint, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
                                                         weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
@@ -388,7 +390,8 @@ def executeSuddenBreakdowns():
         job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
         failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
         breakdown_record_file = os.path.join(original_folder, configParser.get('input-config', 'breakdown_record_file'))
-        
+        precedence_file = os.path.join(original_folder, configParser.get('input-config', 'precedence_file'))
+
         # Read output-config
         export_folder = os.getcwd() + configParser.get('output-config', 'export_folder') + strftime("%Y%m%d_%H%M", localtime())
         os.makedirs(export_folder, exist_ok=True)
@@ -456,7 +459,7 @@ def executeSuddenBreakdowns():
                 if value == 'GA':
                         best_result, orig_result, best_sched, orig_sched, best_curve, mean_curve, worst_curve, gen = \
                                                         run_opt_breakdowns(start_time, end_time, historical_down_periods_file, failure_rate_file, 
-                                                        product_related_characteristics_file, energy_price_file, job_info_file, breakdown_record_file,
+                                                        product_related_characteristics_file, precedence_file, energy_price_file, job_info_file, breakdown_record_file,
                                                         scenario, iterations, crossover_rate, mutation_rate, pop_size, weight_conversion=weight_conversion, num_mutations=num_mutations,
                                                         weight_constraint=weight_constraint, adaptive=adapt_ifin, stop_condition=stop_condition, stop_value=stop_value, weight_energy=weight_energy,
                                                         weight_failure=weight_failure, duration_str=duration_str, evolution_method=evolution_method, validation=validation, 
