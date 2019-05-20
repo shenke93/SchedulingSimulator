@@ -142,7 +142,7 @@ def executeNormal():
 
                         print('Best:', best_result, '\t', * best_sched)
                         print('Original:', orig_result, '\t', * orig_sched)
-
+                        
                         fig = show_results(best_curve, worst_curve, mean_curve)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
@@ -182,7 +182,9 @@ def executeNormal():
 
                         if interactive:
                                 plt.show()
-
+                        
+                        plt.clf()
+                        
                 if value == 'BF':
                         timer0 = time.monotonic()
                         best_result, worst_result, best_sched, worst_sched = run_bf(start_time, end_time, historical_down_periods_file, failure_rate_file, 
@@ -368,6 +370,8 @@ def executeUrgentJobs():
                 if interactive:
                         plt.show()                    
                 
+                plt.clf()
+                
             else:
                 print("No matching method!")              
             
@@ -472,7 +476,7 @@ def executeSuddenBreakdowns():
 
                         print('Best:', best_result, '\t', * best_sched)
                         print('Original:', orig_result, '\t', * orig_sched)
-
+                        
                         fig = show_results(best_curve, worst_curve, mean_curve)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"evolution_breakdown.png"), dpi=300)
@@ -511,9 +515,10 @@ def executeSuddenBreakdowns():
                         if interactive:
                                 plt.show()
                         
+                        plt.clf()
                 else:
                     print("No matching method!")     
-                
+                    
                 if export:
                         import shutil
                         shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
