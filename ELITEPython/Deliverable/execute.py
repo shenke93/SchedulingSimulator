@@ -36,19 +36,19 @@ def make_df(dict):
         #df['ReasonId'] = 100
         return df
     
-class writer :
-        def __init__(self, *writers) :
+class writer:
+        def __init__(self, *writers):
                 self.writers = writers
 
-        def write(self, text) :
-                for w in self.writers :
+        def write(self, text):
+                for w in self.writers:
                         w.write(text)
         
         def flush(self):
                 pass
     
-def main():
-        print_ul('Scheduler v0.0.0')
+def executeNormal():
+        print_ul('Scheduler v0.0.0 normal execution')
         
         # Taking config file path from the user.
         configParser = configparser.RawConfigParser()   
@@ -154,6 +154,8 @@ def main():
                         # output files to csv's
                         orig.to_csv(output_init)
                         best.to_csv(output_final)
+                        
+                        # TODO: Manually add column name: ID, ArticleName
 
                         energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(product_related_characteristics_file)
@@ -176,7 +178,7 @@ def main():
 #                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
                         if export is True:
 #                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
-                                save_energy_plot(best, energy_price, prod_char, name='Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
+                                save_energy_plot(orig, energy_price, prod_char, name='Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
 
                         if interactive:
                                 plt.show()
@@ -221,7 +223,7 @@ def main():
                                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
                         if interactive:
                                 plt.show()
-                
+                        
                 if export:
                         import shutil
                         shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
@@ -240,7 +242,7 @@ def executeUrgentJobs():
     product_related_characteristics_file = os.path.join(original_folder, configParser.get('input-config', 'product_related_characteristics_file'))
     energy_price_file = os.path.join(original_folder, configParser.get('input-config', 'energy_price_file'))
     historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
-    job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
+    job_info_file = os.path.join(original_folder, configParser.get('input-config', 'candidate_job_info_file'))
     urgent_job_info_file = os.path.join(original_folder, configParser.get('input-config', 'urgent_job_info_file'))
     failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
     precedence_file = os.path.join(original_folder, configParser.get('input-config', 'precedence_file'))
@@ -361,11 +363,11 @@ def executeUrgentJobs():
 #                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
                 if export is True:
 #                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
-                        save_energy_plot(best, energy_price, prod_char, name='Emerge_Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
+                        save_energy_plot(orig, energy_price, prod_char, name='Emerge_Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
 
                 if interactive:
                         plt.show()                    
-                        
+                
             else:
                 print("No matching method!")              
             
@@ -387,7 +389,7 @@ def executeSuddenBreakdowns():
         product_related_characteristics_file = os.path.join(original_folder, configParser.get('input-config', 'product_related_characteristics_file'))
         energy_price_file = os.path.join(original_folder, configParser.get('input-config', 'energy_price_file'))
         historical_down_periods_file = os.path.join(original_folder, configParser.get('input-config', 'historical_down_periods_file'))
-        job_info_file = os.path.join(original_folder, configParser.get('input-config', 'job_info_file'))
+        job_info_file = os.path.join(original_folder, configParser.get('input-config', 'candidate_job_info_file'))
         failure_rate_file = os.path.join(original_folder, configParser.get('input-config', 'failure_rate_file'))
         breakdown_record_file = os.path.join(original_folder, configParser.get('input-config', 'breakdown_record_file'))
         precedence_file = os.path.join(original_folder, configParser.get('input-config', 'precedence_file'))
@@ -504,11 +506,11 @@ def executeSuddenBreakdowns():
 #                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
                         if export is True:
 #                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
-                                save_energy_plot(best, energy_price, prod_char, name='Breakdown_Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
+                                save_energy_plot(orig, energy_price, prod_char, name='Breakdown_Original', folder=export_folder, title='Original schedule', colors=namecolor, downtimes=downtimes)
 
                         if interactive:
                                 plt.show()
-
+                        
                 else:
                     print("No matching method!")     
                 
@@ -520,7 +522,7 @@ def executeSuddenBreakdowns():
     
 if __name__ == "__main__":
     while True:
-#         main()
+        executeNormal()
         print('Dealing with sudden breakdown?')
         n = input("Your answer:")
         if n.strip() in ['Yes', 'yes', 'Y', 'y']:
@@ -528,8 +530,8 @@ if __name__ == "__main__":
         print('Dealing with urgent jobs?')
         n = input("Your answer:")
         if n.strip() in ['Yes', 'yes', 'Y', 'y']: 
-            print('Do next step')
             executeUrgentJobs()
+        print('Execution finished.')
         break
     
         
