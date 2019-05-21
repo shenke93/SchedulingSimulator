@@ -18,7 +18,7 @@ import logging
 from helperfunctions import *
 
 #pathname = os.path.dirname(sys.argv[0])
-configFile = 'config.ini'
+configFile = 'config_pareto.ini'
 
 def main():
         print_ul('Scheduler v0.0.0')
@@ -110,8 +110,6 @@ def main():
                                 plt.savefig(os.path.join(export_folder, r"evolution.pdf"))
                         if config['output_config']['interactive']:
                                 fig.show()
-
-                        print(result_dict)
                         
                         # make dataframes from dicts
                         best = make_df(result_dict)
@@ -225,6 +223,7 @@ def main():
                         if interactive:
                                 plt.show()
                 if value == 'PAR':
+                        logging.info('Generating pareto solutions')
                         list_added = []
                         list_result = []
                         for time in config['scenario_config']['add_time_list']:
@@ -261,8 +260,18 @@ def main():
 
                                 logging.info("When adding {:} hours of breaks, the result is {:.1f}".format(time, fitn))
                         
-                        print(list_added)
-                        print(list_result)
+                        logging.info('Final result')
+                        logging.info(list_added)
+                        logging.info(list_result)
+
+                        plt.plot(list_added, list_result, 'ro')
+                        plt.xlim(0, max(list_added)+1)
+                        plt.ylim(min(list_result) * 0.95, max(list_result) * 1.05)
+                        plt.xlabel('Added breaks (hours)')
+                        plt.ylabel('Total cost (Euros)')
+                        plt.savefig(os.path.join(export_folder, 'output.pdf'))
+                        plt.savefig(os.path.join(export_folder, 'output.png'), dpi=300)
+                        plt.show()
                 
         logging.shutdown()
 

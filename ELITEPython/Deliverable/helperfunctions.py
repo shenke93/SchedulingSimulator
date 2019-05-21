@@ -258,8 +258,11 @@ def read_failure_info(file):
     conversion_file = root.find('files').find('conversion_times').text
     conversion_times = pd.read_csv(os.path.join(os.path.split(file)[0], conversion_file), index_col = 0)
 
-    cleaning_file = root.find('files').find('cleaning_time').text
-    cleaning_time = pd.read_csv(os.path.join(os.path.split(file)[0], cleaning_file), index_col = 0)        
+    if 'cleaning_time' in root.find('files'):
+        cleaning_file = root.find('files').find('cleaning_time').text
+        cleaning_time = pd.read_csv(os.path.join(os.path.split(file)[0], cleaning_file), index_col = 0)
+    else:
+        cleaning_time = None       
 
     failure_info = (fail_dict, rep_dist, mean, maint_time, repair_time, conversion_times, cleaning_time)
     return failure_info
@@ -385,7 +388,7 @@ def start_logging(filename):
     Start logging in a file during the execution of this program
     Also output to a file
     '''
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M',
                         filename=filename,
@@ -394,7 +397,7 @@ def start_logging(filename):
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     # set a format which is simpler for console use
-    formatter = logging.Formatter('%(asctime)s %(name)-12s: %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(name)-12s: %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M')
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger

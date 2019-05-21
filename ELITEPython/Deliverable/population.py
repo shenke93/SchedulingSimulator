@@ -180,9 +180,10 @@ class Schedule:
                             changeover_time = float(failure_info[5].loc[product_cat, next_product_cat])
                             t_changeover += (changeover_time / 3600)           
 
-                        # extend with cleaning time
-                        cleaning_times = float(failure_info[6].loc[product_cat])
-                        t_clean += (cleaning_times / 3600)
+                        if failure_info[6] != None:
+                            # extend with cleaning time
+                            cleaning_times = float(failure_info[6].loc[product_cat])
+                            t_clean += (cleaning_times / 3600)
 
                         # get the changeover time and extend the current graph
                         time_ran = np.arange(((t_start + timedelta(hours=du + t_down)) - t_start_begin).total_seconds(), 
@@ -338,10 +339,10 @@ class Schedule:
                             changeover_time = float(failure_info[5].loc[product_cat, next_product_cat])
                             t_changeover += (changeover_time / 3600)           
 
-                        # extend with cleaning time
-                        cleaning_times = float(failure_info[6].loc[product_cat])
-                        t_clean += (cleaning_times / 3600)
-                        #import pdb; pdb.set_trace()
+                        if failure_info[6] != None:
+                            # extend with cleaning time
+                            cleaning_times = float(failure_info[6].loc[product_cat])
+                            t_clean += (cleaning_times / 3600)
                     else:
                         # if get_failure_schedule:
                         #     ran = np.arange(v_start_time, v_start_time + duration, 1/3)

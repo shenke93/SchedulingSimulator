@@ -38,7 +38,7 @@ try:
     df = df.sort_values('StartDateUTC')
     list_reasons = sorted(list(df.ReasonId.unique()))
 except:
-    raise NameError('{} not found in this folder ({})'.format(file_used, os.curdir()))
+    raise NameError('{} not found in this folder ({})'.format(file_used, os.curdir))
 
 # Make the output folder is it doesn't exist yet
 outfolder = splitext(file_used)[0]
@@ -274,15 +274,18 @@ if export_all:
 #[df.ArticleName != 'NONE']
 print('Generating conversion times between the types')
 print('Exporting the conversion time matrix')
-mean_conversions = generate_conversion_table(df_task, reasons_absolute_conversion, 'ProductionRequestId', choice_type)
-print(mean_conversions)
+mean_conversions = generate_conversion_table(df_task, reasons_absolute_conversion + reasons_absolute_cleaning, 'ProductionRequestId', choice_type)
+
+if print_all:
+    print(mean_conversions)
+#import pdb; pdb.set_trace()
 
 print('Adapting the conversion time matrix - Redefining diagonal')
 new_mc = adapt_standard_matrix(mean_conversions)
 
 if print_all:
-    print(mean_conversions)
     print(new_mc)
+
 if export_all:
     newname = splitext(output_used)[0] + '_conversions.csv'
     # fill the nan values with another value from the data
@@ -295,28 +298,27 @@ if export_all:
     conversion_times = ET.SubElement(files, "conversion_times")
     conversion_times.text = os.path.split(newname)[1]
 
-print('Generating cleaning times between the types')
-print('Exporting the cleaning time matrix')
-mean_cleaning = generate_conversion_table(df_task, reasons_absolute_cleaning, 'ProductionRequestId', choice_type)
-print(mean_cleaning)
+# print('Generating cleaning times between the types')
+# print('Exporting the cleaning time matrix')
+# mean_cleaning = generate_conversion_table(df_task, reasons_absolute_cleaning, 'ProductionRequestId', choice_type)
 
-print('Adapting the cleaning time matrix - Redefining diagonal')
-new_mc = adapt_standard_matrix(mean_cleaning)
+# print('Adapting the cleaning time matrix - Redefining diagonal')
+# new_mc = adapt_standard_matrix(mean_cleaning)
 
-if print_all:
-    print(mean_cleaning)
-    print(new_mc)
-if export_all:
-    newname = splitext(output_used)[0] + '_cleaning.csv'
-    # fill the nan values with another value from the data
-    temp = np.array(new_mc).flatten()
-    temp = temp[~np.isnan(temp)]
-    mean = np.max(temp)
-    mean_export = new_mc.fillna(0)
-    # export
-    new_mc.fillna(mean).to_csv(newname)
-    conversion_times = ET.SubElement(files, "cleaning_times")
-    conversion_times.text = os.path.split(newname)[1]
+# if print_all:
+#     print(mean_cleaning)
+#     print(new_mc)
+# if export_all:
+#     newname = splitext(output_used)[0] + '_cleaning.csv'
+#     # fill the nan values with another value from the data
+#     temp = np.array(new_mc).flatten()
+#     temp = temp[~np.isnan(temp)]
+#     mean = np.max(temp)
+#     mean_export = new_mc.fillna(0)
+#     # export
+#     new_mc.fillna(mean).to_csv(newname)
+#     conversion_times = ET.SubElement(files, "cleaning_times")
+#     conversion_times.text = os.path.split(newname)[1]
 
 # cleaning_sum = pd.DataFrame(0, index=l, columns=['Time'])
 # cleaning_num = pd.DataFrame(0, index=l, columns=['Time'])

@@ -18,9 +18,9 @@ def add_column_type(df, from_col='ArticleName', choice='BigPack'):
                      'EUROSHOPPER', 'AH', 'PASTA MARE', 'OKE', 'TOP BUDGET', 'FIORINI', 'BIO VILLAGE', 'MONOPP', 'RINATURA',
                      'JUMBO', 'BONI', 'CASINO', 'TURINI']
     elif newname == choices[2]:
-        stringlist = [['MACARONI', 'MAC.'], 'FUSILLI', ['SPIRELLI', 'SPIRAL', 'TORSADES'], ['HORENTJE', 'HELICES'], 
+        stringlist = [['MACARONI', 'MAC.', 'ZITTI'], 'FUSILLI', ['SPIRELLI', 'SPIRAL', 'TORSADES'], ['HORENTJE', 'HELICES'], 
                       ['VERMICELLI', 'VERMICELL'], ['NOODLES', 'NOUILLES'], 'TORTI',
-                     ['PENNE', 'PIPE'], ['ELLEBOOGJES', 'COQUILLETTE', 'COQ.'], 'ZITTI', 'MIE', 'NONE']
+                     ['PENNE', 'PIPE'], ['ELLEBOOGJES', 'COQUILLETTE', 'COQ.'], 'NONE']
     elif newname == choices[3]:
         stringlist = [ ['SMALL', ' 8', ' 10', ' 12'], ['LARGE', ' 16', ' 18', ' 20'], 'NONE']
     else:
@@ -78,8 +78,6 @@ def add_breaks(production, maxtime=7200):
 
             prid -= 1
             add_df = add_df.append(new_row, ignore_index=True)
-        else:
-            pass
     production = production.append(add_df, ignore_index=True)
     production = production.sort_values('StartDateUTC').reset_index(drop=True)
     return production
@@ -217,6 +215,8 @@ def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):
 def generate_conversion_table(df, reasons, unique_col='ProductionRequestId', type_col='PastaType',  duration_col = 'Duration'):
     l = list(df[unique_col].unique())
     length_list = []
+    # First make a list
+    # It contains the product id, the product type, conversion of the first half of the job, conversion time of the second half of the job
     for prid in l:
         # Save the total length and the type
         df_temp = df[df[unique_col] == prid]
@@ -237,6 +237,7 @@ def generate_conversion_table(df, reasons, unique_col='ProductionRequestId', typ
 
         length_list.append([prid, c_type, convert_firsthalf, convert_secondhalf])
 
+    # Convert the list into a matrix 
     l = list(df[type_col].unique())
     sum_conversions = pd.DataFrame(0, index=l, columns=l)
     num_conversions = pd.DataFrame(0, index=l, columns=l)
@@ -247,56 +248,87 @@ def generate_conversion_table(df, reasons, unique_col='ProductionRequestId', typ
         sum_conversions.loc[first_type, second_type] += sum_convert
         num_conversions.loc[first_type, second_type] += 1
 
+    #print(sum_conversions)
+    #print(num_conversions)
+
     mean_conversions = sum_conversions/num_conversions
     return mean_conversions
 
 def adapt_standard_matrix(mean_conversions):
     new_mc = mean_conversions.copy()
     # Overwrite the diagonals, since there are more measurements relating to NONE
-    diagonal = []
-    old_diag = pd.Series(np.diag(mean_conversions), index=mean_conversions.index).fillna(np.mean(np.diag(mean_conversions)))
-    row = mean_conversions.loc[:, 'NONE']; col = mean_conversions.loc['NONE', :]
-    row = row.fillna(row.mean()); col = col.fillna(col.mean())
-    new_diag = row + col
 
-    surplus = (old_diag - new_diag).mean()
+    # The rows and columns related to the breaks are most reliable, since the mainly happens, while other conversions are much less frequent
+    # We will use this row and column to calculate the other values:
 
-    for ind in list(mean_conversions.index):
-        new_mc.loc[ind, ind] = new_diag[ind]
+    import statistics
 
-    # get the diagonal values which are not zero
-    old_values = []
-    new_values = []
-    total_diff = 0
-
-    # Make new empty dataframe
-    mask = new_mc.copy(); mask[:] = 0
+    penalty = statistics.mean(list(new_mc.loc[:, 'NONE']) + list(new_mc.loc['NONE', :]))
 
     from itertools import product
-    k = 0
     for i, j in product(list(new_mc.index), list(new_mc.columns)):
-        if (i != j) and (i != 'NONE') and (j != 'NONE'): # no diagonal elements and no earlier used row or column
-            #print(i, j)
+        if (i != 'NONE') and (j != 'NONE'): # No earlier used row or column
+            # print(i, j)
             conversion = mean_conversions.loc[i, 'NONE'] + mean_conversions.loc['NONE', j]
-            new_mc.loc[i, j] = conversion
-            old_val = mean_conversions.loc[i, j]
-            old_values.append(old_val)
-            new_val = conversion
-            new_values.append(new_val)
-            if old_val > new_val:
-                total_diff += (old_val - new_val)
-                k += 1
-            mask.loc[i, j] = 1
+            if (i != j): # No diagonal element
+                # Add penalty time
+                conversion += penalty
             new_mc.loc[i, j] = conversion
 
-    mean_diff = total_diff / k
-    # add the mean difference to the masked values
-    new_mc[mask == 1] += mean_diff
+    new_mc.loc[:, 'NONE'] = new_mc.loc[:, 'NONE'] / 2
+    new_mc.loc['NONE', :] = new_mc.loc['NONE', :] / 2
+    
+    # adapt the main diagonals to have value of zero
+    for i in list(new_mc.index):
+        new_mc.loc[i, i] = 0
+    
 
-    for i, j in product(list(new_mc.index), list(new_mc.columns)):
-        #print(i, j)
-        if (i == 'NONE') or (j == 'NONE'): # go to break
-            #print(i, j)
-            new_mc.loc[i, j] += surplus # add this to the diagonals
+
+    # # Create new value for the diagonals
+    # diagonal = []
+    # old_diag = pd.Series(np.diag(mean_conversions), index=mean_conversions.index).fillna(np.mean(np.diag(mean_conversions)))
+    # row = mean_conversions.loc[:, 'NONE']; col = mean_conversions.loc['NONE', :]
+    # row = row.fillna(row.mean()); col = col.fillna(col.mean())
+    # new_diag = row + col
+
+    # surplus = (old_diag - new_diag).mean()
+
+    # for ind in list(mean_conversions.index):
+    #     new_mc.loc[ind, ind] = new_diag[ind]
+
+    # # get the diagonal values which are not zero
+    # old_values = []
+    # new_values = []
+    # total_diff = 0
+
+    # # Make new empty dataframe
+    # mask = new_mc.copy(); mask[:] = 0
+
+    # from itertools import product
+    # k = 0
+    # for i, j in product(list(new_mc.index), list(new_mc.columns)):
+    #     if (i != j) and (i != 'NONE') and (j != 'NONE'): # no diagonal elements and no earlier used row or column
+    #         #print(i, j)
+    #         conversion = mean_conversions.loc[i, 'NONE'] + mean_conversions.loc['NONE', j]
+    #         new_mc.loc[i, j] = conversion
+    #         old_val = mean_conversions.loc[i, j]
+    #         old_values.append(old_val)
+    #         new_val = conversion
+    #         new_values.append(new_val)
+    #         if old_val > new_val:
+    #             total_diff += (old_val - new_val)
+    #             k += 1
+    #         mask.loc[i, j] = 1
+    #         new_mc.loc[i, j] = conversion
+
+    # mean_diff = total_diff / k
+    # # add the mean difference to the masked values
+    # new_mc[mask == 1] += mean_diff
+
+    # for i, j in product(list(new_mc.index), list(new_mc.columns)):
+    #     #print(i, j)
+    #     if (i == 'NONE') or (j == 'NONE'): # go to break
+    #         #print(i, j)
+    #        new_mc.loc[i, j] += surplus # add this to the diagonals
     
     return new_mc

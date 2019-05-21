@@ -1,4 +1,4 @@
 {
     "terminal.integrated.shell.windows": "C:\\WINDOWS\\system32\\cmd.exe",
-    "python.pythonPath": "C:\\Users\\jdavid\\Anaconda3\\envs\\py37\\python.exe"
+    "python.pythonPath": "C:\\Users\\jdavid\\Anaconda3\\python.exe"
 }
