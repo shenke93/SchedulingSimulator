@@ -292,7 +292,7 @@ def hamming_distance(s1, s2):
 
 class Scheduler(object):
     def __init__(self, job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict,
-                  start_time, weight1, weight2, weightc, weightb, scenario, duration_str, working_method):
+                  start_time, weights, scenario, duration_str, working_method):
         # Attributes assignment
         self.dna_size = len(job_dict)
         self.pop = job_dict.keys()
@@ -301,7 +301,7 @@ class Scheduler(object):
         self.failure_dict = failure_dict
         self.product_related_characteristics_dict = product_related_characteristics_dict
         self.down_duration_dict = down_duration_dict
-        self.failure_info = failure_info
+        # self.failure_info = failure_info
         # TODO: replace with input data from precedence file
         self.precedence_dict = precedence_dict
         self.start_time = start_time
@@ -409,12 +409,12 @@ class BF(Scheduler):
                 
 class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
-                 product_related_characteristics_dict, down_duration_dict, start_time, weights, scenario,
+                 product_related_characteristics_dict, down_duration_dict, precedence_dict, start_time, weights, scenario,
                  num_mutations=1, duration_str='expected', evolution_method='roulette', validation=False, pre_selection=False,
                  working_method='historical', failure_info=None):
         # Attributes assignment
-        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, failure_info,
-                start_time, weights, scenario, duration_str, working_method)
+        super().__init__(job_dict, price_dict, failure_dict, product_related_characteristics_dict, down_duration_dict, precedence_dict, 
+                       start_time, weights, scenario, duration_str, working_method)
         self.dna_size = dna_size 
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
@@ -776,7 +776,10 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 #     exit()
     
     product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
-    precedence_dict = read_precedence(precedence_file)
+    if precedence_file is not None:
+        precedence_dict = read_precedence(precedence_file)
+    else:
+        precedence_dict = None
     price_dict_new = read_price(energy_file) # File from EnergyConsumption/InputOutput
 #     price_dict_new = read_price('electricity_price.csv') # File generated from generateEnergyCost.py
 
@@ -818,7 +821,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     ga = GA(dna_size=DNA_SIZE, cross_rate=cross_rate, mutation_rate=mut_rate, pop_size=pop_size, pop = waiting_jobs,
             job_dict=job_dict_new, price_dict=price_dict_new, failure_dict=hourly_failure_dict, 
             product_related_characteristics_dict = product_related_characteristics_dict, down_duration_dict=down_duration_dict,
-            start_time = first_start_time, weights=weights, scenario=scenario,
+            precedence_dict=precedence_dict, start_time = first_start_time, weights=weights, scenario=scenario,
             num_mutations = num_mutations, duration_str=duration_str, evolution_method=evolution_method, validation=validation,
             pre_selection=pre_selection, working_method=working_method, failure_info=failure_info)
 
@@ -1234,7 +1237,7 @@ def make_new_jobs_dict_breakdown(origin_dict, timestamp):
 def run_opt_breakdowns(start_time, end_time, down_duration_file, failure_file, prod_rel_file, precedence_file, energy_file, job_file, breakdown_record_file,
             scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weight_conversion = 0, weight_constraint = 0, weight_energy = 0, weight_failure = 0,
-            duration_str=duration_str, evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
+            duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='expected'):
     print('Using', working_method, 'method')
     filestream = open('previousrun.txt', 'w')
     logging.basicConfig(level=20, stream=filestream)

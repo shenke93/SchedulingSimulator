@@ -282,6 +282,10 @@ def read_config_file(path):
         input_config['original'] = orig_folder =  this_section['original_folder']
         orig_folder = os.path.join(pathname, orig_folder)
         input_config['prc_file'] = os.path.join(orig_folder, this_section['product_related_characteristics_file'])
+        if 'precendence_file' in this_section:
+            input_config['prec_file'] = os.path.join(orig_folder, this_section['precedence_file'])
+        else:
+            input_config['prec_file'] = None
         input_config['ep_file'] = os.path.join(orig_folder, this_section['energy_price_file'])
         input_config['hdp_file'] = os.path.join(orig_folder, this_section['historical_down_periods_file'])
         input_config['ji_file'] = os.path.join(orig_folder, this_section['job_info_file'])

@@ -61,7 +61,8 @@ def main():
                         orig_sched, best_curve, mean_curve, worst_curve, gen = \
                         run_opt(config['start_end']['start_time'], config['start_end']['end_time'], 
                         config['input_config']['hdp_file'], config['input_config']['fr_file'], 
-                        config['input_config']['prc_file'], config['input_config']['ep_file'], config['input_config']['ji_file'], 
+                        config['input_config']['prc_file'], config['input_config']['prec_file'],
+                        config['input_config']['ep_file'], config['input_config']['ji_file'], 
                         config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
                         config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
                         config['scenario_config']['pop_size'], 
@@ -233,10 +234,11 @@ def main():
                                 orig_sched, best_curve, mean_curve, worst_curve, gen = \
                                 run_opt(config['start_end']['start_time'], config['start_end']['end_time'], 
                                 config['input_config']['hdp_file'], config['input_config']['fr_file'], 
-                                config['input_config']['prc_file'], config['input_config']['ep_file'], config['input_config']['ji_file'], 
+                                config['input_config']['prc_file'], config['input_config']['prec_file'],
+                                config['input_config']['ep_file'], config['input_config']['ji_file'], 
                                 config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
                                 config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
-                                config['scenario_config']['pop_size'],  
+                                config['scenario_config']['pop_size'], 
                                 num_mutations=config['scenario_config']['num_mutations'],
                                 adaptive=config['scenario_config']['adapt_ifin'], 
                                 stop_condition=config['scenario_config']['stop_condition'], 
@@ -248,9 +250,9 @@ def main():
                                 pre_selection=config['scenario_config']['pre_selection'], 
                                 working_method=config['scenario_config']['working_method'], 
                                 failure_info=config['input_config']['failure_info'],
-                                add_time=time
+                                add_time=config['scenario_config']['add_time'],
+                                urgent_job_info = config['input_config']['urgent_ji_file']
                                 )
-
                                 logging.info('Execution finished.')
                                 logging.info('Number of generations was {:}'.format(gen))
                                 # print('Start visualization')
