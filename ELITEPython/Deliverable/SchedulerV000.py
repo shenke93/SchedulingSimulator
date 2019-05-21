@@ -254,7 +254,7 @@ def read_price(priceFile):
 def read_jobs(jobFile, get_totaltime=False):
     ''' 
     Create a dictionary to restore job information.
-
+    Attributes: ID, Product, Uptime or TotalTime, Quantity, Start, End, Type, After, Before, ReleaseDate
     Parameters
     ----------
     jobFile: string
@@ -275,7 +275,10 @@ def read_jobs(jobFile, get_totaltime=False):
             for row in reader:
                 job_num = int(row['ID'])
                 # insert product name
-                job_entry = dict({'product': row['Product']})
+                if ('Product' in row) and row['Product'] is not None:
+                    job_entry = dict({'product': row['Product']})
+                else:
+                    job_entry = dict({'product': 'unknown'})
                 # time string or quantity should be in the row
                 if ('ReleaseDate' in row) and row['ReleaseDate'] is not None:
                     job_entry['ReleaseDate'] = datetime.strptime(row['ReleaseDate'], "%Y-%m-%d %H:%M:%S.%f")
@@ -991,15 +994,15 @@ def validate(individual, start_time, job_dict, price_dict, product_related_chara
         return flag
     # validate precedence
     ind = set(individual)
-    jobs = ind.copy()
+    jobs = individual.copy()
     for item in ind:
         if item in precedence_dict:
             prec = set(precedence_dict[item])
-            jobs.remove(item)
+            jobs_temp = jobs[0:jobs.index(item)]
 #             print("Item:", item)
 #             print("Prec:", prec)
 #             print("afters:", jobs)
-            if not prec.isdisjoint(jobs): # prec set and remain jobs have intersections
+            if not prec.isdisjoint(jobs_temp): # prec set and remain jobs have intersections
                 flag = False
                 break                
         else:
