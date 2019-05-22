@@ -194,7 +194,11 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
 def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None, failure_rate=None):
     ''' Expects a few tables with the following columns:
     dataframe tasks with columns:
-        -  '''
+        -  StartDateUTC
+        -  EndDateUTC
+        -  TotalTime (in hours)
+        -  ArticleName
+        -  Type'''
     table = calculate_energy_table(tasks, prices, energy)
 
     fig = plt.figure(dpi=50, figsize=(20, 15))

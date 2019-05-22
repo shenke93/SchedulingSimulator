@@ -126,7 +126,9 @@ def main(config):
 
                         fitn = best_sched.get_fitness()
 
-                        import pdb; pdb.set_trace()
+                        # Make the columns be the correct format for plotting
+                        best = best[['Start', 'End', 'Totaltime', 'Product', 'Type']]
+                        best.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
                         show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen) - Fitness {:.1f} €'.format(gen, fitn), 
                                                                                              namecolor, downtimes=downtimes, failure_rate=best_failure)
                         
@@ -142,6 +144,8 @@ def main(config):
 
                         fitn = orig_sched.get_fitness()
 
+                        orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type']]
+                        orig.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule - Fitness {:.1f} €'.format(fitn), namecolor, downtimes=downtimes, failure_rate=orig_failure)
                         if export:
                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
