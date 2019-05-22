@@ -26,7 +26,6 @@ class JobInfo(object):
 
     def __add__(self, other):
         if set(self.job_order).isdisjoint(set(other.job_order)):
-            import pdb; pdb.set_trace()
             job_dict = self.job_dict
             job_dict.update(other.job_dict)
             job_order = self.job_order + other.job_order
@@ -52,56 +51,54 @@ class JobInfo(object):
         '''
         job_dict = {}
         job_order = []
-        # Choose between total time and uptime
-        if get_totaltime:
-            str_time = 'Totaltime'
-        else:
-            str_time = 'Uptime'
         try:
             with open(job_file, encoding='utf-8') as jobInfo_csv:
                 reader = csv.DictReader(jobInfo_csv)
                 for row in reader:
                     job_num = int(row['ID'])
-                    # insert product name
-                    job_entry = dict({'product': row['Product']})
-                    # time string or quantity should be in the row
-                    if (str_time in row) and row[str_time] is not None:
-                        job_entry['duration'] = float(row[str_time])
-                    if ('Quantity' in row) and row['Quantity'] is not None:
-                        job_entry['quantity'] = float(row['Quantity'])
-                    if ('Start' in row) and row['Start'] is not None:
-                        job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
-                    if ('End' in row) and row['End'] is not None:
-                        job_entry['end'] = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
-                    # Add product type
-                    if ('Type' in row) and row['Type'] is not None:
-                        job_entry['type'] = row['Type']
-                        #print('Added type')
-                    else:
-                        job_entry['type'] = 'unknown'
-                    # Add due date
-                    if ('Before' in row) and (row['Before'] is not None):
-                        try:
-                            job_entry['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
-                        except:
-                            warnings.warn("Before date could not be parsed")
-                            job_entry['before'] = datetime.max
-                        #print('Before date read')
-                    else:
-                        job_entry['before'] = datetime.max
-                    # Add after date
-                    if ('After' in row) and (row['After'] is not None):
-                        try:
-                            job_entry['after'] = datetime.strptime(row['After'], "%Y-%m-%d %H:%M:%S.%f")
-                        except:
-                            warnings.warn("After date could not be parsed")
-                            job_entry['after'] = datetime.min
-                    else:
-                        job_entry['after'] = datetime.min
-
+                    if row['Product'] != 'MAINTENANCE':
+                        # insert product name
+                        job_entry = dict({'product': row['Product']})
+                        # time string or quantity should be in the row
+                        if ('Totaltime' in row) and row['Totaltime'] is not None:
+                            job_entry['totaltime'] = float(row['Totaltime'])
+                        if ('Uptime' in row) and row['Uptime'] is not None:
+                            job_entry['uptime'] = float(row['Uptime'])
+                        if ('Quantity' in row) and row['Quantity'] is not None:
+                            job_entry['quantity'] = float(row['Quantity'])
+                        if ('Start' in row) and row['Start'] is not None:
+                            job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
+                        if ('End' in row) and row['End'] is not None:
+                            job_entry['end'] = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
+                        # Add product type
+                        if ('Type' in row) and row['Type'] is not None:
+                            job_entry['type'] = row['Type']
+                            #print('Added type')
+                        else:
+                            job_entry['type'] = 'unknown'
+                            logging.warning('Unknown type, adding the type as unknown')
+                        # Add due date
+                        if ('Duedate' in row) and (row['Duedate'] is not None):
+                            try:
+                                job_entry['duedate'] = datetime.strptime(row['Duedate'], "%Y-%m-%d %H:%M:%S.%f")
+                            except:
+                                logging.warning("Due dates could not be parsed")
+                                job_entry['duedate'] = datetime.max
+                            #print('Before date read')
+                        else:
+                            job_entry['duedate'] = datetime.max
+                        # Add after date
+                        if ('Releasedate' in row) and (row['Releasedate'] is not None):
+                            try:
+                                job_entry['releasedate'] = datetime.strptime(row['Releasedate'], "%Y-%m-%d %H:%M:%S.%f")
+                            except:
+                                logging.warning("Release dates could not be parsed")
+                                job_entry['releasedate'] = datetime.min
+                        else:
+                            job_entry['releasedate'] = datetime.min
                     # add the item to the job dictionary
-                    job_dict[job_num] = job_entry
-                    job_order.append(job_num)
+                        job_dict[job_num] = job_entry
+                        job_order.append(job_num)
         except:
             print("Unexpected error when reading job information from {}:".format(job_file))
             raise
@@ -110,7 +107,7 @@ class JobInfo(object):
 
 
     def insert_urgent_jobs(self, urgent_dict):
-        stamp = min(x.get('ReleaseDate') for x in urgent_dict.values()) # Find the smallest release date
+        stamp = min(x.get('releasedate') for x in urgent_dict.values()) # Find the smallest release date
         print(stamp)
         res_dict = {}
         for key, value in origin_dict.items():
@@ -146,7 +143,6 @@ class JobInfo(object):
         '''
         #res_dict = collections.OrderedDict()
         job_dict = self.job_dict
-        import pdb; pdb.set_trace()
         job_dict_copy = job_dict.copy()
         job_order = self.job_order
         #res_dict = {}
@@ -184,7 +180,7 @@ class JobInfo(object):
             min_key -= 1
             dur = 2 if break_hours > 2 else break_hours
             new_dict = {'product': 'NONE', 'duration': dur, 'quantity': dur, 'type': 'NONE', 
-                        'before': datetime.max, 'after': datetime.min}
+                        'duedate': datetime.max, 'releasedate': datetime.min}
             job_dict[min_key] = new_dict
             job_order.append(min_key)
             break_hours -= 2
@@ -214,14 +210,16 @@ def print_ul(strin):
     print(strin)
     print('-'*len(strin))
 
-def make_df(dict):
+def make_df(timing_dict):
     '''
     Make a dataframe from a dictionary
     '''
-    all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration', 'Cleaning_duration']
-    df = pd.DataFrame.from_dict(dict, orient='index')
-    df.columns = all_cols
-    df = df.reindex(list(dict.keys()))
+    #all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration', 'Cleaning_duration']
+    df = pd.DataFrame.from_dict(timing_dict, orient='index')
+    df = df.rename(columns={'start': 'Start', 'end':'End', 'totaltime': 'Totaltime', 'uptime': 'Uptime',  
+                                       'product': 'Product', 'type': 'Type', 'releasedate': 'Releasedate', 'duedate': 'Duedate', 'quantity': 'Quantity'})
+    df = df.reindex(list(timing_dict))
+    df = df[['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product', 'Type', 'Releasedate', 'Duedate']]
     return df
 
 class writer :

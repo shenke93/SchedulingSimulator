@@ -11,7 +11,6 @@ num_minutes_lost = 10
 standard_weights = {'weight_energy': 1,
                     'weight_virtual_failure': 0,
                     'weight_failure': 1,
-                    'weight_constraint': 0,
                     'weight_constraint': 0}
 
 def ceil_dt(dt, delta):
@@ -64,7 +63,7 @@ def floor_dt(dt, delta):
 
 class Schedule:
     def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict, precedence_dict, failure_info, 
-                 scenario, duration_str='duration', working_method='historical', weights={}):
+                 scenario, duration_str='duration', working_method='historical', weights=standard_weights):
         self.order = order
         self.start_time = start_time
         self.job_dict = job_dict
@@ -96,10 +95,11 @@ class Schedule:
             #t_downtime = 0
             
             unit1 = self.job_dict.get(item, -1)
+       
             
             # calculate duration based on quantity or based on expected uptime duration
             if self.duration_str == 'duration':
-                du = unit1['duration']
+                du = unit1['uptime']
             elif self.duration_str == 'quantity':
                 quantity = unit1['quantity']
                 product_type = unit1['product'] # get job product type
@@ -231,10 +231,23 @@ class Schedule:
             #t_downtime = 0
             
             unit1 = self.job_dict.get(item, -1)
+            try:
+                product_type = unit1['product'] # get job product type
+                unit2 = self.prc_dict.get(product_type)
+            except:
+                logging.warning("No product related information found for + '" + str(product_type) + "'.")
             
             # calculate duration based on quantity or based on expected uptime duration
             if self.duration_str == 'duration':
-                du = unit1['duration']
+                try:
+                    du = unit1['uptime']
+                    if 'quantity' in unit1:
+                        quantity = unit1['quantity']
+                    else:
+                        #calculate quantity
+                        quantity = du * unit2['targetproduction']
+                except:
+                    import pdb; pdb.set_trace()
             elif self.duration_str == 'quantity':
                 quantity = unit1['quantity']
                 product_type = unit1['product'] # get job product type
@@ -294,12 +307,12 @@ class Schedule:
                     t_end = t_start + timedelta(hours = float(du))
                     val2 = (total_duration_nofail + du)
                     val1 = total_duration_nofail
-                    if val2 >= failure_info[3]:    # a maintenance should be planned after a fixed time
+                    if (val2 >= failure_info[3]) and (product_type != 'NONE'):    # a maintenance should be planned after a fixed time
                         t_end_maint = t_start + timedelta(hours=failure_info[4])
                         if maintenance_int in detailed_dict:
                             maintenance_int -= 1
-                        detailed_dict.update({maintenance_int : dict(zip(['start', 'end', 'duration', 'product', 'type', 'down_duration', 'changeover_duration'],
-                                                                         [t_start, t_end_maint, failure_info[4], 'MAINTENANCE', 'NONE', 0, 0]))
+                        detailed_dict.update({maintenance_int : dict(zip(['start', 'end', 'totaltime', 'uptime', 'product', 'type', 'down_duration', 'changeover_duration', 'cleaning_time', 'quantity'],
+                                                                         [t_start, t_end_maint, failure_info[4], 0, 'MAINTENANCE', 'NONE', failure_info[4], 0, 0, failure_info[4]]))
                                              })
                         #import pdb; pdb.set_trace()
                         t_start = t_end_maint
@@ -315,7 +328,7 @@ class Schedule:
                         val2 = (t_end - t_last_maint).total_seconds() / 3600
                         val1 = (t_start - t_last_maint).total_seconds() / 3600
                         cur_rel = 1
-                    if product_cat != 'NONE':    # all products except breaks should be extended
+                    if product_type != 'NONE':    # all products except breaks should be extended
                         fail_dist = failure_info[0][product_cat]
                         duration = val2 - val1
                         v_start_time = fail_dist.get_t_from_reliability(cur_rel)
@@ -357,11 +370,14 @@ class Schedule:
                 else:
                     raise NameError('Availability column not found, error')
             try:
-                detailed_dict.update({item : dict(zip(['start', 'end', 'duration', 'product', 'type', 'down_duration', 'changeover_duration', 'cleaning_time'],
-                                                      [t_start, t_end, du + t_down + t_changeover + t_clean, unit1['product'], unit1['type'], t_down, t_changeover, t_clean]))
+                releasedate = unit1['releasedate']
+                duedate = unit1['duedate']
+                # get all other info used by the input parser
+                detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 'product', 'type', 'down_duration', 'changeover_duration', 'cleaning_time', 'releasedate', 'duedate', 'quantity'],
+                                                      [t_start, t_end, du + t_down + t_changeover + t_clean, du, unit1['product'], unit1['type'], t_down, t_changeover, t_clean, releasedate, duedate, quantity]))
                                       })
             except:
-                # Check if this is stable (should be)
+                # Start a debugger to find out what the cause was
                 import pdb; pdb.set_trace()
                 raise
             t_now = t_end
@@ -409,7 +425,6 @@ class Schedule:
         t_now = self.start_time
 
         # two tables: one with the job times and one with the failure times
-
         time_dict = self.time_dict
         detailed_dict = self.time_dict
 
@@ -572,7 +587,6 @@ class Schedule:
         price_dict = self.price_dict
         prc_dict = self.prc_dict
 
-
         for item in time_dict:
             job_en_cost = 0
 
@@ -609,7 +623,11 @@ class Schedule:
             t_now = t_end
             if detail:
                 if product_type == 'MAINTENANCE':
-                    energy_cost[-1] += job_en_cost
+                    try:
+                        energy_cost[-1] += job_en_cost # don't add the cost if the list if still empty
+                    except:
+                        #import pdb; pdb.set_trace()
+                        pass
                 else:
                     energy_cost.append(job_en_cost)
             else:
@@ -711,17 +729,17 @@ class Schedule:
         for item in self.time_dict:
             deadline_cost = 0
             if item in self.job_dict:
-                if 'before' in self.job_dict[item]: # assume not all jobs have deadlines
+                if 'duedate' in self.job_dict[item]: # assume not all jobs have deadlines
                     # check deadline condition
-                    beforedate = self.job_dict[item]['before']
-                    if self.time_dict[item]['end'] > beforedate: # did not get deadline
+                    beforedate = self.job_dict[item]['duedate']
+                    if self.time_dict[item]['end'] > beforedate: # produced after deadline
                         deadline_cost += (self.time_dict[item]['end'] - beforedate).total_seconds() / 3600
 
-                if 'after' in self.job_dict[item]: # assume not all jobs have deadlines
+                if 'releasedate' in self.job_dict[item]: # assume not all jobs have deadlines
                     # check after condition
-                    afterdate = self.job_dict[item]['after']
-                    if self.time_dict[item]['end'] < afterdate: # produced before deadline
-                        deadline_cost += (afterdate - self.time_dict[item]['end']).total_seconds() / 3600
+                    afterdate = self.job_dict[item]['releasedate']
+                    if self.time_dict[item]['start'] < afterdate: # produced before release date
+                        deadline_cost += (afterdate - self.time_dict[item]['start']).total_seconds() / 3600
                 #if beforedate < afterdate:
                     #import pdb; pdb.set_trace()
             else:
@@ -763,10 +781,10 @@ class Schedule:
         flag = True
         for key, value in time_dict.items():
             if key in self.job_dict.keys():
-                due = self.job_dict[key]['before'] # due date of a job
+                due = self.job_dict[key]['duedate'] # due date of a job
                 if value['end'] > due:
                     print("For candidate schedule:", self.order)
-                    print("Job %d will finish at %s over the due date %s" % (key, value[1], due))
+                    print(f"Job {key} will finish at {value['end']} over the due date {due}")
                     flag = False
                     break
         return flag

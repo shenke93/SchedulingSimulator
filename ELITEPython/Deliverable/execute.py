@@ -20,32 +20,8 @@ from helperfunctions import *
 #pathname = os.path.dirname(sys.argv[0])
 configFile = 'config.ini'
 
-def main():
-        print_ul('Scheduler v0.0.0')
-        
-        if os.path.exists(configFile):
-                config = read_config_file(configFile)
-        else:
-                raise ValueError("{} not found!".format(configFile))
-
-        print('Execution Starts!')
-
-        export_folder = config['output_config']['export_folder']
-
-        if not os.path.exists(export_folder):
-                os.makedirs(export_folder)
-        start_logging(os.path.join(export_folder, 'out.log'))
-        logging.info('Starting logging')
-
-        downtimes = None
-        if config['scenario_config']['weights']['weight_failure'] and config['scenario_config']['working_method']=='historical':
-                try:
-                        downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['StartDateUTC', 'EndDateUTC'], index_col=0)
-
-                        downtimes = downtimes[downtimes.StartDateUTC.between(config['start_end']['start_time'], 
-                                                                             config['start_end']['end_time'])]
-                except:
-                        pass
+def main(config):
+        logging.info('Scheduler v0.0.5')
 
         # copy the config file to the export folder
         logging.info('Copying the config file to the export folder')
@@ -119,28 +95,38 @@ def main():
                         
 
                         # output files to csv's
-                        orig.to_csv(config['output_config']['output_init'])
-                        best.to_csv(config['output_config']['output_final'])
+                        orig.to_csv(os.path.join(export_folder, config['output_config']['output_init']))
+                        best.to_csv(os.path.join(export_folder, config['output_config']['output_final']))
 
                         energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(config['input_config']['prc_file'])
-                        
                         
                         if 'Type' in best.columns:
                                 namecolor='Type'
                         else:
                                 namecolor='ArticleName'
 
+                        downtimes = None
+                        if config['scenario_config']['weights']['weight_failure'] and config['scenario_config']['working_method']=='historical':
+                                try:
+                                        downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['StartDateUTC', 'EndDateUTC'], index_col=0)
+
+                                        downtimes = downtimes[downtimes.StartDateUTC.between(config['start_end']['start_time'], 
+                                                                                        config['start_end']['end_time'])]
+                                except:
+                                        pass
+
                         if export_paper is True:
                                 print('Export to {}'.format(export_folder))
                                 fig = plt.figure(figsize=(10, 6), dpi=50)
-                                plot_gantt(best, namecolor, namecolor, downtimes=downtimes)
+                                plot_gantt(best, namecolor, namecolor, startdate='Start', enddate='End', downtimes=downtimes)
                                 plt.title('Gantt plot')
                                 plt.savefig(os.path.join(export_folder, r"gantt_plot.pdf"))
                                 plt.close()
 
                         fitn = best_sched.get_fitness()
 
+                        import pdb; pdb.set_trace()
                         show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen) - Fitness {:.1f} €'.format(gen, fitn), 
                                                                                              namecolor, downtimes=downtimes, failure_rate=best_failure)
                         
@@ -584,17 +570,19 @@ def main():
  
     
 if __name__ == "__main__":
-    while True:
-        main()
-        # print('Dealing with sudden breakdown?')
-        # n = input("Your answer:")
-        # if n.strip() in ['Yes', 'yes', 'Y', 'y']:
-        #     executeSuddenBreakdowns()
-        # print('Dealing with urgent jobs?')
-        # n = input("Your answer:")
-        # if n.strip() in ['Yes', 'yes', 'Y', 'y']: 
-        #     executeUrgentJobs()
-        # print('Execution finished.')
-        break
+        if os.path.exists(configFile):
+                config = read_config_file(configFile)
+        else:
+                raise ValueError("{} not found!".format(configFile))
+
+        #print('Execution Starts!')
+
+        export_folder = config['output_config']['export_folder']
+
+        if not os.path.exists(export_folder):
+                os.makedirs(export_folder)
+        start_logging(os.path.join(export_folder, 'out.log'))
+        logging.info('Starting logging')
+        main(config)
     
         

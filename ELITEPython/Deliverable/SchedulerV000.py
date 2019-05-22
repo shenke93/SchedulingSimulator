@@ -830,10 +830,13 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     if not waiting_jobs:
         raise ValueError("No waiting jobs!")
     else:
-        try:
-            first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
-        except:
+        #try:
+        #    first_start_time = job_dict_new.get(waiting_jobs[0])['start'] # Find the start time of original schedule
+        #except:
+        if not breakdown_record_file:
             first_start_time = start_time
+        else:
+            first_start_time = record
 
     
 #     exit()
@@ -945,12 +948,12 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     with open('executionRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict.items():
-            writer.writerow([key, value['start'], value['end'], value['duration']])
+            writer.writerow([key, value['start'], value['end'], value['totaltime']])
             
     with open('originalRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in result_dict_origin.items():
-            writer.writerow([key, value['start'], value['end'], value['duration']])
+            writer.writerow([key, value['start'], value['end'], value['totaltime']])
             
     with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
         writer = csv.writer(csv_file)

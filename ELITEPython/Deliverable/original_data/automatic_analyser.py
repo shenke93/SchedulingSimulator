@@ -2,6 +2,7 @@
 Do an automatic analysis of the file below and export them to XML for usage
 This is an executable file 
 --------------------------
+Run the executable from the folder where you want the output
 '''
 
 import pandas as pd
@@ -20,13 +21,20 @@ from functions_auto_analyser import *
 
 print(__doc__)
 
-curdir = os.getcwd()
+curdir = os.path.dirname(sys.argv[0])
+
+print('Choose the file to make: (0: production, 1: packaging)')
+i = input()
+if int(i) == 0:
+    inputstr = 'prod'
+if int(i) == 1:
+    inputstr = 'pack'
 
 # per choice: (inputfile, target production rate per type, type name)
 # outputfolder determined by name of inputfile
 choices = {'prod': ('productionfile.csv', 'prod_speed.csv', 'PastaType'),
            'pack': ('packagingfile_old.csv', 'pack_speed.csv', 'BigPack-simple')}
-file_used, file_speed, choice_type = choices['prod']
+file_used, file_speed, choice_type = choices[inputstr]
 
 break_pauses = 7200 # seconds # breaks will be split in these periods
 turn_off_if = 3600 # seconds # the machine can be turned off if time if larger than this
@@ -42,20 +50,23 @@ except:
 
 # Make the output folder is it doesn't exist yet
 outfolder = splitext(file_used)[0]
+outfolder = os.path.join(curdir, outfolder)
 print('Making output folder: ' + outfolder)
 if not exists(outfolder):
     mkdir(outfolder)
 output_used = join(outfolder,  'outputfile.xml')
 
 # Define all reasons
-reasons_relative = [1, 3, 5, 7, 8]
+reasons_relative = [7, 8]
 reasons_absolute = [9, 10, 11]
 reasons_absolute_conversion = [9, 10]
 reasons_absolute_cleaning = [11]
 reasons_break = [0]
-reasons_availability = [2]
+reasons_availability = [1, 2, 3, 5]
 reasons_not_considered = []
 
+
+assert(set(reasons_absolute_cleaning + reasons_absolute_conversion) == set(reasons_absolute))
 considered_reasons = sorted(list(set(reasons_relative + reasons_absolute + reasons_absolute_conversion
                             + reasons_absolute_cleaning + reasons_break + reasons_availability)))
 
@@ -73,7 +84,7 @@ try:
 except:
     print(reasons_relative, reasons_absolute, reasons_break, reasons_availability, reasons_not_considered, list_reasons)
     raise
-assert(set(reasons_absolute_cleaning + reasons_absolute_conversion) == set(reasons_absolute)) 
+ 
 
 # ADD TYPE COLUMN
 print('Adding type column with type = ' + choice_type)
@@ -107,7 +118,7 @@ downtime = construct_downtimes(df_task, considered_reasons)
 save_downtimes(downtime, join(outfolder, 'historicalDownPeriods.csv'))
 
 print('Saving job info')
-save_durations(group, os.path.join(outfolder,'generated_jobInfoProd.csv'), beforedays=7, afterdays=7, randomfactor=3)
+save_durations(group, os.path.join(outfolder,'generated_jobInfoProd.csv'), beforedays=7, afterdays=7, randomfactor=3, choice=choice_type)
 
 print('Generating product related characteristics')
 energycons = generate_energy_per_production(group, file_speed, choice=choice_type, df_merged=df_merged)

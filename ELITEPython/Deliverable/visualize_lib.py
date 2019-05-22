@@ -32,12 +32,12 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     #warnings.filterwarnings("ignore")
     with warnings.catch_warnings():
         #warnings.simplefilter("ignore")
-        df_task.loc[:, 'Start'] = (df_task.loc[:, startdate] - firstdate).dt.total_seconds()/3600
-        df_task.loc[:, 'End'] = (df_task.loc[:, enddate] - firstdate).dt.total_seconds()/3600
+        df_task.loc[:, 'Vis_Start'] = (df_task.loc[:, startdate] - firstdate).dt.total_seconds()/3600
+        df_task.loc[:, 'Vis_End'] = (df_task.loc[:, enddate] - firstdate).dt.total_seconds()/3600
         if isinstance(downtimes, pd.DataFrame): # if downtimes included in the correct format
             #print(downtimes)
-            downtimes.loc[:, 'Start'] = (downtimes.loc[:, startdate] - firstdate).dt.total_seconds()/3600
-            downtimes.loc[:, 'End'] = (downtimes.loc[:, enddate] - firstdate).dt.total_seconds()/3600
+            downtimes.loc[:, 'Vis_Start'] = (downtimes.loc[:, startdate] - firstdate).dt.total_seconds()/3600
+            downtimes.loc[:, 'Vis_End'] = (downtimes.loc[:, enddate] - firstdate).dt.total_seconds()/3600
     #import pdb; pdb.set_trace()
     # Plot a line for every line of data in your file
     from cycler import cycler
@@ -71,7 +71,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
             entry = df_temp.loc[item]
             #plt.hlines(i, entry['Start']-(1/6), entry['End']+(1/6), lw=12, label=entry[reason_str], 
             #           colors='k')
-            plt.hlines(i, entry['Start'], entry['End'], lw=11, label=entry[reason_str], 
+            plt.hlines(i, entry['Vis_Start'], entry['Vis_End'], lw=11, label=entry[reason_str], 
                        colors=color_dict[entry[reason_str]])
 
         i += 1
@@ -79,7 +79,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     if isinstance(downtimes, pd.DataFrame):
         for item in downtimes.T:
             entry = downtimes.loc[item]
-            plt.axvspan(entry['Start'], entry['End'], alpha=0.3, facecolor='k')
+            plt.axvspan(entry['Vis_Start'], entry['Vis_End'], alpha=0.3, facecolor='k')
     plt.yticks(range(0, i), articles, fontsize='x-small')
     #plt.hlines(cps, s_process, f_process, colors="green", lw=4)
     #plt.hlines(cps, s_unload, f_unload, color="blue", lw=4)
@@ -104,7 +104,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     # ####
 
     plt.xlabel('Time[h]')
-    timerange = np.arange(0, np.max(df_task['End'])+24, 24)
+    timerange = np.arange(0, np.max(df_task['Vis_End'])+24, 24)
     label = pd.date_range(df_task[startdate].iloc[0].floor('D'), periods = len(timerange))
     plt.xticks(timerange, label, rotation=90)
     plt.xlim(timerange.min(), timerange.max())
@@ -192,6 +192,9 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
         return total_sum
 
 def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None, failure_rate=None):
+    ''' Expects a few tables with the following columns:
+    dataframe tasks with columns:
+        -  '''
     table = calculate_energy_table(tasks, prices, energy)
 
     fig = plt.figure(dpi=50, figsize=(20, 15))

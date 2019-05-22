@@ -135,34 +135,36 @@ def save_downtimes(dt, output):
     out.index.name = 'ID'
     out.to_csv(output)
 
-def save_durations(group, output, beforedays=None, afterdays=None, randomfactor=None, ignore_break=True):
+def save_durations(group, output, beforedays=None, afterdays=None, randomfactor=None, ignore_break=True, 
+                   choice=' '):
+    ''' Ignore_break adds functionality to ignore the type which is breaks '''
     out = group[['Uptime', 'Totaltime', 'Quantity', 'StartDateUTC', 'EndDateUTC', 'ArticleName']].copy()
     out.columns = ['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product']
     out[['Uptime', 'Totaltime']] = out[['Uptime', 'Totaltime']] / 3600
-    out = add_column_type(out , 'Product', 'PastaType')
+    out = add_column_type(out , 'Product', choice)
     out.columns.values[-1] = 'Type'
     to_convert_dates = ['Start', 'End']
-    
-    # add due date before
-    if afterdays:
-        beforetime = np.full(np.array(out['End']).shape, afterdays)
-        if randomfactor:
-            beforetime += np.random.randint(randomfactor + 1, size=beforetime.shape)
-        out['After'] = pd.to_datetime(out['End']) - pd.to_timedelta(beforetime, unit="D")
-        if ignore_break:
-            out.loc[out['Product'] == 'NONE', 'After'] = pd.Timestamp.min
-        to_convert_dates.append('After')
-    
-    # add first possible production date
+
+    # add first possible release date
     if beforedays:
         addedtime = np.full(np.array(out['End']).shape, beforedays)
         if randomfactor:
             addedtime += np.random.randint(randomfactor + 1, size=addedtime.shape)
-        out['Before'] = pd.to_datetime(out['End']) + pd.to_timedelta(addedtime, unit="D")
+        out['Releasedate'] = pd.to_datetime(out['End']) - pd.to_timedelta(addedtime, unit="D")
         if ignore_break:
-            out.loc[out['Product'] == 'NONE', 'Before']= pd.Timestamp.max
-        to_convert_dates.append('Before')
-
+            out.loc[out['Product'] == 'NONE', 'Releasedate']= pd.Timestamp.min
+        to_convert_dates.append('Releasedate')
+    
+    # add due date
+    if afterdays:
+        beforetime = np.full(np.array(out['End']).shape, afterdays)
+        if randomfactor:
+            beforetime += np.random.randint(randomfactor + 1, size=beforetime.shape)
+        out['Duedate'] = pd.to_datetime(out['End']) + pd.to_timedelta(beforetime, unit="D")
+        if ignore_break:
+            out.loc[out['Product'] == 'NONE', 'Duedate'] = pd.Timestamp.max
+        to_convert_dates.append('Duedate')
+    
     for col in to_convert_dates:
         out[col] = out[col].dt.strftime("%Y-%m-%d %H:%M:%S.%f")
     out.index.name = 'ID'
