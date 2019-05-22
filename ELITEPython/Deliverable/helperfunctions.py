@@ -6,6 +6,7 @@ import os
 from time import localtime, strftime
 import logging
 import csv
+import warnings
 
 class JobInfo(object):
     '''
@@ -24,12 +25,18 @@ class JobInfo(object):
         return ("Job order: " + str(self.job_order))
 
     def __add__(self, other):
-        job_dict = self.job_dict + other.job_dict
-        job_order = self.job_order + other.job_order
-        new_ji = JobInfo()
-        new_ji.job_dict = job_dict
-        new_ji.job_order = job_order
-        return new_ji
+        if set(self.job_order).isdisjoint(set(other.job_order)):
+            import pdb; pdb.set_trace()
+            job_dict = self.job_dict
+            job_dict.update(other.job_dict)
+            job_order = self.job_order + other.job_order
+            new_ji = JobInfo()
+            new_ji.job_dict = job_dict
+            new_ji.job_order = job_order
+            return new_ji
+        else:
+            raise Exception('The two input sets overlap, please fix this first')
+            exit
 
     def read_from_file(self, job_file, get_totaltime=False):
         '''
@@ -74,13 +81,21 @@ class JobInfo(object):
                         job_entry['type'] = 'unknown'
                     # Add due date
                     if ('Before' in row) and (row['Before'] is not None):
-                        job_entry['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
+                        try:
+                            job_entry['before'] = datetime.strptime(row['Before'], "%Y-%m-%d %H:%M:%S.%f")
+                        except:
+                            warnings.warn("Before date could not be parsed")
+                            job_entry['before'] = datetime.max
                         #print('Before date read')
                     else:
                         job_entry['before'] = datetime.max
                     # Add after date
                     if ('After' in row) and (row['After'] is not None):
-                        job_entry['after'] = datetime.strptime(row['After'], "%Y-%m-%d %H:%M:%S.%f")
+                        try:
+                            job_entry['after'] = datetime.strptime(row['After'], "%Y-%m-%d %H:%M:%S.%f")
+                        except:
+                            warnings.warn("After date could not be parsed")
+                            job_entry['after'] = datetime.min
                     else:
                         job_entry['after'] = datetime.min
 
@@ -110,7 +125,7 @@ class JobInfo(object):
 
         return res_dict
 
-    def limit_range(self, date_range1, date_range2):
+    def limit_range(self, date_range1, date_range2=None):
         '''
         Select items of dict from a time range.
         
@@ -131,12 +146,12 @@ class JobInfo(object):
         '''
         #res_dict = collections.OrderedDict()
         job_dict = self.job_dict
-        job_dict_copy = self.job_dict.copy()
+        import pdb; pdb.set_trace()
+        job_dict_copy = job_dict.copy()
         job_order = self.job_order
         #res_dict = {}
-        assert date_range1 < date_range2, "The end date should be larger then the start date"
         for key, value in job_dict.items():
-            if value['start'] < date_range1 or value['end'] > date_range2:
+            if value['start'] < date_range1:
                 try:
                     del job_dict_copy[key]
                     job_order.remove(key)
@@ -144,6 +159,17 @@ class JobInfo(object):
                     print(value['start'], date_range1, value['end'], date_range2)
                     print("Key {} not found".format(key))
                     raise
+        if date_range2:
+            assert date_range1 < date_range2, "The end date should be larger then the start date"
+            for key, value in job_dict.items():
+                if value['end'] > date_range2:
+                    try:
+                        del job_dict_copy[key]
+                        job_order.remove(key)
+                    except KeyError:
+                        print(value['start'], date_range1, value['end'], date_range2)
+                        print("Key {} not found".format(key))
+                        raise
         self.job_dict = job_dict_copy
         self.job_order = job_order
 
@@ -293,6 +319,10 @@ def read_config_file(path):
             input_config['urgent_ji_file'] = os.path.join(orig_folder, this_section['urgent_job_info_file'])
         else:
             input_config['urgent_ji_file'] = None
+        if 'breakdown_record_file' in this_section:
+            input_config['bd_rec_file'] = os.path.join(orig_folder, this_section['breakdown_record_file'])
+        else:
+            input_config['bd_rec_file'] = None
         if 'failure_info_path' in this_section:
             failure_info_path = os.path.join(orig_folder, this_section['failure_info_path'])
             if os.path.exists(failure_info_path):

@@ -1,4 +1,4 @@
-from SchedulerV000 import run_opt, run_opt_urgent, run_opt_breakdowns, run_bf
+from SchedulerV000 import run_opt, run_bf
 from datetime import datetime
 from time import localtime, strftime
 from visualize_lib import show_ga_results, plot_gantt, show_energy_plot, save_energy_plot
@@ -18,7 +18,7 @@ import logging
 from helperfunctions import *
 
 #pathname = os.path.dirname(sys.argv[0])
-configFile = 'config_pareto.ini'
+configFile = 'config.ini'
 
 def main():
         print_ul('Scheduler v0.0.0')
@@ -78,7 +78,8 @@ def main():
                         working_method=config['scenario_config']['working_method'], 
                         failure_info=config['input_config']['failure_info'],
                         add_time=config['scenario_config']['add_time'],
-                        urgent_job_info = config['input_config']['urgent_ji_file']
+                        urgent_job_info=config['input_config']['urgent_ji_file'],
+                        breakdown_record_file=config['input_config']['bd_rec_file']
                         )
 
                         logging.info('Execution finished.')
@@ -166,65 +167,65 @@ def main():
                         
                         plt.clf()
                         
-                if value == 'BF':
-                        timer0 = time.monotonic()
-                        best_result, worst_result, best_sched, worst_sched = run_bf(config['start_end']['start_time'], config['start_end']['end_time'], 
-                                                                                config['input_config']['hdp_file'], config['input_config']['fr_file'], 
-                                                                                config['input_config']['prc_file'], config['input_config']['ep_file'], 
-                                                                                config['input_config']['ji_file'], 
-                                                                                config['scenario_config']['scenario'],
-                                                                                weights = config['scenario_config']['weights'], 
-                                                                                duration_str=config['scenario_config']['duration_str'],
-                                                                                working_method=config['scenario_config']['working_method'],
-                                                                                failure_info=config['input_config']['failure_info'])
-                        timer1 = time.monotonic()
-                        elapsed_time = timer1-timer0
-                        print()
-                        print('Elapsed time: {:.2f} s'.format(elapsed_time))
+                # if value == 'BF': #NOT REALLY supported any more
+                #         timer0 = time.monotonic()
+                #         best_result, worst_result, best_sched, worst_sched = run_bf(config['start_end']['start_time'], config['start_end']['end_time'], 
+                #                                                                 config['input_config']['hdp_file'], config['input_config']['fr_file'], 
+                #                                                                 config['input_config']['prc_file'], config['input_config']['ep_file'], 
+                #                                                                 config['input_config']['ji_file'], 
+                #                                                                 config['scenario_config']['scenario'],
+                #                                                                 weights = config['scenario_config']['weights'], 
+                #                                                                 duration_str=config['scenario_config']['duration_str'],
+                #                                                                 working_method=config['scenario_config']['working_method'],
+                #                                                                 failure_info=config['input_config']['failure_info'])
+                #         timer1 = time.monotonic()
+                #         elapsed_time = timer1-timer0
+                #         print()
+                #         print('Elapsed time: {:.2f} s'.format(elapsed_time))
 
-                        print('Execution finished.')
-                        # print('Start visualization')
+                #         print('Execution finished.')
+                #         # print('Start visualization')
 
-                        best_result_dict = best_sched.get_time()
-                        worst_result_dict = worst_sched.get_time()
+                #         best_result_dict = best_sched.get_time()
+                #         worst_result_dict = worst_sched.get_time()
 
-                        print('Best:',best_result, '\t', * best_result_dict)
-                        print('Worst:', worst_result, '\t', * worst_result_dict)
+                #         print('Best:',best_result, '\t', * best_result_dict)
+                #         print('Worst:', worst_result, '\t', * worst_result_dict)
 
-                        best = make_df(best_result_dict)
-                        worst = make_df(worst_result_dict)
+                #         best = make_df(best_result_dict)
+                #         worst = make_df(worst_result_dict)
 
-                        energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
-                        prod_char = pd.read_csv(config['input_config']['prc_file'])
+                #         energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
+                #         prod_char = pd.read_csv(config['input_config']['prc_file'])
 
-                        if 'Type' in best.columns:
-                                namecolor='Type'
-                        else:
-                                namecolor='ArticleName'
-                        plt.figure(dpi=50, figsize=[20, 15])
+                #         if 'Type' in best.columns:
+                #                 namecolor='Type'
+                #         else:
+                #                 namecolor='ArticleName'
+                #         plt.figure(dpi=50, figsize=[20, 15])
 
-                        fitn = best_sched.get_fitness()
+                #         fitn = best_sched.get_fitness()
 
-                        poss = math.factorial(len(best_sched.job_dict))
+                #         poss = math.factorial(len(best_sched.job_dict))
 
-                        show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF) {:} possiblities - Fitness {:.1f}'.format(poss, fitn), namecolor, downtimes=downtimes)
+                #         show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF) {:} possiblities - Fitness {:.1f}'.format(poss, fitn), namecolor, downtimes=downtimes)
 
-                        export = config['output_config']['export']
-                        interactive = config['output_config']['interactive']
-                        if export is True:
-                                plt.savefig(os.path.join(export_folder, r"best_sched_BF.png"), dpi=300)
-                        if interactive:
-                                plt.show()
+                #         export = config['output_config']['export']
+                #         interactive = config['output_config']['interactive']
+                #         if export is True:
+                #                 plt.savefig(os.path.join(export_folder, r"best_sched_BF.png"), dpi=300)
+                #         if interactive:
+                #                 plt.show()
 
-                        plt.figure(dpi=50, figsize=[20, 15])
+                #         plt.figure(dpi=50, figsize=[20, 15])
 
-                        fitn = worst_sched.get_fitness()
+                #         fitn = worst_sched.get_fitness()
 
-                        show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF) - Fitness {:.1f}'.format(fitn), namecolor, downtimes=downtimes)
-                        if export is True:
-                                plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
-                        if interactive:
-                                plt.show()
+                #         show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF) - Fitness {:.1f}'.format(fitn), namecolor, downtimes=downtimes)
+                #         if export is True:
+                #                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
+                #         if interactive:
+                #                 plt.show()
                 if value == 'PAR':
                         logging.info('Generating pareto solutions')
                         list_added = []
@@ -251,7 +252,8 @@ def main():
                                 working_method=config['scenario_config']['working_method'], 
                                 failure_info=config['input_config']['failure_info'],
                                 add_time=config['scenario_config']['add_time'],
-                                urgent_job_info = config['input_config']['urgent_ji_file']
+                                urgent_job_info=config['input_config']['urgent_ji_file'],
+                                breakdown_record_file=config['input_config']['bd_rec_file']
                                 )
                                 logging.info('Execution finished.')
                                 logging.info('Number of generations was {:}'.format(gen))

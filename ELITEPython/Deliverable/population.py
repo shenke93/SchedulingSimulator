@@ -63,7 +63,7 @@ def floor_dt(dt, delta):
 
 
 class Schedule:
-    def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict, failure_info, 
+    def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict, precedence_dict, failure_info, 
                  scenario, duration_str='duration', working_method='historical', weights={}):
         self.order = order
         self.start_time = start_time
@@ -72,6 +72,7 @@ class Schedule:
         self.prc_dict = prc_dict
         self.downdur_dict = downdur_dict
         self.price_dict = price_dict
+        self.precedence_dict = precedence_dict
         self.failure_info = failure_info
         self.scenario = scenario
         self.duration_str = duration_str
@@ -244,7 +245,7 @@ class Schedule:
                     print(quantity, unit2['targetproduction'])
                     raise
             else:
-                raise NameError('Faulty value inserted')
+                raise NameError('Faulty value inserted: {}'.format(str(self.duration_str)))
 
             if self.working_method == 'historical':
                 t_o = t_start + timedelta(hours=du) # Without downtime duration
@@ -761,30 +762,30 @@ class Schedule:
     #     print(time_dict)
         flag = True
         for key, value in time_dict.items():
-            due = self.job_dict[key]['before'] # due date of a job
-            if value[1] > due:
-                print("For candidate schedule:", self.order)
-                print("Job %d will finish at %s over the due date %s" % (key, value[1], due))
-                flag = False
-                break
+            if key in self.job_dict.keys():
+                due = self.job_dict[key]['before'] # due date of a job
+                if value['end'] > due:
+                    print("For candidate schedule:", self.order)
+                    print("Job %d will finish at %s over the due date %s" % (key, value[1], due))
+                    flag = False
+                    break
         return flag
-    #     # # validate precedence (DISABLED)
-    #     # ind = set(self.order)
-    #     # jobs = ind.copy()
-    # #     for item in ind:
-    # #         if item in precedence_dict:
-    # #             prec = set(precedence_dict[item])
-    # #             jobs.remove(item)
-    # # #             print("Item:", item)
-    # # #             print("Prec:", prec)
-    # # #             print("afters:", jobs)
-    # #             if not prec.isdisjoint(jobs): # prec set and remain jobs have intersections
-    # #                 flag = False
-    # #                 break                
-    # #         else:
-    # #             jobs.remove(item)
-                
-    #     return flag
+        # validate precedence
+        ind = set(self.order)
+        jobs = list(self.order.copy())
+        for item in ind:
+            if item in precedence_dict:
+                prec = set(precedence_dict[item])
+                jobs_temp = set(jobs[:jobs.index(item)])
+                #jobs.remove(item)
+                #print('Remove ' + str(item))
+                # print("Item:", item)
+                # print("Prec:", prec)
+                # print("afters:", jobs)
+                if not prec.isdisjoint(jobs_temp): # prec set and remain jobs have intersections
+                    flag = False
+                    break
+        return flag
 
     def get_fitness(self, split_types=False, detail=False):
         ''' 
