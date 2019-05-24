@@ -1,0 +1,3 @@
+[input-config]
+input_data_folder = InputData
+job_info_file = jobInformation.csv

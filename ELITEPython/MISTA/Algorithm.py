@@ -111,6 +111,7 @@ class GA():
             # Randomly choose two individuals. 
             picked_idx = np.random.choice(np.arange(0, self.size_population), size=2, replace=False)
 #             print("picked_idx:", picked_idx) # Test code
+
         # Pick two individuals and calculate their fitnesses.   
         picked_pop = self.pop[picked_idx]
 #         print("picked_pop:", picked_pop) # Test code
@@ -125,11 +126,12 @@ class GA():
 #         print('winner_loser (before genetic operations):', winner_loser) # Test code
 #         exit() # Test break
 
-        
+        # Do crossover and mutation
         winner_loser = self.crossover(winner_loser)
 #         exit() # Test break
         winner_loser = self.mutate(winner_loser)
         
+        # Merge changes into the generation
         self.pop[picked_idx] = winner_loser
         
         return self.pop
