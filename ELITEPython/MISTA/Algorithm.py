@@ -2,7 +2,7 @@ import numpy as np
 
 def calculate_fitness(pop):
     ''' 
-    Fitness calculation function for an individual.
+    Fitness calculation function for all individuals in a generation.
     Dependent on problem scenarios.
     '''
     return np.array([ np.array(i[0]) for i in pop ])
@@ -59,7 +59,7 @@ class GA():
     def set_fitness_pop(self, calculate_fitness_pop):
         '''
         Use the fitness calculation function declared outside.
-        Get fitness for one individual.
+        Get fitness for all individuals in one population.
         '''
         self.generation_fitness_cal = calculate_fitness_pop
     
