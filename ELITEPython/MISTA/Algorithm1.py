@@ -1,16 +1,16 @@
 import numpy as np
 
-def calculate_fitness(pop):
-    ''' 
-    Fitness calculation function for all individuals in a generation.
-    Dependent on problem scenarios.
-    To be replaced.
-    '''
-    return np.array([ np.array(i[0]) for i in pop ])
+# def calculate_fitness(pop):
+#     ''' 
+#     Fitness calculation function for all individuals in a generation.
+#     Dependent on problem scenarios.
+#     To be replaced.
+#     '''
+#     return np.array([ np.array(i[0]) for i in pop ])
 
 class GA():
     def __init__(self, start_individual, nb_generation, size_individual, size_population, cross_rate, mutation_rate,
-                 calculate_fitness_pop, 
+                 calculate_fitness_pop, consumption_matrix, objective,
                  num_mutations=1, selection_method='roulette', mutation_mode='basic', pre_selection=False):
         ''' 
         Basic setting of an abstract genetic algorithm.
@@ -27,6 +27,9 @@ class GA():
         self.selection_method = selection_method
         self.mutation_mode = mutation_mode
         self.pre_selection = pre_selection
+        self.consumption_matrix = consumption_matrix
+        self.objective = objective
+        
         
         # Population initialization
         self.initial_population(start_individual)
@@ -56,6 +59,7 @@ class GA():
             # Using ndarray
             self.pop = np.vstack([np.random.choice(start_individual, size=self.size_individual, replace=False) 
                                   for _ in range(self.size_population)])
+#             print('Init pop:', self.pop)
         
     def set_fitness_pop(self, calculate_fitness_pop):
         '''
@@ -73,11 +77,11 @@ class GA():
         if np.random.rand() < self.cross_rate:
             # Mask based crossover
             # Using numpy array manipulations
-            cross_points = np.random.randint(0, 2, self.size_individual, dtype=np.bool)
+#             cross_points = np.random.randint(0, 2, self.size_individual, dtype=np.bool)
 #             print('cross_points:', cross_points) # Test code
-            keep_jobs = winner_loser[1][~cross_points]
+            keep_jobs = winner_loser[1][5:10]
 #             print('keep_jobs:', keep_jobs) # Test code
-            swap_jobs = winner_loser[0][np.isin(winner_loser[0].ravel(), keep_jobs, invert=True)]
+            swap_jobs = winner_loser[0][0:5]
 #             print('swap_jobs:', swap_jobs) # Test code
             winner_loser[1][:] = np.concatenate((keep_jobs, swap_jobs))
 #             print('loser:', winner_loser[1])
@@ -116,9 +120,13 @@ class GA():
         # Pick two individuals and calculate their fitnesses.   
         picked_pop = self.pop[picked_idx]
 #         print("picked_pop:", picked_pop) # Test code
-        picked_pop_fitness = self.generation_fitness_cal(picked_pop)
+        picked_pop_fitness = self.generation_fitness_cal(picked_pop, self.consumption_matrix)
 #         print("picked_pop_fitness:", picked_pop_fitness) # Test code
 #         exit() # Test break
+        
+        # Choose customized objectives
+        if self.objective == 'Time':
+            picked_pop_fitness = [i[0] for i in picked_pop_fitness] 
         
         # Sort two individuals by fitness
         # winner has lower fitness than loser
@@ -131,16 +139,16 @@ class GA():
         winner_loser = self.crossover(winner_loser)
 #         exit() # Test break
         winner_loser = self.mutate(winner_loser)
-        
+    
         # Merge changes into the generation
         self.pop[picked_idx] = winner_loser
         
         return self.pop
     
     
-if __name__ == '__main__':
-    ind_start = [1, 2, 3, 4, 5, 6, 7, 8]
-    np.random.seed(20)
-    ga1 = GA(start_individual=ind_start, nb_generation=10, size_individual=8, size_population=4, cross_rate=1, mutation_rate=1,
-             calculate_fitness_pop=calculate_fitness, num_mutations=1, selection_method='random', pre_selection=False, objective='Time')
-    ga1.evlove()
+# if __name__ == '__main__':
+#     ind_start = [1, 2, 3, 4, 5, 6, 7, 8]
+#     np.random.seed(20)
+#     ga1 = GA(start_individual=ind_start, nb_generation=10, size_individual=8, size_population=4, cross_rate=1, mutation_rate=1,
+#              calculate_fitness_pop=calculate_fitness, num_mutations=1, selection_method='random', pre_selection=False)
+#     ga1.evlove()

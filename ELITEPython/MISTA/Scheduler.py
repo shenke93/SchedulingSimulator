@@ -15,6 +15,7 @@ import configparser
 
 import numpy as np
 
+from Algorithm1 import GA
 
 class Activity(object):
     
@@ -72,7 +73,8 @@ def initializeJobs(jobInfoFile):
 
 def build_consumption_matrix(job):
     '''
-    Build the consumption matrix of a job. Format:
+    Build the consumption matrix of a job, shape 2*2.
+    Format:
            Duration Resource
     Mode1  **       **
     Mode2  **       **
@@ -83,14 +85,31 @@ def build_consumption_matrix(job):
     return res
        
 def calculate_fitness(pop, con_matrix):
-    for i, j in zip(pop, con_matrix):
-        print(i*j)
+    fitness_pop = []
+    for individual in pop:
+        duration_consumption_individual = 0
+        resource_consumption_individual = 0
+        for i, j in zip(individual, con_matrix):
+    #         print("i:", i)
+            # Initialize mode vector, shape 1 * 2
+            mode_vector = np.array([i, 1-i]).reshape(1,2)
+#             print('mode_vector:', mode_vector)
+#             print("j:", j)
+#             print("tmp*j:", mode_vector.dot(j))
+            res = mode_vector.dot(j)
+#             print('res:', res)
+            duration_consumption_individual += res[0][0]
+            resource_consumption_individual += res[0][1]
+#         print("Next individual!")
+        fitness_pop.append([duration_consumption_individual, resource_consumption_individual])
     
-        
+#     print("fitness_pop:", fitness_pop)
+    return fitness_pop
     
            
 if __name__ == '__main__':
     
+    np.random.seed(20)
     # Parameter Settings
     configParser = configparser.RawConfigParser()   
     configFilePath = 'config.txt'
@@ -109,13 +128,27 @@ if __name__ == '__main__':
          
     size_individual = len(waiting_jobs)
     modes = np.random.randint(0, 2, size=size_individual)
-    print(modes)
+#     Tese Code
+#     print("modes:", modes)
+#     pop_modes = np.vstack(modes for _ in range(4))
     
     con_matrix = [build_consumption_matrix(i) for i in waiting_jobs]
     
 #     Test Code
-    for i in con_matrix:
-        print(i)
-        print(type(i))
+#     for i in con_matrix:
+#         print(i)
+#         print(type(i))
 
-    calculate_fitness(modes, con_matrix)
+#     calculate_fitness(pop_modes, con_matrix)
+    ga1 = GA(start_individual=modes, nb_generation=10, size_individual=10, size_population=4, cross_rate=1, mutation_rate=1,
+             calculate_fitness_pop=calculate_fitness, consumption_matrix=con_matrix, objective='Time', num_mutations=1, selection_method='random', pre_selection=False)
+#     # Test Code
+#     pop = ga1.evlove()
+#     print(pop)
+#     exit()
+    for i in range(1000):
+        print("Gen:", i)
+        pop = ga1.evlove()
+    
+    print(pop)
+    
