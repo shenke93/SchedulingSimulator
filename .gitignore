@@ -7,3 +7,6 @@ Results*/
 build/
 dist/
 ELITEPython/Deliverable/execute.spec
+ELITEPython/Deliverable/original_data/packagingfile_old/generated_jobInfoProd.csv
+ELITEPython/Deliverable/original_data/packagingfile_old/generated_productRelatedCharacteristics.csv
+ELITEPython/Deliverable/original_data/packagingfile_old/generated_productRelatedCharacteristics.csv
