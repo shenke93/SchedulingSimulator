@@ -21,6 +21,9 @@ from functions_auto_analyser import *
 
 print(__doc__)
 
+cp = 100
+cu = 1000
+
 curdir = os.path.dirname(sys.argv[0])
 
 print('Choose the file to make: (0: production, 1: packaging)')
@@ -72,7 +75,7 @@ considered_reasons = sorted(list(set(reasons_relative + reasons_absolute + reaso
 
 print_all = True; export_all = True
 
-print('Starting XML tree')
+print('> Starting XML tree')
 if export_all:
     import xml.etree.ElementTree as ET
     root = ET.Element("failure-info")
@@ -193,8 +196,7 @@ if export_all:
 # GENERATE PM SUGGESTED TIME
 # Generate the suggested time between planned maintenance
 from probdist import total_cost_maintenance, pm_recommend
-cp = 100
-cu = 300
+
 
 minimum = pm_recommend(weib, cp, cu)
 PM = int(minimum)
