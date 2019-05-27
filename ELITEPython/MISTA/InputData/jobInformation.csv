@@ -1,4 +1,4 @@
-Activity,Project,ReleaseTime,DurationMode1,DurationMode2,ResourceMode1,ResourceMode2
+Activity,Project,ReleaseTime,DurationMode1,DurationMode2,MaterialMode1,MaterialMode2
 1,1,0,1,5,3,4
 2,1,0,3,4,3,1
 3,1,0,3,4,2,4

@@ -58,8 +58,8 @@ def initializeJobs(jobInfoFile):
                 release_time = int(row['ReleaseTime'])
                 duration_mode1 = int(row['DurationMode1'])
                 duration_mode2 = int(row['DurationMode2'])
-                consumption_mode1 = int(row['ResourceMode1'])
-                consumption_mode2 = int(row['ResourceMode2'])
+                consumption_mode1 = int(row['MaterialMode1'])
+                consumption_mode2 = int(row['MaterialMode2'])
                
                 # Create job instances
                 job = Activity(idx, idx_project, release_time, duration_mode1, duration_mode2, consumption_mode1, consumption_mode2)
