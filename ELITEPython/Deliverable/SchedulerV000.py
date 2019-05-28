@@ -871,11 +871,12 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
 
     if breakdown_record_file:
         record = read_breakdown_record(breakdown_record_file)
-        ji.limit_range(record)
+        ji.limit_range_disruptions(record)
     
     if urgent_job_info:
         urgent_ji = JobInfo()
         urgent_ji.read_from_file(urgent_job_info)
+        # TODO: There is no job selection after the input of urgent job?
         ji = urgent_ji + ji
 
     if add_time > 0:

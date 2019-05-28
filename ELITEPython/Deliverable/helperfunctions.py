@@ -147,7 +147,7 @@ class JobInfo(object):
         job_order = self.job_order
         #res_dict = {}
         for key, value in job_dict.items():
-            if value['start'] < date_range1:
+            if value['start'] < date_range1: 
                 try:
                     del job_dict_copy[key]
                     job_order.remove(key)
@@ -169,6 +169,55 @@ class JobInfo(object):
         self.job_dict = job_dict_copy
         self.job_order = job_order
 
+    
+    def limit_range_disruptions(self, date_range1, date_range2=None):
+        '''
+        Version of limit_range used for disruption handling.
+        
+        Parameters
+        ----------
+        dateRange1: Date
+            Start timestamp of the range.
+        
+        dateRange2: Date
+            End timestamp of the range.
+            
+        dict: Dict
+            Original dictionary.
+            
+        Returns
+        -------
+        A dict containing selected items.
+        '''
+        #res_dict = collections.OrderedDict()
+        job_dict = self.job_dict
+        job_dict_copy = job_dict.copy()
+        job_order = self.job_order
+        #res_dict = {}
+        for key, value in job_dict.items():
+            if value['end'] <= date_range1: # Finished jobs: end time earlier than the timpstamp of the disruption.
+                try:
+                    del job_dict_copy[key]
+                    job_order.remove(key)
+                except KeyError:
+                    print(value['start'], date_range1, value['end'], date_range2)
+                    print("Key {} not found".format(key))
+                    raise
+        if date_range2:
+            assert date_range1 < date_range2, "The end date should be larger then the start date"
+            for key, value in job_dict.items():
+                if value['end'] > date_range2:
+                    try:
+                        del job_dict_copy[key]
+                        job_order.remove(key)
+                    except KeyError:
+                        print(value['start'], date_range1, value['end'], date_range2)
+                        print("Key {} not found".format(key))
+                        raise
+        self.job_dict = job_dict_copy
+        self.job_order = job_order
+        
+        
     def add_breaks(self, break_hours):
         ''' 
         Add a number of hours of breaks at the end of the file
