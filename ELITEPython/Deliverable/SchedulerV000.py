@@ -164,7 +164,8 @@ def read_product_related_characteristics(productFile):
                     product_related_characteristics_dict[row['Product']]['availability'] = float(row['Availability'])
                 if 'Downtime_len' in row:
                     product_related_characteristics_dict[row['Product']]['dt_len'] = float(row['Downtime_len'])
-
+                if 'Weight' in row:
+                    product_related_characteristics_dict[row['Product']]['weight'] = float(row['Weight'])
     except:
         print("Unexpected error when reading product related information from '{}'".format(productFile))
         raise
@@ -465,6 +466,7 @@ class GA(Scheduler):
     
     def crossover(self, winner_loser): 
         ''' Using microbial genetic evolution strategy, the crossover result is used to represent the loser.
+        An example image of this can be found in 'Production Scheduling and Rescheduling with Genetic ALgorithms, C. Bierwirth, page 6'.
         '''
         # crossover for loser
         if np.random.rand() < self.cross_rate:
@@ -477,9 +479,37 @@ class GA(Scheduler):
                 print(keep_job)
                 raise
         return winner_loser
+
+    def crossover_similar(self, winner_loser): 
+        ''' Using microbial genetic evolution strategy, the crossover result is used to represent the loser.
+        This algorithm keeps the jobs which are common between two lists at the same place.
+        An example image of this can be found in 'A genetic algorithm for hybrid flowshops, page 788'.
+        '''
+        # determine common points
+        #print(winner_loser.shape)
+        # crossover for loser
+        if np.random.rand() < self.cross_rate:
+            try:
+                winner = np.array(winner_loser[0])
+                loser = np.array(winner_loser[1])
+                winner_out = winner.copy()
+                loser_out = loser.copy()
+                same = (winner == loser)
+
+                cross_point = int(np.random.choice(np.arange(len(winner)), size=1))
+                same[:cross_point] = True
+                different = np.invert(same)
+
+                np.putmask(loser_out, different, winner[np.isin(winner, different)])
+                np.putmask(winner_out, different, loser[np.isin(loser, different)])
+            except:
+                raise
+            #winner_loser = np.array([winner_out, loser_out])
+        return winner_loser
     
     def mutate(self, loser, prob=False):
         ''' Using microbial genetic evolution strategy, mutation only works on the loser.
+        Two random points change place here.
         '''
         # mutation for loser, randomly choose two points and do the swap
         if np.random.rand() < self.mutation_rate:
@@ -500,6 +530,34 @@ class GA(Scheduler):
             swap_A, swap_B = loser[point], loser[swap_point]
             loser[point], loser[swap_point] = swap_B, swap_A
         return loser
+
+    def mutate_swap(self, loser, prob=False):
+        ''' Using microbial genetic evolution strategy, mutation only works on the loser.
+        One job changes place here.
+        '''
+        loser = list(loser)
+        # mutation for loser, randomly choose two points and do the swap
+        if np.random.rand() < self.mutation_rate:
+            if prob:
+                tmpl = list(range(self.dna_size))
+                try:
+                    point = int(np.random.choice(tmpl, size=1, replace=False, p=prob))
+                except:
+                    import pdb; pdb.set_trace()
+                tmpl.pop(int(point))
+                # prob.pop(int(point))
+                # inverse = list(np.array(prob).max() - np.array(prob))
+                # inverse = inverse / sum(inverse)
+                insert_point = int(np.random.choice(tmpl, size=1, replace=False))
+            else:
+                point, insert_point = np.random.choice(range(self.dna_size), size=2, replace=False)
+                point = int(point); insert_point = int(insert_point)
+            # point, swap_point = np.random.randint(0, self.dna_size, size=2)
+            #import pdb; pdb.set_trace()
+            loser.insert(insert_point, loser.pop(point))
+            #swap_A, swap_B = loser[point], loser[swap_point]
+            #loser[point], loser[swap_point] = swap_B, swap_A
+        return loser    
         
     def evolve(self, n, evolution=None):
         ''' 
@@ -559,7 +617,7 @@ class GA(Scheduler):
                 origin = loser.copy() # pick up the loser for genetic operations
 
                 # Crossover (of the winner and the loser)
-                winner_loser = self.crossover(winner_loser)
+                winner_loser = self.crossover_similar(winner_loser)
             
                 # Mutation (only on the child)
                 loser = winner_loser[1]
@@ -572,6 +630,7 @@ class GA(Scheduler):
                                                                       self.scenario, self.duration_str, self.working_method, self.weights)], detail=True)[0]
                         #print(detailed_fitness)
                         mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
+                        #loser = self.mutate(loser)
                         loser = self.mutate(loser, mutation_prob)
                     else:
                         loser = self.mutate(loser)

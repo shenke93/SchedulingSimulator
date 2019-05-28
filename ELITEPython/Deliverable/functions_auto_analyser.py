@@ -202,6 +202,9 @@ def generate_energy_per_production(group, file_speed, choice=None, df_merged=Non
                                         'Power': 0, 'TargetProductionRate': 1}, ignore_index=True)
         energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 
                                         'TargetProductionRate': 1}, ignore_index=True)
+    energycons.loc[:, 'Weight'] = 1
+    energycons.loc[energycons.Product == 'NONE', 'Weight'] = 0
+    energycons.loc[energycons.Product == 'MAINTENANCE', 'Weight'] = 0
     return energycons
 
 def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):
@@ -249,9 +252,6 @@ def generate_conversion_table(df, reasons, unique_col='ProductionRequestId', typ
         #print(first_type, second_type, first[3], second[2])
         sum_conversions.loc[first_type, second_type] += sum_convert
         num_conversions.loc[first_type, second_type] += 1
-
-    #print(sum_conversions)
-    #print(num_conversions)
 
     mean_conversions = sum_conversions/num_conversions
     return mean_conversions

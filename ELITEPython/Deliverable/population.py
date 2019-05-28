@@ -761,13 +761,15 @@ class Schedule:
             count = True
             if item in self.job_dict: # this function eliminates all maintenance jobs
                 product = self.time_dict[item]['product']
-                if (product != 'NONE') and (product != 'MAINTENANCE'):
-                    enddate = self.time_dict[item]['end']
-                    flowtime = (enddate - t_now).total_seconds() / 3600
-                elif product == 'NONE':
-                    flowtime = 0
-                else:
-                    print('Error')
+                weight = self.prc_dict[product]['weight']
+                flowtime = weight * (self.time_dict[item]['end'] - t_now).total_seconds() / 3600
+                #if (product != 'NONE') and (product != 'MAINTENANCE'):
+                #    enddate = self.time_dict[item]['end']
+                #    flowtime = (enddate - t_now).total_seconds() / 3600
+                #elif product == 'NONE':
+                #    flowtime = 0
+                #else:
+                #    print('Error')
                 if detail:
                     flowtime_cost.append(flowtime)
                 elif flowtime > 0:

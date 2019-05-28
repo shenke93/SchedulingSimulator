@@ -130,7 +130,6 @@ tempmean = energycons[(energycons.loc[:, 'Product'] != 'NONE') | (energycons.loc
 tempmean['Product'] = 'MEAN'
 energycons = energycons.append(tempmean, ignore_index=True)
 energycons.to_csv(join(outfolder, 'generated_productRelatedCharacteristics.csv'), index=False)
-
 startdate = group.StartDateUTC.min()
 firstofmonth = (startdate - pd.offsets.MonthBegin(1)).floor('D')
 enddate = group.StartDateUTC.max()
@@ -311,9 +310,9 @@ if export_all:
     conversion_times = ET.SubElement(files, "conversion_times")
     conversion_times.text = os.path.split(newname)[1]
 
-# print('Generating cleaning times between the types')
-# print('Exporting the cleaning time matrix')
-# mean_cleaning = generate_conversion_table(df_task, reasons_absolute_cleaning, 'ProductionRequestId', choice_type)
+#print('Generating cleaning times between the types')
+#print('Exporting the cleaning time matrix')
+#mean_cleaning = generate_conversion_table(df_task, reasons_absolute_cleaning, 'ProductionRequestId', choice_type)
 
 # print('Adapting the cleaning time matrix - Redefining diagonal')
 # new_mc = adapt_standard_matrix(mean_cleaning)
