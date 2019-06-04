@@ -53,7 +53,7 @@ def add_breaks(production, maxtime=7200):
         # This loop counts out the breaks and splits it in periods of maxtime and one period of maxtime + diff
         while diff > 0:
             #print(diff)
-            if diff > maxtime:
+            if (maxtime is not None) and (diff > maxtime):
                 new_row = pd.Series({'ProductionRequestId': int(prid),
                                      'StartDateUTC': oldenddate,
                                      'EndDateUTC': oldenddate + pd.Timedelta(maxtime, 's'),
@@ -221,7 +221,7 @@ def generate_conversion_table(df, reasons, unique_col='ProductionRequestId', typ
     l = list(df[unique_col].unique())
     length_list = []
     # First make a list
-    # It contains the product id, the product type, conversion of the first half of the job, conversion time of the second half of the job
+    # It contains the product id, the product type, conversion of the first half of the job, conversion time of the second half of the job, breaktime between the jobs if short
     for prid in l:
         # Save the total length and the type
         df_temp = df[df[unique_col] == prid]
