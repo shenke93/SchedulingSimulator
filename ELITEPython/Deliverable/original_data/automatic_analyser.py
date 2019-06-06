@@ -1,6 +1,6 @@
-''' 
+'''
 Do an automatic analysis of the file below and export them to XML for usage
-This is an executable file 
+This is an executable file
 --------------------------
 Run the executable from the folder where you want the output
 '''
@@ -295,6 +295,7 @@ for choice in choices:
         print(new_mc)
 
     if export_all:
+        new_mc.to_csv(splitext(output_used)[0] + '_conversions_rough.csv')
         newname = splitext(output_used)[0] + '_conversions.csv'
         # fill the nan values with another value from the data
         temp = np.array(new_mc).flatten()
