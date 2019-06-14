@@ -18,14 +18,17 @@ import logging
 from helperfunctions import *
 
 #pathname = os.path.dirname(sys.argv[0])
+os.chdir(os.path.dirname(sys.argv[0]))
+
 configFile = 'config.ini'
+configFile = os.path.join(os.path.abspath(os.curdir), configFile)
 
 def main(config):
     logging.info('Scheduler v0.0.5')
 
     # copy the config file to the export folder
     logging.info('Copying the config file to the export folder')
-    
+
     if config['output_config']['export']:
         import shutil
         export_folder = config['output_config']['export_folder']

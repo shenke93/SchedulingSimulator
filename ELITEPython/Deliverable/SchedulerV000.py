@@ -92,7 +92,7 @@ def floor_dt(dt, delta):
     # q, r = divmod(dt - datetime.min, delta)
     # return (datetime.min + (q)*delta) if r else dt
 
-    
+
 def read_down_durations(downDurationFile):
     ''' 
     Create a dictionary to restore down duration information.
@@ -644,6 +644,10 @@ class GA(Scheduler):
 
 #                 print("Start validate:")
                 flag = 0
+                
+                loser = Schedule(loser, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict,
+                                 self.down_duration_dict, self.price_dict, self.precedence_dict, self.failure_info, self.scenario, self.duration_str, self.working_method, self.weights)
+                
                 #print('validation step')
                 if self.validation:
                     if not loser.validate():
@@ -651,8 +655,7 @@ class GA(Scheduler):
                         #i = i + 1 # End of an evolution procedure
                         flag = 1
 
-                loser = Schedule(loser, self.start_time, self.job_dict, self.failure_dict, self.product_related_characteristics_dict,
-                                 self.down_duration_dict, self.price_dict, self.precedence_dict, self.failure_info, self.scenario, self.duration_str, self.working_method, self.weights)
+
 
                 if flag == 0:
                     if evolution == 'roulette':

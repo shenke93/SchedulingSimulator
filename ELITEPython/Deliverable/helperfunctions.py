@@ -8,6 +8,8 @@ import logging
 import csv
 import warnings
 
+
+
 class JobInfo(object):
     '''
     A class which contains the JobInfo dictionary.
@@ -51,51 +53,51 @@ class JobInfo(object):
         '''
         job_dict = {}
         job_order = []
+        
+        def raiseerror(): raise ValueError('Product name missing')
+        def donothing(): pass
+        def parsedate(x): y = datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f"); return y
+        def notypefound(): 
+            logging.warning('Unknown type, adding the type as unknown')
+            return 'unknown'
+        def noduedate():
+            logging.warning("Due date could not be parsed")
+            return datetime.max
+        def noreleasedate(): 
+            logging.warning("Release date could not be parsed")
+            return datetime.min
+            
+        
+        operations = {
+            'Product': ['product', str, raiseerror],
+            'Totaltime': ['totaltime', float, donothing],
+            'Uptime': ['uptime', float, donothing],
+            'Quantity': ['quantity', float, donothing],
+            #'Start': ['start', parsedate, donothing],
+            #'End': ['end', parsedate, donothing],
+            'Type': ['type', str, notypefound],
+            'Duedate': ['duedate', parsedate, noduedate],
+            'Releasedate': ['releasedate', parsedate, noreleasedate]
+        }
+        
         try:
             with open(job_file, encoding='utf-8') as jobInfo_csv:
                 reader = csv.DictReader(jobInfo_csv)
                 for row in reader:
-                    job_num = int(row['ID'])
-                    if row['Product'] != 'MAINTENANCE':
+                    if row['Product'] != 'MAINTENANCE': # Do not read maintenance tasks
+                        job_num = int(row['ID'])
                         # insert product name
                         job_entry = dict({'product': row['Product']})
-                        # time string or quantity should be in the row
-                        if ('Totaltime' in row) and row['Totaltime'] is not None:
-                            job_entry['totaltime'] = float(row['Totaltime'])
-                        if ('Uptime' in row) and row['Uptime'] is not None:
-                            job_entry['uptime'] = float(row['Uptime'])
-                        if ('Quantity' in row) and row['Quantity'] is not None:
-                            job_entry['quantity'] = float(row['Quantity'])
-                        if ('Start' in row) and row['Start'] is not None:
-                            job_entry['start'] = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
-                        if ('End' in row) and row['End'] is not None:
-                            job_entry['end'] = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
-                        # Add product type
-                        if ('Type' in row) and row['Type'] is not None:
-                            job_entry['type'] = row['Type']
-                            #print('Added type')
-                        else:
-                            job_entry['type'] = 'unknown'
-                            logging.warning('Unknown type, adding the type as unknown')
-                        # Add due date
-                        if ('Duedate' in row) and (row['Duedate'] is not None):
+                        
+                        job_entry = {}
+                        for key, value in operations.items():
                             try:
-                                job_entry['duedate'] = datetime.strptime(row['Duedate'], "%Y-%m-%d %H:%M:%S.%f")
+                                job_entry[value[0]] = value[1](row[key])
                             except:
-                                logging.warning("Due dates could not be parsed")
-                                job_entry['duedate'] = datetime.max
-                            #print('Before date read')
-                        else:
-                            job_entry['duedate'] = datetime.max
-                        # Add after date
-                        if ('Releasedate' in row) and (row['Releasedate'] is not None):
-                            try:
-                                job_entry['releasedate'] = datetime.strptime(row['Releasedate'], "%Y-%m-%d %H:%M:%S.%f")
-                            except:
-                                logging.warning("Release dates could not be parsed")
-                                job_entry['releasedate'] = datetime.min
-                        else:
-                            job_entry['releasedate'] = datetime.min
+                                othervalue = value[2]()
+                                if othervalue != None:
+                                    job_entry[value[0]] = othervalue
+                        
                     # add the item to the job dictionary
                         job_dict[job_num] = job_entry
                         job_order.append(job_num)
@@ -236,6 +238,13 @@ class JobInfo(object):
         self.job_dict = job_dict
         self.job_order = job_order
 
+    def remove_all_breaks(self):
+        ''' 
+        Remove all breaks from the file
+        '''
+
+
+    
 
 # Construct energy two tariffs between two dates
 def construct_energy_2tariffs(ran, daytarif=12, nighttarif=8, starttime=21, endtime=6):
@@ -340,6 +349,25 @@ def read_failure_info(file):
     failure_info = (fail_dict, rep_dist, mean, maint_time, repair_time, conversion_times, cleaning_time)
     return failure_info
 
+
+class SchedulerInitiator(object):
+    def __init__(configfile):
+        config_entries = read_config_file(configfile)
+        
+        
+
+
+def my_config_parser(in_dict, config_section):
+    out_dict = {}
+    for key, value in in_dict.items():
+        try:
+            out_dict[value[0]] = value[1](config_section[key])
+        except:
+            out_dict[value[0]] = value[2](key)
+    return out_dict
+      
+        
+
 def read_config_file(path):
     '''
     Read a configuration file using a certain path
@@ -349,99 +377,117 @@ def read_config_file(path):
     sections = config.sections()
     return_sections = {}
     pathname = os.path.dirname(path)
+    #configfolder = pathname
+    
+    def join_path(x):
+        return os.path.join(configfolder, x)
+    def raise_failure(section):
+        raise NameError(f'{section} not found in the config file')
+    def raise_no_failure(section):
+        return None
+    def read_bool(x):
+        if (x == 'False') or (x == 'F') or (x == ''):
+            return False
+        else:
+            return True
+    
     if 'input-config' in sections:
-        input_config = {}
+        #input_config = {}
         this_section = config['input-config']
-        input_config['original'] = orig_folder =  this_section['original_folder']
-        orig_folder = os.path.join(pathname, orig_folder)
-        input_config['prc_file'] = os.path.join(orig_folder, this_section['product_related_characteristics_file'])
-        if 'precendence_file' in this_section:
-            input_config['prec_file'] = os.path.join(orig_folder, this_section['precedence_file'])
-        else:
-            input_config['prec_file'] = None
-        input_config['ep_file'] = os.path.join(orig_folder, this_section['energy_price_file'])
-        input_config['hdp_file'] = os.path.join(orig_folder, this_section['historical_down_periods_file'])
-        input_config['ji_file'] = os.path.join(orig_folder, this_section['job_info_file'])
-        if 'urgent_job_info_file' in this_section:
-            input_config['urgent_ji_file'] = os.path.join(orig_folder, this_section['urgent_job_info_file'])
-        else:
-            input_config['urgent_ji_file'] = None
-        if 'breakdown_record_file' in this_section:
-            input_config['bd_rec_file'] = os.path.join(orig_folder, this_section['breakdown_record_file'])
-        else:
-            input_config['bd_rec_file'] = None
-        if 'failure_info_path' in this_section:
-            failure_info_path = os.path.join(orig_folder, this_section['failure_info_path'])
-            if os.path.exists(failure_info_path):
-                input_config['failure_info'] = read_failure_info(os.path.join(failure_info_path, 'outputfile.xml'))
-        else:
-            input_config['failure_info'] = None
-        if 'failure_rate_file' in this_section:
-            input_config['fr_file'] = os.path.join(orig_folder, this_section['failure_rate_file'])
-        else:
-            input_config['fr_file'] = None
-        return_sections['input_config'] = input_config
+        
+        configfolder = None
+        def config_folder(x):
+            nonlocal configfolder
+            configfolder = os.path.join(pathname, x)
+            return configfolder
+        
+        def read_xml_file(x):
+            return read_failure_info(os.path.join(configfolder, x, 'outputfile.xml'))
+
+        input_actions = {
+            'original_folder': ['original', config_folder, raise_failure],
+            'product_related_characteristics_file': ['prc_file', join_path, raise_failure],
+            'precendence_file': ['prec_file', join_path, raise_no_failure],
+            'energy_price_file': ['ep_file', join_path, raise_failure],
+            'historical_down_periods_file': ['hdp_file', join_path, raise_failure],
+            'job_info_file': ['ji_file', join_path, raise_failure],
+            'urgent_job_info_file': ['urgent_ji_file', join_path, raise_no_failure],
+            'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
+            'failure_info_path': ['failure_info', read_xml_file, raise_no_failure],
+            'failure_rate': ['fr_file', join_path, raise_no_failure]
+        }
+        
+        return_sections['input_config'] = my_config_parser(input_actions, this_section)
     
     if 'output-config' in sections:
-        output_config = {}
+        #output_config = {}
         this_section = config['output-config']
-        output_config['export_folder'] = export_folder = os.path.join(pathname, this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M", localtime()))
-        output_config['output_init'] = os.path.join(export_folder, this_section['output_init'])
-        output_config['output_final'] = os.path.join(export_folder, this_section['output_final'])
-        output_config['interactive'] = config.getboolean('output-config', 'interactive')
-        output_config['export'] = config.getboolean('output-config', 'export')
-        if 'export_paper' in this_section:
-            output_config['export_paper'] = config.getboolean('output-config', 'export_paper')
-        else:
-            output_config['export_paper'] = False
-        return_sections['output_config'] = output_config
+        
+        def join_path_curdate(x):
+            return os.path.join(pathname, str(x) + '_' + strftime("%Y%m%d_%H%M", localtime()))
+        def return_false(x):
+            return False
+        
+        output_actions = {
+            'export_folder': ['export_folder', join_path_curdate, raise_failure],
+            'output_init': ['output_init', join_path, raise_failure],
+            'output_final': ['output_final', join_path, raise_failure],
+            'interactive': ['interactive', read_bool, raise_failure],
+            'export': ['export', read_bool, raise_failure],
+            'export_paper': ['export_paper', read_bool, return_false]
+        }
+        
+        return_sections['output_config'] = my_config_parser(output_actions, this_section)
 
     if 'scenario-config' in sections:
         scenario_config = {}
         this_section = config['scenario-config']
-        # Read scenario-config
-        scenario_config['test'] = config.get('scenario-config', 'test').replace(' ', '').split(',')
-        scenario_config['scenario'] = config.getint('scenario-config', 'scenario')
-        scenario_config['validation'] = config.getboolean('scenario-config', 'validation')
-        scenario_config['pre_selection'] = config.getboolean('scenario-config', 'pre_selection')
         
-        scenario_config['weights'] = {}
-        scenario_config['weights']['weight_energy'] = config.getfloat('scenario-config', 'weight_energy')
-        scenario_config['weights']['weight_constraint'] = config.getfloat('scenario-config', 'weight_constraint')
-        scenario_config['weights']['weight_failure'] = config.getfloat('scenario-config', 'weight_failure')
-        if 'weight_virtual_failure' in this_section:
-            scenario_config['weights']['weight_virtual_failure'] = config.getfloat('scenario-config', 'weight_virtual_failure')
-        else:
-            scenario_config['weights']['weight_virtual_failure'] = scenario_config['weight_failure']
-        if 'weight_flowtime' in this_section:
-            scenario_config['weights']['weight_flowtime'] = config.getfloat('scenario-config', 'weight_flowtime')
-        scenario_config['weights']['weight_conversion'] = config.getfloat('scenario-config', 'weight_conversion')
-
-        scenario_config['pop_size'] = config.getint('scenario-config', 'pop_size')
-        scenario_config['crossover_rate'] = config.getfloat('scenario-config', 'crossover_rate')
-        scenario_config['mutation_rate'] = config.getfloat('scenario-config', 'mutation_rate')
-        scenario_config['num_mutations'] = config.getint('scenario-config', 'num_mutations')
-        scenario_config['iterations'] = config.getint('scenario-config', 'iterations')
+        def read_stringlist(x):
+            list_x = x.replace(' ', '').split(',')
+            str_list = map(str, list_x)
+            return [*str_list]
         
-        scenario_config['stop_condition'] = config.get('scenario-config', 'stop_condition')
-        scenario_config['stop_value'] = config.getint('scenario-config', 'stop_value')
-        scenario_config['duration_str'] = config.get('scenario-config', 'duration_str')
-        scenario_config['evolution_method'] = config.get('scenario-config', 'evolution_method')
-        scenario_config['working_method'] = config.get('scenario-config', 'working_method')
+        def return_0(x):
+            return 0
         
-        adapt_ifin_low = config.getint('scenario-config', 'adapt_ifin_low')
-        adapt_ifin_high = config.getint('scenario-config', 'adapt_ifin_high')
-        adapt_ifin_step = config.getint('scenario-config', 'adapt_ifin_step')
-        scenario_config['adapt_ifin'] = [i for i in range(adapt_ifin_low, adapt_ifin_high+adapt_ifin_step, adapt_ifin_step)]
-
-        if 'add_time' in this_section:
-            scenario_config['add_time'] = config.getint('scenario-config', 'add_time')
-        else:
-            scenario_config['add_time'] = 0
-        if 'add_time_list' in this_section:
-            time_list = config.get('scenario-config', 'add_time_list')
-            time_list = map(int, time_list.split(' '))
-            scenario_config['add_time_list'] = time_list
+        def read_intlist(x):
+            list_x = x.replace(' ', '').split(',')
+            int_list = map(int, list_x)
+            return [*int_list]
+        
+        weight_actions = {
+            'weight_energy': ['weight_energy', float, return_0],
+            'weight_constraint': ['weight_constraint', float, return_0],
+            'weight_failure': ['weight_failure', float, return_0],
+            'weight_virtual_failure': ['weight_failure', float, return_0],
+            'weight_flowtime': ['weight_flowtime', float, return_0],
+            'weight_conversion': ['weight_conversion', float, return_0],
+        }
+        
+        scenario_actions = {
+            'test': ['test', read_stringlist, raise_failure],
+            'scenario': ['scenario', int, raise_failure],
+            'validation': ['validation', read_bool, raise_failure],
+            'pre_selection': ['pre_selection', read_bool, raise_failure],
+            'pop_size': ['pop_size', int, raise_failure],
+            'crossover_rate': ['crossover_rate', float, raise_failure],
+            'mutation_rate': ['mutation_rate', float, raise_failure],
+            'num_mutations': ['num_mutations', int, raise_failure],
+            'iterations': ['iterations', int, raise_failure],
+            'stop_condition': ['stop_condition', str, raise_failure],
+            'stop_value': ['stop_value', int, raise_failure],
+            'duration_str': ['duration_str', str, raise_failure],
+            'evolution_method': ['evolution_method', str, raise_failure],
+            'working_method': ['working_method', str, raise_failure],
+            'adapt_ifin': ['adapt_ifin', read_intlist, raise_failure],
+            'add_time': ['add_time', int, return_0],
+            'add_time_list': ['add_time_list', read_intlist, raise_no_failure],
+        }
+        
+        scenario_config = my_config_parser(scenario_actions, this_section)
+        scenario_config['weights'] = my_config_parser(weight_actions, this_section)
+        
         return_sections['scenario_config'] = scenario_config
     
     if 'start-end' in sections:
@@ -465,7 +511,7 @@ def read_config_file(path):
     return return_sections
 
 def start_logging(filename):
-    ''' 
+    '''
     Start logging in a file during the execution of this program
     Also output to a file
     '''
