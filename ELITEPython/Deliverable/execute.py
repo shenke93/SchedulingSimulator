@@ -20,7 +20,7 @@ from helperfunctions import *
 #pathname = os.path.dirname(sys.argv[0])
 os.chdir(os.path.dirname(sys.argv[0]))
 
-configFile = 'config.ini'
+configFile = 'config_pareto.ini'
 configFile = os.path.join(os.path.abspath(os.curdir), configFile)
 
 def main(config):
@@ -34,6 +34,7 @@ def main(config):
         export_folder = config['output_config']['export_folder']
         shutil.copy2(configFile, os.path.join(export_folder, r"config_bu.ini"))
 
+
     for value in config['scenario_config']['test']:
         if value == 'GA':
             best_result, orig_result, best_sched, \
@@ -42,6 +43,9 @@ def main(config):
             config['input_config']['hdp_file'], config['input_config']['fr_file'], 
             config['input_config']['prc_file'], config['input_config']['prec_file'],
             config['input_config']['ep_file'], config['input_config']['ji_file'], 
+            config['input_config']['failure_info'],
+            config['input_config']['urgent_ji_file'],
+            config['input_config']['bd_rec_file'],
             config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
             config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
             config['scenario_config']['pop_size'], 
@@ -55,10 +59,9 @@ def main(config):
             validation=config['scenario_config']['validation'], 
             pre_selection=config['scenario_config']['pre_selection'], 
             working_method=config['scenario_config']['working_method'], 
-            failure_info=config['input_config']['failure_info'],
             add_time=config['scenario_config']['add_time'],
-            urgent_job_info=config['input_config']['urgent_ji_file'],
-            breakdown_record_file=config['input_config']['bd_rec_file']
+            remove_breaks = config['scenario_config']['remove_breaks'],
+            
             )
 
             logging.info('Execution finished.')
@@ -82,10 +85,13 @@ def main(config):
             print('Original: {}\t {}'.format(orig_result, outputlist_orig))
 
             fig = show_ga_results(best_curve, mean_curve, worst_curve)
+            
             export = config['output_config']['export']
             export_paper = config['output_config']['export_paper']
             interactive = config['output_config']['interactive']
             if export is True:
+                out_df = pd.DataFrame({'best': best_curve, 'mean': mean_curve, 'worst': worst_curve})
+                out_df.to_csv(os.path.join(export_folder, 'iterations_results.csv'))
                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
             if export_paper is True:
                 plt.savefig(os.path.join(export_folder, r"evolution.pdf"))
@@ -110,30 +116,35 @@ def main(config):
                 namecolor='ArticleName'
 
             downtimes = None
-            if config['scenario_config']['weights']['weight_failure'] and config['scenario_config']['working_method']=='historical':
+            if config['scenario_config']['working_method']=='historical':
                 try:
-                    downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['StartDateUTC', 'EndDateUTC'], index_col=0)
+                    downtimes = pd.read_csv(config['input_config']['hdp_file'], parse_dates=['Start', 'End'], index_col=0)
 
-                    downtimes = downtimes[downtimes.StartDateUTC.between(config['start_end']['start_time'], 
+                    downtimes = downtimes[downtimes['Start'].between(config['start_end']['start_time'], 
                                                                     config['start_end']['end_time'])]
+                    downtimes = downtimes[['Start', 'End']]
+                    downtimes.columns = ['StartDateUTC', 'EndDateUTC']
                 except:
-                        pass
+                    raise
+            
+            # Make the columns be the correct format for plotting
+            best = best[['Start', 'End', 'Totaltime', 'Product', 'Type']]
+            best.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
 
             if export_paper is True:
                 print('Export to {}'.format(export_folder))
                 fig = plt.figure(figsize=(10, 6), dpi=50)
-                plot_gantt(best, namecolor, namecolor, startdate='Start', enddate='End', downtimes=downtimes)
+                plot_gantt(best, namecolor, namecolor, startdate='StartDateUTC', enddate='EndDateUTC', downtimes=downtimes)
                 plt.title('Gantt plot')
                 plt.savefig(os.path.join(export_folder, r"gantt_plot.pdf"))
                 plt.close()
 
             fitn = best_sched.get_fitness()
 
-            # Make the columns be the correct format for plotting
-            best = best[['Start', 'End', 'Totaltime', 'Product', 'Type']]
-            best.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
+
             show_energy_plot(best, energy_price, prod_char, 'Best schedule (GA) ({:} gen) - Fitness {:.1f} €'.format(gen, fitn), 
-                                                                                    namecolor, downtimes=downtimes, failure_rate=best_failure)
+                                                                                    namecolor, downtimes=downtimes, failure_rate=best_failure,
+                                                                                    startdate='StartDateUTC', enddate='EndDateUTC')
             
             if export:
                 print('Export to {}'.format(export_folder))
@@ -149,7 +160,9 @@ def main(config):
 
             orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type']]
             orig.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
-            show_energy_plot(orig, energy_price, prod_char, 'Original schedule - Fitness {:.1f} €'.format(fitn), namecolor, downtimes=downtimes, failure_rate=orig_failure)
+            
+            show_energy_plot(orig, energy_price, prod_char, 'Original schedule - Fitness {:.1f} €'.format(fitn), namecolor, downtimes=downtimes, failure_rate=orig_failure,
+                            startdate='StartDateUTC', enddate='EndDateUTC')
             if export:
                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
             if export_paper is True:
@@ -159,109 +172,53 @@ def main(config):
                 plt.show()
             
             plt.clf()
-                
-        # if value == 'BF': #NOT REALLY supported any more
-        #         timer0 = time.monotonic()
-        #         best_result, worst_result, best_sched, worst_sched = run_bf(config['start_end']['start_time'], config['start_end']['end_time'], 
-        #                                                                 config['input_config']['hdp_file'], config['input_config']['fr_file'], 
-        #                                                                 config['input_config']['prc_file'], config['input_config']['ep_file'], 
-        #                                                                 config['input_config']['ji_file'], 
-        #                                                                 config['scenario_config']['scenario'],
-        #                                                                 weights = config['scenario_config']['weights'], 
-        #                                                                 duration_str=config['scenario_config']['duration_str'],
-        #                                                                 working_method=config['scenario_config']['working_method'],
-        #                                                                 failure_info=config['input_config']['failure_info'])
-        #         timer1 = time.monotonic()
-        #         elapsed_time = timer1-timer0
-        #         print()
-        #         print('Elapsed time: {:.2f} s'.format(elapsed_time))
 
-        #         print('Execution finished.')
-        #         # print('Start visualization')
-
-        #         best_result_dict = best_sched.get_time()
-        #         worst_result_dict = worst_sched.get_time()
-
-        #         print('Best:',best_result, '\t', * best_result_dict)
-        #         print('Worst:', worst_result, '\t', * worst_result_dict)
-
-        #         best = make_df(best_result_dict)
-        #         worst = make_df(worst_result_dict)
-
-        #         energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
-        #         prod_char = pd.read_csv(config['input_config']['prc_file'])
-
-        #         if 'Type' in best.columns:
-        #                 namecolor='Type'
-        #         else:
-        #                 namecolor='ArticleName'
-        #         plt.figure(dpi=50, figsize=[20, 15])
-
-        #         fitn = best_sched.get_fitness()
-
-        #         poss = math.factorial(len(best_sched.job_dict))
-
-        #         show_energy_plot(best, energy_price, prod_char, 'Best schedule (BF) {:} possiblities - Fitness {:.1f}'.format(poss, fitn), namecolor, downtimes=downtimes)
-
-        #         export = config['output_config']['export']
-        #         interactive = config['output_config']['interactive']
-        #         if export is True:
-        #                 plt.savefig(os.path.join(export_folder, r"best_sched_BF.png"), dpi=300)
-        #         if interactive:
-        #                 plt.show()
-
-        #         plt.figure(dpi=50, figsize=[20, 15])
-
-        #         fitn = worst_sched.get_fitness()
-
-        #         show_energy_plot(worst, energy_price, prod_char, 'Worst schedule (BF) - Fitness {:.1f}'.format(fitn), namecolor, downtimes=downtimes)
-        #         if export is True:
-        #                 plt.savefig(os.path.join(export_folder, r"worst_sched_BF.png"), dpi=300)
-        #         if interactive:
-        #                 plt.show()
         if value == 'PAR':
             logging.info('Generating pareto solutions')
             list_added = []
             list_result = []
-            for time in config['scenario_config']['add_time_list']:
-                best_result, orig_result, best_sched, \
-                orig_sched, best_curve, mean_curve, worst_curve, gen = \
-                run_opt(config['start_end']['start_time'], config['start_end']['end_time'], 
-                config['input_config']['hdp_file'], config['input_config']['fr_file'], 
-                config['input_config']['prc_file'], config['input_config']['prec_file'],
-                config['input_config']['ep_file'], config['input_config']['ji_file'], 
-                config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
-                config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
-                config['scenario_config']['pop_size'], 
-                num_mutations=config['scenario_config']['num_mutations'],
-                adaptive=config['scenario_config']['adapt_ifin'], 
-                stop_condition=config['scenario_config']['stop_condition'], 
-                stop_value=config['scenario_config']['stop_value'], 
-                weights = config['scenario_config']['weights'],
-                duration_str=config['scenario_config']['duration_str'], 
-                evolution_method=config['scenario_config']['evolution_method'], 
-                validation=config['scenario_config']['validation'], 
-                pre_selection=config['scenario_config']['pre_selection'], 
-                working_method=config['scenario_config']['working_method'], 
-                failure_info=config['input_config']['failure_info'],
-                add_time=config['scenario_config']['add_time'],
-                urgent_job_info=config['input_config']['urgent_ji_file'],
-                breakdown_record_file=config['input_config']['bd_rec_file']
-                )
-                logging.info('Execution finished.')
-                logging.info('Number of generations was {:}'.format(gen))
-                # print('Start visualization')
-
-                fitn = best_sched.get_fitness(split_types=True)
-
-                list_added.append(time)
-                list_result.append(fitn)
-
-                logging.info("When adding {:} hours of breaks, the result is {:.1f}".format(time, fitn))
             
+            for time in config['scenario_config']['add_time_list']:
+                for i in range(config['scenario_config']['ntimes']):
+                    best_result, orig_result, best_sched, \
+                    orig_sched, best_curve, mean_curve, worst_curve, gen = \
+                    run_opt(config['start_end']['start_time'], config['start_end']['end_time'], 
+                    config['input_config']['hdp_file'], config['input_config']['fr_file'], 
+                    config['input_config']['prc_file'], config['input_config']['prec_file'],
+                    config['input_config']['ep_file'], config['input_config']['ji_file'], 
+                    config['input_config']['failure_info'], config['input_config']['urgent_ji_file'],
+                    config['input_config']['bd_rec_file'],
+                    config['scenario_config']['scenario'], config['scenario_config']['iterations'], 
+                    config['scenario_config']['crossover_rate'], config['scenario_config']['mutation_rate'], 
+                    config['scenario_config']['pop_size'], 
+                    num_mutations=config['scenario_config']['num_mutations'],
+                    adaptive=config['scenario_config']['adapt_ifin'], 
+                    stop_condition=config['scenario_config']['stop_condition'], 
+                    stop_value=config['scenario_config']['stop_value'], 
+                    weights = config['scenario_config']['weights'],
+                    duration_str=config['scenario_config']['duration_str'], 
+                    evolution_method=config['scenario_config']['evolution_method'], 
+                    validation=config['scenario_config']['validation'], 
+                    pre_selection=config['scenario_config']['pre_selection'], 
+                    working_method=config['scenario_config']['working_method'], 
+                    add_time=time, remove_breaks=config['scenario_config']['remove_breaks']
+                    )
+                    
+                    logging.info('Execution finished.')
+                    logging.info('Number of generations was {:}'.format(gen))
+
+                    fitn = best_sched.get_fitness(split_types=False)
+                    logging.info("When adding {:} hours of breaks, the result is {:.1f}".format(time, fitn))
+
+                    list_added.append(time)
+                    list_result.append(fitn)
+
             logging.info('Final result')
             logging.info(list_added)
             logging.info(list_result)
+            
+            df = pd.DataFrame({'added_time': list_added, 'result':list_result})
+            df.to_csv(os.path.join(export_folder, 'results.csv'))
 
             plt.plot(list_added, list_result, 'ro')
             plt.xlim(0, max(list_added)+1)
@@ -289,8 +246,7 @@ if __name__ == "__main__":
     start_logging(os.path.join(export_folder, 'out.log'))
     logging.info('Starting logging')
     
-    
-    
+
     main(config)
 
         

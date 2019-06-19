@@ -93,7 +93,7 @@ def floor_dt(dt, delta):
     # return (datetime.min + (q)*delta) if r else dt
 
 
-def read_down_durations(downDurationFile):
+def read_down_durations(downDurationFile, daterange=None):
     ''' 
     Create a dictionary to restore down duration information.
 
@@ -111,12 +111,19 @@ def read_down_durations(downDurationFile):
         with open(downDurationFile, encoding='utf-8') as downDurationInfo_csv:
             reader = csv.DictReader(downDurationInfo_csv)
             for row in reader:
-                start = datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f")
-                end = datetime.strptime(row['EndDateUTC'], "%Y-%m-%d %H:%M:%S.%f")
-                duration = (end - start).total_seconds() / 3600
-                down_duration_dict.update({row['ID']:[start, 
-                                                      end,
-                                                      duration]})
+                start = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
+                end = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
+                if daterange is None:
+                    duration = (end - start).total_seconds() / 3600
+                    down_duration_dict.update({row['ID']:[start, 
+                                                          end,
+                                                          duration]})
+                if (daterange is not None):
+                    if (daterange[0] < start < daterange[1]):
+                        duration = (end - start).total_seconds() / 3600
+                        down_duration_dict.update({row['ID']:[start, 
+                                                              end,
+                                                              duration]})
     except:
         print("Unexpected error when reading down duration information from '{}'".format(downDurationFile))
         raise
@@ -332,6 +339,7 @@ class Scheduler(object):
         we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
         wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
         factors = (wf, wvf, we, wc, wb)
+        #import pdb; pdb.set_trace()
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             failure_cost = []
@@ -373,6 +381,7 @@ class Scheduler(object):
                       np.array(conversion_cost).shape, np.array(flowtime_cost).shape, np.array(constraint_cost).shape)
                 print(detail)
                 print(constraint_cost)
+                import pdb; pdb.set_trace()
                 raise
         return total_cost     
     
@@ -420,7 +429,7 @@ class BF(Scheduler):
 
         return tot_cost_min, tot_cost_max, best_sched, worst_sched
 
-                
+
 class GA(Scheduler):
     def __init__(self, dna_size, cross_rate, mutation_rate, pop_size, pop, job_dict, price_dict, failure_dict, 
                  product_related_characteristics_dict, down_duration_dict, precedence_dict, start_time, weights, scenario,
@@ -804,11 +813,11 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
     return best_result, worst_result, best_schedule, worst_schedule 
 
         
-def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, precedence_file, energy_file, job_file, 
-            scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
+def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_file, precedence_file, energy_file, job_file, failure_info,
+            urgent_job_info, breakdown_record_file, scenario, iterations, cross_rate, mut_rate, pop_size,  num_mutations=5, adaptive=[],
             stop_condition='num_iterations', stop_value=None, weights={},
-            duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', failure_info=None, add_time=0,
-            urgent_job_info=None, breakdown_record_file=None):
+            duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', add_time=0,
+            remove_breaks=False):
     logging.info('Using '+ str(working_method) + ' method')
     # filestream = open('previousrun.txt', 'w')
     # logging.basicConfig(level=20, stream=filestream)
@@ -816,7 +825,7 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
     failure_downtimes = False
     if working_method == 'historical':
         try:
-            down_duration_dict = select_from_range(start_time, end_time, read_down_durations(down_duration_file), 0, 1) # File from EnergyConsumption/InputOutput
+            down_duration_dict = read_down_durations(down_duration_file, daterange=(start_time, end_time)) # File from EnergyConsumption/InputOutput
             #print('test')
             weight_failure = weights.get('weight_failure', 0)
             if weight_failure != 0:
@@ -881,6 +890,9 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         urgent_ji.read_from_file(urgent_job_info)
         # TODO: There is no job selection after the input of urgent job?
         ji = urgent_ji + ji
+        
+    if remove_breaks:
+        ji.remove_all_breaks()
 
     if add_time > 0:
         ji.add_breaks(add_time)
@@ -949,9 +961,9 @@ def run_opt(start_time, end_time, down_duration_file, failure_file, prod_rel_fil
         worst_result_list.append(res[worst_index])
         mean_result_list.append(mean)
 
-        if stop_condition == 'num_iterations':
-            if generation >= iterations:
-                stop = True
+        #if stop_condition == 'num_iterations':
+        if generation >= iterations:
+            stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
                 stop = True

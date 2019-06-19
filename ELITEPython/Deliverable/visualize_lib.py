@@ -191,7 +191,7 @@ def calculate_energy_cost(df_tasks, df_cost, df_cons, return_table=False):
     else:
         return total_sum
 
-def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None, failure_rate=None):
+def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', downtimes=None, failure_rate=None, startdate='Start', enddate='End'):
     ''' Expects a few tables with the following columns:
     dataframe tasks with columns:
         -  StartDateUTC
@@ -204,7 +204,7 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
     fig = plt.figure(dpi=50, figsize=(20, 15))
     # first plot the gantt chart and its title
     ax1 = fig.add_subplot(5, 1, (4,5))
-    timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
+    timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes, startdate=startdate, enddate=enddate)
     plt.title(title, y=1.15)
 
     # now plot the energy prices

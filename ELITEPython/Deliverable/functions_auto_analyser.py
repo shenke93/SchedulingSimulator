@@ -20,7 +20,7 @@ def add_column_type(df, from_col='ArticleName', choice='BigPack'):
     elif newname == choices[2]:
         stringlist = [['MACARONI', 'MAC.', 'ZITTI'], 'FUSILLI', ['SPIRELLI', 'SPIRAL', 'TORSADES'], ['HORENTJE', 'HELICES'], 
                       ['VERMICELLI', 'VERMICELL'], ['NOODLES', 'NOUILLES'], 'TORTI',
-                     ['PENNE', 'PIPE'], ['ELLEBOOGJES', 'COQUILLETTE', 'COQ.'], 'NONE']
+                     ['PENNE', 'PIPE'], ['ELLEBOOGJE', 'ELLEBOOG', 'COQUILLETTE', 'COQ.'], 'NONE']
     elif newname == choices[3]:
         stringlist = [ ['SMALL', ' 8', ' 10', ' 12'], ['LARGE', ' 16', ' 18', ' 20'], 'NONE']
     else:
@@ -217,44 +217,80 @@ def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):
     #prices = prices.loc[prices['Euro'].diff(1) != 0]
     return prices
 
-def generate_conversion_table(df, reasons, unique_col='ProductionRequestId', type_col='PastaType',  duration_col = 'Duration'):
-    l = list(df[unique_col].unique())
-    length_list = []
-    # First make a list
-    # It contains the product id, the product type, conversion of the first half of the job, conversion time of the second half of the job, breaktime between the jobs if short
-    for prid in l:
-        # Save the total length and the type
-        df_temp = df[df[unique_col] == prid]
-        half_duration = df_temp.Duration.sum() / 2
-        #print(df_temp.columns)
-        #type of the next production task
-        c_type = str(df_temp.loc[:, type_col].iloc[-1])
-        #print(c_type)
-        #import pdb; pdb.set_trace()
 
-        time_uptonow = np.insert(np.array(np.cumsum((df_temp[duration_col])))[:-1:], 0, 0)
+class ConversionTable(object):
+    def __init__(self, df, reasons, unique_col='ProductionRequestId', type_col='PastaType', duration_col='Duration'):
+        self.df = df
+        self.reasons = reasons
+        self.unique_col = unique_col
+        self.type_col = type_col
+        self.duration_col = duration_col
+        self.job_list = self.generate_conversion_table()
 
-        df_temp.loc[:, 'BeforeDuration'] = time_uptonow
+    def generate_conversion_table(self):
+        l = list(self.df[self.unique_col].unique())
+        output_list = []
+        # First make a list
+        # It contains the product id, the product type, conversion of the first half of the job, conversion time of the second half of the job, breaktime between the jobs if short
+        for prid in l:
+            # Save the total length and the type
+            df_temp = self.df[self.df[self.unique_col] == prid]
+            half_duration = df_temp[self.duration_col].sum() / 2
+            #type of the production task
+            c_type = str(list(df_temp[self.type_col])[-1])
+            #print(c_type)
+            #import pdb; pdb.set_trace()
 
-        convert_firsthalf = df_temp[(df_temp['BeforeDuration'] < half_duration) & df_temp.ReasonId.isin(reasons)][duration_col].sum()
-        convert_secondhalf = df_temp[(df_temp['BeforeDuration'] >= half_duration) & df_temp.ReasonId.isin(reasons)][duration_col].sum()
-        #convert_rest = df_temp[df_temp.ReasonId.isin(reasons)].Duration.sum()
+            time_uptonow = np.insert(np.array(np.cumsum((df_temp[self.duration_col])))[:-1:], 0, 0)
 
-        length_list.append([prid, c_type, convert_firsthalf, convert_secondhalf])
+            #df_temp['BeforeDuration'] = time_uptonow
 
-    # Convert the list into a matrix 
-    l = list(df[type_col].unique())
-    sum_conversions = pd.DataFrame(0, index=l, columns=l)
-    num_conversions = pd.DataFrame(0, index=l, columns=l)
-    for first, second in zip(length_list[:-1], length_list[1:]):
-        first_type = first[1]; second_type = second[1]
-        sum_convert = first[3] + second[2]
-        #print(first_type, second_type, first[3], second[2])
-        sum_conversions.loc[first_type, second_type] += sum_convert
-        num_conversions.loc[first_type, second_type] += 1
+            convert_firsthalf = df_temp[(time_uptonow < half_duration) & df_temp.ReasonId.isin(self.reasons)][self.duration_col].sum()
+            convert_secondhalf = df_temp[(time_uptonow >= half_duration) & df_temp.ReasonId.isin(self.reasons)][self.duration_col].sum()
+            #convert_rest = df_temp[df_temp.ReasonId.isin(reasons)].Duration.sum()
 
-    mean_conversions = sum_conversions/num_conversions
-    return mean_conversions
+            output_list.append([prid, c_type, convert_firsthalf, convert_secondhalf])
+        return output_list
+        
+    # Convert into matrix:
+    #l = 
+    
+    def output_matrix(self):
+        # Convert into matrix with all separate times for conversions
+        l = sorted(list(self.df[self.type_col].unique()))
+        indexer = range(len(l))
+        mat = [[[] for i in indexer] for j in indexer] 
+        for first, second in zip(self.job_list[:-1], self.job_list[1:]):
+            first_type = first[1]; second_type = second[1]
+            sum_convert = first[3] + second[2]
+            mat[l.index(first_type)][l.index(second_type)].append(sum_convert)
+        return (l, mat)
+            
+    
+    def return_mean_conversions(self, drop_zeros=True):
+        # Convert the list into a matrix
+        from itertools import product
+        l, mat = self.output_matrix()
+        copy_mat = mat.copy()
+        for i, j in product(range(len(l)), range(len(l))):
+            all_nonzeros = [k for k in mat[i][j] if k != 0]
+            mean_conversions = np.mean(all_nonzeros)
+            copy_mat[i][j] = mean_conversions
+        pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
+        return pd_out
+    
+    def return_median_conversions(self, drop_zeros=True):
+        # Convert the list into a matrix
+        from itertools import product
+        l, mat = self.output_matrix()
+        copy_mat = mat.copy()
+        for i, j in product(range(len(l)), range(len(l))):
+            all_nonzeros = [k for k in mat[i][j] if k != 0]
+            median_conversions = np.median(all_nonzeros)
+            copy_mat[i][j] = median_conversions
+        pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
+        return pd_out
+
 
 def adapt_standard_matrix(mean_conversions):
     new_mc = mean_conversions.copy()

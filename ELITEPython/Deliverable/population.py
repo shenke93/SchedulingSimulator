@@ -6,7 +6,7 @@ import logging
 
 C1 = 10 # Used for failure cost calculation in run-down scenario
 C2 = 30
-num_minutes_lost = 10
+num_seconds_lost = 600 # the number of seconds of production that go lost if failure
 
 standard_weights = {'weight_energy': 1,
                     'weight_virtual_failure': 0,
@@ -247,6 +247,7 @@ class Schedule:
                         #calculate quantity
                         quantity = du * unit2['targetproduction']
                 except:
+                    logging.warning('No correct duration information found, go to debugging')
                     import pdb; pdb.set_trace()
             elif self.duration_str == 'quantity':
                 quantity = unit1['quantity']
@@ -270,7 +271,7 @@ class Schedule:
 
                 for value in self.downdur_dict.values():
                     # DowntimeDuration already added
-                    t_down = 0
+                    #t_down = 0
                     #print(value)
                     if t_end < value[0]:
                         continue
@@ -373,6 +374,7 @@ class Schedule:
                 releasedate = unit1['releasedate']
                 duedate = unit1['duedate']
                 # get all other info used by the input parser
+                #import pdb; pdb.set_trace()
                 detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 'product', 'type', 'down_duration', 'changeover_duration', 'cleaning_time', 'releasedate', 'duedate', 'quantity'],
                                                       [t_start, t_end, du + t_down + t_changeover + t_clean, du, unit1['product'], unit1['type'], t_down, t_changeover, t_clean, releasedate, duedate, quantity]))
                                       })
@@ -435,6 +437,7 @@ class Schedule:
                 startdate = time_dict[item]['start']
                 enddate = time_dict[item]['end']
                 product_type = time_dict[item]['product']
+                #import pdb; pdb.set_trace()
                 if self.scenario == 1: # using unit cost and production rate
                     # get product info
                     prc = self.prc_dict.get(product_type, -1)
@@ -449,7 +452,7 @@ class Schedule:
                         # len downdur_select means the number of failures during a certain production
 
                         # product loss
-                        loss = len(downdur_select) * prc_up * prc_tpr / 60 * num_minutes_lost # suppose for each failure 10 minutes of production gets lost
+                        loss = len(downdur_select) * prc_up * prc_tpr / 3600 * num_seconds_lost # suppose for each failure 10 minutes of production gets lost
                         sum_len = 0
                         for item in downdur_select: # add up all failure times
                             sum_len += downdur_select[item][2]
@@ -511,7 +514,7 @@ class Schedule:
                         # = estimated number of downtimes
                         #
                         # item loss
-                        loss += (down_duration / mean_length_downtime) * (prc_up * prc_tpr / 60 * num_minutes_lost)
+                        loss += (down_duration / mean_length_downtime) * prc_up * prc_tpr / 3600 * num_seconds_lost
                 if self.scenario == 2:
                     # same, but with C1 and C2 as constants
                     # time loss
@@ -664,59 +667,67 @@ class Schedule:
             print('No conversion cost')
             return conversion_cost
 
-        for item1, item2 in zip(list(self.time_dict.keys())[:-1], list(self.time_dict.keys())[1:]):
-            # if item2 == 0:
-            #     pass
-            # elif item1 == 0:
-            #     if detail:
-            #         conversion_cost.append(0)
-            try:
-                first_product_type = self.job_dict[item1]['type']
-            except:
-                if detail:
-                    conversion_cost.append(0)
-                continue
-            try:
-                second_product_type = self.job_dict[item2]['type']
-            except:
-                continue
-            if self.failure_info is not None:
-                fi = self.failure_info[5]
-                conversion_time = int(fi.loc[first_product_type, second_product_type]) / 3600 # get the conversion time and convert to hours
-                #import pdb; pdb.set_trace()
-                # first_product = self.job_dict[item1]['product']
-                # prc_up = self.prc_dict[first_product]['unitprice']
-                # prc_tp = self.prc_dict[first_product]['targetproduction']
-                if 'MEAN' in self.prc_dict:
-                    mean = self.prc_dict.get('MEAN', -1)
-                    mean_up = mean['unitprice']; mean_tpr = mean['targetproduction']
-                else:
-                    temp_df = pd.DataFrame.from_dict(self.prc_dict).T
-                    temp_mean = temp_df.mean(axis=0)
-                    mean_up = temp_mean['unitprice']; mean_tpr = temp_mean['targetproduction']
-                total_availability = conversion_time * mean_up * mean_tpr
-                if detail:
-                    conversion_cost.append(total_availability)
-                else:
-                    conversion_cost += total_availability
-            else:
-                # Alternatively get the product info from another database
-                # self.failure_info[6]
-                # first_product_type = related_chars_dict[first_product][4]
-                # second_product_type = related_chars_dict[second_product][4]
-                if first_product_type != second_product_type:
-                    # add conversion cost
-                    # suppose cost is fixed
-                    if detail:
-                        conversion_cost.append(1)
-                    else:
-                        conversion_cost += 1
-                else:
+
+        if self.working_method == 'expected':
+            for item1, item2 in zip(list(self.time_dict.keys())[:-1], list(self.time_dict.keys())[1:]):
+                # if item2 == 0:
+                #     pass
+                # elif item1 == 0:
+                #     if detail:
+                #         conversion_cost.append(0)
+                try:
+                    first_product_type = self.job_dict[item1]['type']
+                except:
                     if detail:
                         conversion_cost.append(0)
-        if detail:
-            conversion_cost.append(0)
-        return conversion_cost
+                    continue
+                try:
+                    second_product_type = self.job_dict[item2]['type']
+                except:
+                    continue
+                if self.failure_info is not None:
+                    fi = self.failure_info[5]
+                    conversion_time = int(fi.loc[first_product_type, second_product_type]) / 3600 # get the conversion time and convert to hours
+                    #import pdb; pdb.set_trace()
+                    # first_product = self.job_dict[item1]['product']
+                    # prc_up = self.prc_dict[first_product]['unitprice']
+                    # prc_tp = self.prc_dict[first_product]['targetproduction']
+                    if 'MEAN' in self.prc_dict:
+                        mean = self.prc_dict.get('MEAN', -1)
+                        mean_up = mean['unitprice']; mean_tpr = mean['targetproduction']
+                    else:
+                        temp_df = pd.DataFrame.from_dict(self.prc_dict).T
+                        temp_mean = temp_df.mean(axis=0)
+                        mean_up = temp_mean['unitprice']; mean_tpr = temp_mean['targetproduction']
+                    total_availability = conversion_time * mean_up * mean_tpr
+                    if detail:
+                        conversion_cost.append(total_availability)
+                    else:
+                        conversion_cost += total_availability
+                else:
+                    # Alternatively get the product info from another database
+                    # self.failure_info[6]
+                    # first_product_type = related_chars_dict[first_product][4]
+                    # second_product_type = related_chars_dict[second_product][4]
+                    if first_product_type != second_product_type:
+                        # add conversion cost
+                        # suppose cost is fixed
+                        if detail:
+                            conversion_cost.append(1)
+                        else:
+                            conversion_cost += 1
+                    else:
+                        if detail:
+                            conversion_cost.append(0)
+            if detail:
+                conversion_cost.append(0)
+            return conversion_cost
+        elif self.working_method == 'historical':
+            if detail:
+                conversion_cost = [0] * len(self.order)
+            else:
+                conversion_cost = 0
+            return conversion_cost
 
     def get_constraint_cost(self, detail=False):
         #import pdb; pdb.set_trace()

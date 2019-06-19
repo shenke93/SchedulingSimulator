@@ -87,16 +87,19 @@ def make_hist_frame(duration, observed=None, numbins=None, range=None, return_bi
     df_temp = df_temp[['Remaining', 'Failures', 'Reliability', 'FailCDF', 'FailPDF', 'Hazard', 'Std']]
     if not return_bins:
         return df_temp
-    else:
-        return df_temp, bin_edges
+    return df_temp, bin_edges
 
 def duration_run_down(duration, up, down, continue_obs, stop_obs, observation=True):
     ''' This function brings the two functions hereunder together.
     The functions keep existing for backward compatibility.
     Read the comments there to get more insight in this function'''
     # This checks if all values have been assigned and all lists have same length
-    assert (len(up) == len(down) == len(duration) == len(continue_obs) == len(stop_obs))
-    assert (sum(up) + sum(down) + sum(stop_obs) + sum(continue_obs) == len(duration))
+    try:
+        assert (len(up) == len(down) == len(duration) == len(continue_obs) == len(stop_obs))
+        assert (sum(up) + sum(down) + sum(stop_obs) + sum(continue_obs) == len(duration))
+    except:
+        print(sum(up), sum(down), sum(stop_obs), sum(continue_obs), len(duration))
+        raise
     l = len(up)
     uptime = []     # Empty list of runtime
     sum_uptime = 0  # Runtime counter
@@ -153,7 +156,7 @@ def duration_run_down(duration, up, down, continue_obs, stop_obs, observation=Tr
     return return_tuple
 
 def duration_of_downtime(duration, up, down):
-    ''' From three arrays, generate the duration between downtime as a Series
+    ''' From three arrays, generate the duration of downtime as a Series
     duration: the length of the action
     up: uptime which needs to be counted
         if True, this counts as Uptime
@@ -187,7 +190,7 @@ def duration_of_downtime(duration, up, down):
                 downtime.append(sum_downtime)
                 sum_downtime = 0
         else: # New invalid time
-            # TODO: add cencoring option (will possibly need a fourth list)
+            # TODO: add censoring option (will possibly need a fourth list)
             pass
     downtime = pd.Series(downtime)
     return downtime
@@ -307,7 +310,6 @@ def total_cost_maintenance(timearray, model, cp=100, cu=250, return_separate=Fal
     get_min (boolean): If True, return the minimum value (the best value for Preventive Maintenance)
     model: a class from the classes below
     '''
-
     Cp = cp
     Cu = cu
     # calculate expected time if there is unexpected breakdown
@@ -315,7 +317,8 @@ def total_cost_maintenance(timearray, model, cp=100, cu=250, return_separate=Fal
     # summate the expectation of preventive maintenance * time of maintenance +
     # the expectation of unexpected maintenance * expected value of unexpected breakdown
     denum = model.reliability_cdf(timearray) * timearray + expectedvalue * (1 - model.reliability_cdf(timearray))
-    cput = (Cp * model.reliability_cdf(timearray) + Cu * (1 - model.reliability_cdf(timearray))) / denum
+    cput = (Cp * model.reliability_cdf(timearray) + 
+            Cu * (1 - model.reliability_cdf(timearray))) / denum
     if return_separate:
         preventive = Cp * model.reliability_cdf(timearray) / denum
         unexpected = Cu * (1 - model.reliability_cdf(timearray)) / denum
@@ -396,7 +399,7 @@ class Weibull:
         self.beta = beta
 
     def __repr__(self):
-        return 'Weibull: alpha {},  beta {}'.format(self.alpha, self.beta)
+        return 'Weibull: alpha {:.2f},  beta {:.2f}'.format(self.alpha, self.beta)
 
     @classmethod
     def from_durations(cls, durations):
@@ -464,7 +467,7 @@ class Lognormal:
         self.mu = mu
 
     def __repr__(self):
-        return 'Lognormal: sigma {}, mu {}'.format(self.sigma, self.mu)
+        return 'Lognormal: sigma {:.2f}, mu {:.2f}'.format(self.sigma, self.mu)
 
     @classmethod
     def from_durations(cls, durations):

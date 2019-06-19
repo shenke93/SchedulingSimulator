@@ -8,8 +8,6 @@ import logging
 import csv
 import warnings
 
-
-
 class JobInfo(object):
     '''
     A class which contains the JobInfo dictionary.
@@ -53,7 +51,7 @@ class JobInfo(object):
         '''
         job_dict = {}
         job_order = []
-        
+
         def raiseerror(): raise ValueError('Product name missing')
         def donothing(): pass
         def parsedate(x): y = datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f"); return y
@@ -73,8 +71,8 @@ class JobInfo(object):
             'Totaltime': ['totaltime', float, donothing],
             'Uptime': ['uptime', float, donothing],
             'Quantity': ['quantity', float, donothing],
-            #'Start': ['start', parsedate, donothing],
-            #'End': ['end', parsedate, donothing],
+            'Start': ['start', parsedate, donothing],
+            'End': ['end', parsedate, donothing],
             'Type': ['type', str, notypefound],
             'Duedate': ['duedate', parsedate, noduedate],
             'Releasedate': ['releasedate', parsedate, noreleasedate]
@@ -88,7 +86,6 @@ class JobInfo(object):
                         job_num = int(row['ID'])
                         # insert product name
                         job_entry = dict({'product': row['Product']})
-                        
                         job_entry = {}
                         for key, value in operations.items():
                             try:
@@ -230,7 +227,7 @@ class JobInfo(object):
         while break_hours > 0:
             min_key -= 1
             dur = 2 if break_hours > 2 else break_hours
-            new_dict = {'product': 'NONE', 'duration': dur, 'quantity': dur, 'type': 'NONE', 
+            new_dict = {'product': 'NONE', 'totaltime': dur, 'uptime': dur, 'quantity': dur, 'type': 'NONE', 
                         'duedate': datetime.max, 'releasedate': datetime.min}
             job_dict[min_key] = new_dict
             job_order.append(min_key)
@@ -242,8 +239,19 @@ class JobInfo(object):
         ''' 
         Remove all breaks from the file
         '''
-
-
+        job_dict = self.job_dict
+        job_order = self.job_order
+        job_order_copy = job_order.copy()
+        job_dict_copy = job_dict.copy()
+        for job_key in job_order:
+            if job_key < 0:
+                if job_dict[job_key]['type'] == 'NONE':
+                    del job_dict_copy[job_key]
+                    job_order_copy.remove(job_key)
+                else:
+                    raise UserWarning('This job is incorrect.')
+        self.job_dict = job_dict_copy
+        self.job_order = job_order_copy
     
 
 # Construct energy two tariffs between two dates
@@ -357,8 +365,7 @@ class SchedulerInitiator(object):
         
 
 
-def my_config_parser(in_dict, config_section):
-    out_dict = {}
+def my_config_parser(in_dict, config_section, out_dict={}):
     for key, value in in_dict.items():
         try:
             out_dict[value[0]] = value[1](config_section[key])
@@ -409,16 +416,35 @@ def read_config_file(path):
             'product_related_characteristics_file': ['prc_file', join_path, raise_failure],
             'precendence_file': ['prec_file', join_path, raise_no_failure],
             'energy_price_file': ['ep_file', join_path, raise_failure],
-            'historical_down_periods_file': ['hdp_file', join_path, raise_failure],
+            'historical_down_periods_file': ['hdp_file', join_path, raise_no_failure],
             'job_info_file': ['ji_file', join_path, raise_failure],
             'urgent_job_info_file': ['urgent_ji_file', join_path, raise_no_failure],
             'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
             'failure_info_path': ['failure_info', read_xml_file, raise_no_failure],
             'failure_rate': ['fr_file', join_path, raise_no_failure]
         }
-        
         return_sections['input_config'] = my_config_parser(input_actions, this_section)
-    
+    else:
+        raise NameError('No input section found!')
+
+    if 'start-end' in sections:
+        start_end = {}
+        start_end['start_time'] = datetime(config.getint('start-end', 'start_year'), config.getint('start-end', 'start_month'), 
+                        config.getint('start-end', 'start_day'), config.getint('start-end', 'start_hour'), 
+                        config.getint('start-end', 'start_minute'), config.getint('start-end', 'start_second')) # Date range of jobs to choose
+        start_end['end_time'] = datetime(config.getint('start-end', 'end_year'), config.getint('start-end', 'end_month'), 
+                                config.getint('start-end', 'end_day'), config.getint('start-end', 'end_hour'), 
+                                config.getint('start-end', 'end_minute'), config.getint('start-end', 'end_second'))
+    elif 'start' in sections:
+        start_end = {}
+        start_end['start_time'] = datetime(config.getint('start', 'start_year'), config.getint('start', 'start_month'), 
+                                config.getint('start', 'start_day'), config.getint('start', 'start_hour'), 
+                                config.getint('start', 'start_minute'), config.getint('start', 'start_second')) # Date range of jobs to choose
+        start_end['end_time'] = None
+    else:
+        raise NameError('No section with start date found!')
+    return_sections['start_end'] = start_end
+
     if 'output-config' in sections:
         #output_config = {}
         this_section = config['output-config']
@@ -430,14 +456,16 @@ def read_config_file(path):
         
         output_actions = {
             'export_folder': ['export_folder', join_path_curdate, raise_failure],
-            'output_init': ['output_init', join_path, raise_failure],
-            'output_final': ['output_final', join_path, raise_failure],
+            'output_init': ['output_init', str, raise_failure],
+            'output_final': ['output_final', str, raise_failure],
             'interactive': ['interactive', read_bool, raise_failure],
             'export': ['export', read_bool, raise_failure],
             'export_paper': ['export_paper', read_bool, return_false]
         }
         
         return_sections['output_config'] = my_config_parser(output_actions, this_section)
+    else:
+        raise NameError('No output section found!')
 
     if 'scenario-config' in sections:
         scenario_config = {}
@@ -451,16 +479,24 @@ def read_config_file(path):
         def return_0(x):
             return 0
         
+        def return_1(x):
+            return 0
+        
         def read_intlist(x):
             list_x = x.replace(' ', '').split(',')
             int_list = map(int, list_x)
             return [*int_list]
         
+        def read_floatlist(x):
+            list_x = x.replace(' ', '').split(',')
+            float_list = map(float, list_x)
+            return [*float_list]       
+                
         weight_actions = {
             'weight_energy': ['weight_energy', float, return_0],
             'weight_constraint': ['weight_constraint', float, return_0],
             'weight_failure': ['weight_failure', float, return_0],
-            'weight_virtual_failure': ['weight_failure', float, return_0],
+            'weight_virtual_failure': ['weight_virtual_failure', float, return_0],
             'weight_flowtime': ['weight_flowtime', float, return_0],
             'weight_conversion': ['weight_conversion', float, return_0],
         }
@@ -481,34 +517,30 @@ def read_config_file(path):
             'evolution_method': ['evolution_method', str, raise_failure],
             'working_method': ['working_method', str, raise_failure],
             'adapt_ifin': ['adapt_ifin', read_intlist, raise_failure],
+            'remove_breaks': ['remove_breaks', read_bool, return_0],
+            'ntimes': ['ntimes', int, return_1]
+        }
+        
+        ga_actions = {
             'add_time': ['add_time', int, return_0],
-            'add_time_list': ['add_time_list', read_intlist, raise_no_failure],
+        }
+        par_actions = {
+            'add_time_list': ['add_time_list', read_floatlist, raise_no_failure],
         }
         
         scenario_config = my_config_parser(scenario_actions, this_section)
         scenario_config['weights'] = my_config_parser(weight_actions, this_section)
+        if 'PAR' in scenario_config['test']:
+            scenario_config = my_config_parser(par_actions, this_section, scenario_config)
+        if 'GA' in scenario_config['test']:
+            scenario_config = my_config_parser(ga_actions, this_section, scenario_config)
         
         return_sections['scenario_config'] = scenario_config
-    
-    if 'start-end' in sections:
-        start_end = {}
-        start_end['start_time'] = datetime(config.getint('start-end', 'start_year'), config.getint('start-end', 'start_month'), 
-                        config.getint('start-end', 'start_day'), config.getint('start-end', 'start_hour'), 
-                        config.getint('start-end', 'start_minute'), config.getint('start-end', 'start_second')) # Date range of jobs to choose
-        start_end['end_time'] = datetime(config.getint('start-end', 'end_year'), config.getint('start-end', 'end_month'), 
-                                config.getint('start-end', 'end_day'), config.getint('start-end', 'end_hour'), 
-                                config.getint('start-end', 'end_minute'), config.getint('start-end', 'end_second'))
-    elif 'start' in sections:
-        start_end = {}
-        start_end['start_time'] = datetime(config.getint('start', 'start_year'), config.getint('start', 'start_month'), 
-                                config.getint('start', 'start_day'), config.getint('start', 'start_hour'), 
-                                config.getint('start', 'start_minute'), config.getint('start', 'start_second')) # Date range of jobs to choose
-        start_end['end_time'] = None
     else:
-        raise NameError('No section with start date found!')
-    return_sections['start_end'] = start_end
-    
+        raise NameError('No configuration section found!')
+
     return return_sections
+        
 
 def start_logging(filename):
     '''
