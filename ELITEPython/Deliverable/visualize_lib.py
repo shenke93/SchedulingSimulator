@@ -7,6 +7,7 @@ Visualisation routines for the results of the SchedulerV000
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import datetime
 from matplotlib.ticker import MaxNLocator
 import os
 
@@ -75,10 +76,11 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         for item in downtimes.T:
             entry = downtimes.loc[item]
             plt.axvspan(entry['Start'], entry['End'], alpha=0.3, facecolor='k')
+    
     plt.yticks(range(0, i), articles)
     #plt.hlines(cps, s_process, f_process, colors="green", lw=4)
     #plt.hlines(cps, s_unload, f_unload, color="blue", lw=4)
-    plt.margins(0.1)
+#     plt.margins(0.1)
     #plt.legend(loc=4)
 
     lines = []
@@ -96,11 +98,23 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     # value_list = [by_label[key] for key in key_list]
     # plt.legend(value_list, key_list, loc='lower right')
     # ####
-
-    plt.xlabel('Time[h]')
+    
+#     plt.xlabel('Time (hours)')
     timerange = np.arange(0, np.max(df_task['End'])+24, 24)
-    label = pd.date_range(df_task[startdate].iloc[0].floor('D'), periods = len(timerange))
-    plt.xticks(timerange, label, rotation=90)
+#     print(df_task[startdate].iloc[0].floor('D'))
+#     exit()
+    start = df_task[startdate].iloc[0].floor('D')
+    dt_truncated = datetime.date(start.year, start.month, start.day)
+    print(dt_truncated)
+#     exit()
+    times = pd.date_range(dt_truncated, periods = len(timerange), freq='D')
+    label=times
+    labels = []
+    for x in times:
+        labels.append(x.strftime("%Y-%m-%d"))
+    
+    print(labels)
+    plt.xticks(timerange, labels, rotation=90)
     plt.xlim(timerange.min(), timerange.max())
     return label
 
