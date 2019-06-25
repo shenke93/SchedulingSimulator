@@ -160,7 +160,7 @@ def executeNormal():
                         energy_price = pd.read_csv(energy_price_file, index_col=0, parse_dates=True)
                         prod_char = pd.read_csv(product_related_characteristics_file)
                         
-                        plt.figure(dpi=50, figsize=[20, 15])
+                        plt.figure(dpi=300, figsize=[20, 15])
                         if 'Type' in best.columns:
                                 namecolor='Type'
                         else:
@@ -174,7 +174,7 @@ def executeNormal():
                         if interactive:
                                 plt.show()
 
-                        plt.figure(dpi=50, figsize=[20, 15])
+                        plt.figure(dpi=300, figsize=[20, 15])
 #                         show_energy_plot(orig, energy_price, prod_char, 'Original schedule', namecolor, downtimes=downtimes)
                         if export is True:
 #                                 plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)

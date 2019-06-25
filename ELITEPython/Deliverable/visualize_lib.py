@@ -80,7 +80,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     plt.yticks(range(0, i), articles)
     #plt.hlines(cps, s_process, f_process, colors="green", lw=4)
     #plt.hlines(cps, s_unload, f_unload, color="blue", lw=4)
-#     plt.margins(0.1)
+    plt.margins(0.1)
     #plt.legend(loc=4)
 
     lines = []
@@ -105,7 +105,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
 #     exit()
     start = df_task[startdate].iloc[0].floor('D')
     dt_truncated = datetime.date(start.year, start.month, start.day)
-    print(dt_truncated)
+#     print(dt_truncated)
 #     exit()
     times = pd.date_range(dt_truncated, periods = len(timerange), freq='D')
     label=times
@@ -113,7 +113,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     for x in times:
         labels.append(x.strftime("%Y-%m-%d"))
     
-    print(labels)
+#     print(labels)
     plt.xticks(timerange, labels, rotation=90)
     plt.xlim(timerange.min(), timerange.max())
     return label
@@ -184,22 +184,24 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
 def save_energy_plot(tasks, prices, energy, name, folder, title='Schedule', colors='ArticleName', downtimes=None):
     c, table = calculate_energy_cost(tasks, prices, energy, True)
     
-    plt.figure(figsize=[20, 15])
+    plt.figure(figsize=[20, 10])
+    plt.rcParams["font.size"] = "16"
     timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes)
-    plt.title(title + ' (Result: {:.2f} €)'.format(c), y=1.15)
+#     plt.title(title + ' (Result: {:.2f} €)'.format(c), y=1.15)
     plt.savefig(os.path.join(folder, name+"Sched.png"), dpi=300)
 
 #     plt.title('Energy price')
-    plt.figure(figsize=[20, 15])
+    plt.figure(figsize=[20, 10])
     plt.xlim(timerange[0], timerange[-1])
     plt.plot(table.Euro, drawstyle='steps-post')
+    plt.ylabel('Price (€/100KWH)')
     plt.ylim(bottom=table.Euro.min()*0.95, top=table.Euro.max()*1.05)
     plt.tight_layout()
     plt.savefig(os.path.join(folder, name+"EnergyPrice.png"), dpi=300)
 
 
 #     plt.title('Energy consumption')
-    plt.figure(figsize=[20, 15])
+    plt.figure(figsize=[20, 10])
     plt.xlim(timerange[0], timerange[-1])
     plt.plot(table.Power, drawstyle='steps-post')
     plt.ylim(bottom=table.Power.min()*0.95, top=table.Power.max()*1.05)
