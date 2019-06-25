@@ -7,6 +7,160 @@ from time import localtime, strftime
 import logging
 import csv
 import warnings
+from population import Schedule
+
+def read_breakdown_record(breakdownRecordFile):
+    try:
+        with open(breakdownRecordFile, encoding='utf-8') as breakdown_csv:
+            reader = csv.DictReader(breakdown_csv)
+            for row in reader:
+                stamp = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
+    except:
+        print("Unexpected error when reading breakdown record from {}:".format(breakdownRecordFile))
+        raise
+    return stamp
+
+def read_product_related_characteristics(productFile):
+    ''' 
+    Create a dictionary to store product related characteristics from productFile.
+
+    Parameters
+    ----------
+    productFile : string
+        Name of file containing job information. Columns contained: Product, UnitPrice, Power.
+
+    Returns
+    -------
+    Dictionary containing product related characteristics, key: string, value: list of float.
+    '''
+    product_related_characteristics_dict = {}
+    try:
+        with open(productFile, encoding='utf-8') as jobInfo_csv:
+            reader = csv.DictReader(jobInfo_csv)
+            for row in reader:
+                job_entry = dict(zip(['unitprice', 'power', 'targetproduction'],
+                [round(float(row['UnitPrice']),3), float(row['Power']), float(row['TargetProductionRate'])]))
+                product_related_characteristics_dict.update({row['Product']: job_entry})
+                if 'Type' in row:
+                    product_related_characteristics_dict[row['Product']]['type'] = row['Type']
+                if 'Availability' in row:
+                    product_related_characteristics_dict[row['Product']]['availability'] = float(row['Availability'])
+                if 'Downtime_len' in row:
+                    product_related_characteristics_dict[row['Product']]['dt_len'] = float(row['Downtime_len'])
+                if 'Weight' in row:
+                    product_related_characteristics_dict[row['Product']]['weight'] = float(row['Weight'])
+    except:
+        print(f"Unexpected error when reading product related information from '{productfile}'")
+        raise
+    return product_related_characteristics_dict
+
+def read_precedence(precedenceFile):
+    precedence_dict = {}
+    try:
+        with open(precedenceFile, encoding='utf-8') as prec_csv:
+            reader = csv.DictReader(prec_csv)
+            for row in reader:
+                key = int(row['Before'])
+#               print(key)
+                if key in precedence_dict: 
+#                   print("In")
+                    precedence_dict[key].append(int(row['After']))
+                else:
+#                   print("Not In")
+                    precedence_dict[key] = [int(row['After'])]
+    except:
+        print("Unexpected error when reading precedence information from '{}'".format(precedenceFile)) 
+        raise
+    
+#   print(precedence_dict)
+    return precedence_dict
+
+def read_price(priceFile):
+    ''' 
+    Create a dictionary to restore hourly dependent energy price.
+
+    Parameters
+    ----------
+    priceFile: string
+        Name of file containing energy price.
+    
+    Returns
+    -------
+    A dictionary containing hourly dependent energy price, key: Date, value: float.
+    '''
+    price_dict = {}
+    try:
+        with open(priceFile, encoding='utf-8') as price_csv:
+            reader = csv.DictReader(price_csv)
+            for row in reader:
+                price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
+    except:
+        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+        exit()
+    return price_dict
+
+def read_down_durations(downDurationFile, daterange=None):
+    ''' 
+    Create a dictionary to restore down duration information.
+
+    Parameters
+    ----------
+    downDurationFile: string
+        Name of file containing job information.
+    
+    Returns
+    -------
+    A dictionary containing downtime duration indexes, startTime and endTime, key: int, value: list.
+    '''
+    down_duration_dict = {}
+    try:
+        with open(downDurationFile, encoding='utf-8') as downDurationInfo_csv:
+            reader = csv.DictReader(downDurationInfo_csv)
+            for row in reader:
+                start = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
+                end = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
+                if daterange is None:
+                    duration = (end - start).total_seconds() / 3600
+                    down_duration_dict.update({row['ID']:[start, 
+                                                          end,
+                                                          duration]})
+                if (daterange is not None):
+                    if (daterange[0] < start < daterange[1]):
+                        duration = (end - start).total_seconds() / 3600
+                        down_duration_dict.update({row['ID']:[start, 
+                                                              end,
+                                                              duration]})
+    except:
+        print("Unexpected error when reading down duration information from '{}'".format(downDurationFile))
+        raise
+    return down_duration_dict
+
+# TODO: Depend on context of maintenance file
+def read_failure_data(maintenanceFile):
+    ''' 
+    Create a list to store influences of maintenances. 
+
+    Parameters
+    ----------
+    maintenanceFile: string
+        Name of file containing maintenance records.
+    
+    Returns
+    -------
+    List containing influences of maintenances.
+    '''
+    maintenance_influence = []
+    try:
+        with open(maintenanceFile, encoding='utf-8') as mainInf_csv:
+            reader = csv.DictReader(mainInf_csv)
+            for row in reader:
+                maintenance_influence.append(float(row['Influence']))
+    except:
+        print("Unexpected error when reading maintenance information from {}:".format(maintenanceFile))
+        print(maintenanceFile)
+        raise
+               
+    return maintenance_influence
 
 class JobInfo(object):
     '''
@@ -388,6 +542,7 @@ def read_config_file(path):
     
     def join_path(x):
         return os.path.join(configfolder, x)
+    
     def raise_failure(section):
         raise NameError(f'{section} not found in the config file')
     def raise_no_failure(section):
@@ -408,13 +563,23 @@ def read_config_file(path):
             configfolder = os.path.join(pathname, x)
             return configfolder
         
+        def read_prc(x):
+            return read_product_related_characteristics(join_path(x))
+        def read_prec(x):
+            return read_precedence(join_path(x))
+        def read_energy(x):
+            return read_price(join_path(x))
+        def read_downtimes(x):
+            return read_down_durations(join_path(x))
+        def read_failures(x):
+            return read_failure_data(join_path(x))
         def read_xml_file(x):
             return read_failure_info(os.path.join(configfolder, x, 'outputfile.xml'))
 
         input_actions = {
             'original_folder': ['original', config_folder, raise_failure],
             'product_related_characteristics_file': ['prc_file', join_path, raise_failure],
-            'precendence_file': ['prec_file', join_path, raise_no_failure],
+            'precedence_file': ['prec_file', join_path, raise_no_failure],
             'energy_price_file': ['ep_file', join_path, raise_failure],
             'historical_down_periods_file': ['hdp_file', join_path, raise_no_failure],
             'job_info_file': ['ji_file', join_path, raise_failure],
@@ -422,7 +587,7 @@ def read_config_file(path):
             'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
             'failure_info_path': ['failure_info', read_xml_file, raise_no_failure],
             'failure_rate': ['fr_file', join_path, raise_no_failure]
-        }
+        } 
         return_sections['input_config'] = my_config_parser(input_actions, this_section)
     else:
         raise NameError('No input section found!')
@@ -499,10 +664,11 @@ def read_config_file(path):
             'weight_virtual_failure': ['weight_virtual_failure', float, return_0],
             'weight_flowtime': ['weight_flowtime', float, return_0],
             'weight_conversion': ['weight_conversion', float, return_0],
+            'weight_makespan': ['weight_makespan', float, return_0]
         }
         
         scenario_actions = {
-            'test': ['test', read_stringlist, raise_failure],
+            'test': ['test', str, raise_failure],
             'scenario': ['scenario', int, raise_failure],
             'validation': ['validation', read_bool, raise_failure],
             'pre_selection': ['pre_selection', read_bool, raise_failure],
@@ -525,7 +691,7 @@ def read_config_file(path):
             'add_time': ['add_time', int, return_0],
         }
         par_actions = {
-            'add_time_list': ['add_time_list', read_floatlist, raise_no_failure],
+            'add_time_list': ['add_time_list', read_floatlist, [return_0]],
         }
         
         scenario_config = my_config_parser(scenario_actions, this_section)
@@ -540,6 +706,128 @@ def read_config_file(path):
         raise NameError('No configuration section found!')
 
     return return_sections
+
+class GA_settings:
+    def __init__(self, pop_size=12, cross_rate=0.5, mut_rate=0.4, num_mutations=3,
+                 evolution_method='roulette', validation=False, pre_selection=False):
+        self.pop_size = pop_size
+        self.cross_rate = cross_rate
+        self.mut_rate = mut_rate
+        self.num_mutations = num_mutations
+        self.evolution_method = evolution_method
+        self.validation = validation
+        self.pre_selection = pre_selection
+
+def config_to_sched_objects(sections):
+    test = sections['scenario_config']['test']
+    down_duration_file = sections['input_config']['hdp_file']
+    failure_file = sections['input_config']['fr_file']
+    prod_rel_file = sections['input_config']['prc_file']
+    precedence_file = sections['input_config']['prec_file']
+    energy_file = sections['input_config']['ep_file']
+    job_file = sections['input_config']['ji_file']
+    failure_info = sections['input_config']['failure_info']
+    urgent_job_info = sections['input_config']['urgent_ji_file']
+    breakdown_record_file = sections['input_config']['bd_rec_file']
+    
+    start_time = sections['start_end']['start_time']
+    end_time = sections['start_end']['end_time']
+    weights = sections['scenario_config']['weights']
+    scenario = sections['scenario_config']['scenario']
+    working_method = sections['scenario_config']['working_method']
+    duration_str = sections['scenario_config']['duration_str']
+    remove_breaks = sections['scenario_config']['remove_breaks']
+    if test == 'GA':
+        add_time = sections['scenario_config']['add_time']
+    if test == 'PAR':
+        add_time_list = sections['scenario_config']['add_time_list']
+    
+    
+    failure_downtimes = False
+    if working_method == 'historical':
+        try:
+            down_duration_dict = read_down_durations(down_duration_file, daterange=(start_time, end_time)) # File from EnergyConsumption/InputOutput
+            #print('test')
+            #weight_failure = weights.get('weight_failure', 0)
+            #if weight_failure != 0:
+            #    if (failure_file is not None):
+                    #print(failure_file)
+                    #failure_list = read_failure_data(failure_file) # File from failuremodel-master/analyse_production
+            #        failure_info = None
+            #    else:
+            #        raise ValueError('no failure info found!')
+        except:
+            warnings.warn('Import of downtime durations failed, using scheduling without failure information.')
+            failure_downtimes = True
+            raise
+    if (working_method != 'historical') or failure_downtimes:
+        warnings.warn('No import of downtime durations.')
+        #weight_failure = 0
+        down_duration_dict = {}
+
+#     print("down_duration_dict: ", down_duration_dict)
+#     print("hourly_failure_dict: ", hourly_failure_dict)
+#     exit()
+    
+    product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
+    if precedence_file is not None:
+        precedence_dict = read_precedence(precedence_file)
+    else:
+        precedence_dict = None
+    price_dict = read_price(energy_file)
+    
+    ji = JobInfo()
+    ji.read_from_file(job_file)
+    
+    if (start_time != None) and (end_time != None):
+        #job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+        ji.limit_range(start_time, end_time)
+    elif (start_time != None):
+        #job_dict_new = read_jobs(job_file)
+        pass
+    else:
+        raise NameError('No start time found!')
+    
+    if breakdown_record_file:
+        record = read_breakdown_record(breakdown_record_file)
+        ji.limit_range_disruptions(record)
+        
+    if remove_breaks:
+        ji.remove_all_breaks()
+        
+    first_schedule_list = []
+    
+    if test == 'GA':
+        if add_time > 0:
+            ji.add_breaks(add_time)
+        sched = Schedule(ji.job_order, ji.job_dict, start_time, product_related_characteristics_dict, down_duration_dict,
+                        price_dict, precedence_dict, failure_info, scenario, duration_str, working_method, weights)
+        first_schedule_list.append(sched)
+    if test == 'PAR':
+        for time in add_time_list:
+            import copy
+            ji_temp = copy.deepcopy(ji)
+            if time > 0:
+                ji_temp.add_breaks(time)
+            sched = Schedule(ji_temp.job_order, ji_temp.job_dict, start_time, 
+                             product_related_characteristics_dict, down_duration_dict,
+                             price_dict, precedence_dict, failure_info, scenario, duration_str, working_method, weights)
+            first_schedule_list.append(sched)
+    
+    # first_schedule = Schedule(ji.job_order, ji.job_dict, start_time, product_related_characteristics_dict, down_duration_dict,
+    #                         price_dict, precedence_dict, failure_info, scenario, duration_str, working_method, weights)
+    
+    pop_size = sections['scenario_config']['pop_size']
+    cross_rate = sections['scenario_config']['crossover_rate']
+    mut_rate = sections['scenario_config']['mutation_rate']
+    num_mutations = sections['scenario_config']['num_mutations']
+    evolution_method = sections['scenario_config']['evolution_method']
+    validation = sections['scenario_config']['validation']
+    pre_selection = sections['scenario_config']['pre_selection']
+    
+    ga_set = GA_settings(pop_size, cross_rate, mut_rate, num_mutations, evolution_method, validation, pre_selection)
+
+    return first_schedule_list, ga_set
         
 
 def start_logging(filename):
@@ -563,10 +851,4 @@ def start_logging(filename):
     logging.getLogger('').addHandler(console)
 
 if __name__ == "__main__":
-    if (len(sys.argv) == 4):
-        startdate = datetime.strptime(sys.argv[1], "%Y-%m-%d")
-        enddate = datetime.strptime(sys.argv[2], "%Y-%m-%d")
-        prices = construct_energy_2tariffs((startdate, enddate))
-        prices.to_csv(sys.argv[3])
-    else:
-        print('Error')
+    pass

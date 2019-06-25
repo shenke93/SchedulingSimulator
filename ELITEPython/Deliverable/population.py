@@ -62,12 +62,11 @@ def floor_dt(dt, delta):
 
 
 class Schedule:
-    def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict, precedence_dict, failure_info, 
+    def __init__(self, order, job_dict, start_time, prc_dict, downdur_dict, price_dict, precedence_dict, failure_info, 
                  scenario, duration_str='duration', working_method='historical', weights=standard_weights):
         self.order = order
-        self.start_time = start_time
         self.job_dict = job_dict
-        self.failure_dict = failure_dict
+        self.start_time = start_time
         self.prc_dict = prc_dict
         self.downdur_dict = downdur_dict
         self.price_dict = price_dict
@@ -78,8 +77,29 @@ class Schedule:
         self.working_method = working_method
         self.weights = weights
         self.time_dict = self.get_time()
+        
+    def set_starttime(self, time):
+        self.start_time = time
+        
+    def copy_random(self):
+        return_sched = Schedule(np.random.choice(self.order, size=len(self.order), replace=False),
+                                self.job_dict, self.start_time, self.prc_dict, self.downdur_dict, self.price_dict, 
+                                self.precedence_dict, self.failure_info, self.scenario, 
+                                self.duration_str, self.working_method, 
+                                self.weights)
+        return return_sched
     
-    def get_failure_prob(self):
+    def copy_neworder(self, assign_order):
+        return_sched = Schedule(assign_order,
+                                self.job_dict, self.start_time, self.prc_dict, self.downdur_dict, self.price_dict, 
+                                self.precedence_dict, self.failure_info, self.scenario, 
+                                self.duration_str, self.working_method, 
+                                self.weights)
+        assert (set(assign_order) == set(self.job_dict.keys())), 'The keys inserted are not the same as the key of the jobs'
+        return return_sched
+        
+    
+    def get_failure_prob(self, cumulative=True):
         # Assistant function to visualize the processing of a candidate schedule throughout the time horizon
         detailed_dict = {}
         t_now = t_start_begin = self.start_time
@@ -138,7 +158,7 @@ class Schedule:
                         t_end_maint = t_start + timedelta(hours=failure_info[4])
 
                         time_ran = np.arange((t_start - t_start_begin).total_seconds(), (t_end_maint- t_start_begin).total_seconds(), 60)
-                        extend_df = pd.Series(index=time_ran, data=1)
+                        extend_df = pd.Series(index=time_ran, data='NaN')
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
                         
                         t_start = t_end_maint
@@ -165,8 +185,10 @@ class Schedule:
                         
                         time_ran = np.arange((t_start - t_start_begin).total_seconds(), ((t_start + timedelta(hours=du + t_down)) - t_start_begin).total_seconds(), 60)
                         ran = np.linspace(v_start_time, v_start_time + du, num=len(time_ran))
-                        fp = [fail_dist.failure_cdf(i) for i in ran]
-                        #import pdb; pdb.set_trace()
+                        if cumulative:
+                            fp = [fail_dist.failure_cdf(i) for i in ran]
+                        else:
+                            fp = [fail_dist.failure_pdf(i) for i in ran]
                         extend_df = pd.Series(index=time_ran, data=fp)
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
 
@@ -189,11 +211,11 @@ class Schedule:
                         # get the changeover time and extend the current graph
                         time_ran = np.arange(((t_start + timedelta(hours=du + t_down)) - t_start_begin).total_seconds(), 
                                             ((t_start + timedelta(hours=du + t_down + t_changeover + t_clean)) - t_start_begin).total_seconds(), 60)
-                        extend_df = pd.Series(index=time_ran, data=float(1-cur_rel))
+                        extend_df = pd.Series(index=time_ran, data='NaN')
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
                     else:
                         time_ran = np.arange((t_start - t_start_begin).total_seconds(), ((t_start + timedelta(hours=du + t_down)) - t_start_begin).total_seconds(), 60)
-                        extend_df = pd.Series(index=time_ran, data=float(1-cur_rel))
+                        extend_df = pd.Series(index=time_ran, data='NaN')
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
                         #import pdb; pdb.set_trace()
                     
@@ -224,6 +246,8 @@ class Schedule:
         maintenance_int = 0
         if self.working_method == 'expected':
             total_duration_nofail = 0
+            
+        #import pdb; pdb.set_trace()
 
         for i in range(len(self.order)):
             item = self.order[i]
@@ -375,8 +399,12 @@ class Schedule:
                 duedate = unit1['duedate']
                 # get all other info used by the input parser
                 #import pdb; pdb.set_trace()
-                detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 'product', 'type', 'down_duration', 'changeover_duration', 'cleaning_time', 'releasedate', 'duedate', 'quantity'],
-                                                      [t_start, t_end, du + t_down + t_changeover + t_clean, du, unit1['product'], unit1['type'], t_down, t_changeover, t_clean, releasedate, duedate, quantity]))
+                detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 
+                                                       'product', 'type', 'down_duration', 'changeover_duration', 
+                                                       'cleaning_time', 'releasedate', 'duedate', 'quantity'],
+                                                      [t_start, t_end, du + t_down + t_changeover + t_clean, 
+                                                       du, unit1['product'], unit1['type'], 
+                                                       t_down, t_changeover, t_clean, releasedate, duedate, quantity]))
                                       })
             except:
                 # Start a debugger to find out what the cause was
@@ -792,6 +820,7 @@ class Schedule:
         time_dict = self.get_time()
     #     print(time_dict)
         flag = True
+        # validate due date
         for key, value in time_dict.items():
             if key in self.job_dict.keys():
                 due = self.job_dict[key]['duedate'] # due date of a job
@@ -799,33 +828,57 @@ class Schedule:
                     print("For candidate schedule:", self.order)
                     print(f"Job {key} will finish at {value['end']} over the due date {due}")
                     flag = False
-                    break
-        return flag
-        # validate precedence
-        ind = set(self.order)
-        jobs = list(self.order.copy())
-        for item in ind:
-            if item in precedence_dict:
-                prec = set(precedence_dict[item])
-                jobs_temp = set(jobs[:jobs.index(item)])
-                #jobs.remove(item)
-                #print('Remove ' + str(item))
-                # print("Item:", item)
-                # print("Prec:", prec)
-                # print("afters:", jobs)
-                if not prec.isdisjoint(jobs_temp): # prec set and remain jobs have intersections
+                release= self.job_dict[key]['releasedate']
+                if value['start'] < release:
+                    print("For candidate schedule:", self.order)
+                    print(f"Job {key} will finish at {value['start']} below the release date {release}")
                     flag = False
-                    break
+        # validate precedence
+        #jobs = list(self.order.copy())
+        order = list(self.order)
+        if self.precedence_dict is not None:
+            for item in order:
+                if item in self.precedence_dict:
+                    prec = set(self.precedence_dict[item])
+                    #import pdb; pdb.set_trace()
+                    jobs_temp = set(order[:order.index(item)])
+                    #jobs.remove(item)
+                    #print('Remove ' + str(item))
+                    # print("Item:", item)
+                    # print("Prec:", prec)
+                    # print("afters:", jobs)
+                    if not prec.isdisjoint(jobs_temp): # prec set and the executed jobs have intersections
+                        flag = False
+                        break
         return flag
+    
+    # def fix_validation(self):
+    #     # get time
+    #     time_dict = self.get_time()
+    #     # print (time_dict)
+    #     #fix due dates:
+    #     for key, value in time_dict.items():
+    #         if key in self.job_dict.keys():
+    #             due = self.job_dict[key]['duedate'] # due date of a job
+    #             if value['end'] > due:
+    #                 print("For candidate schedule:", self.order)
+    #                 print(f"Job {key} will finish at {value['end']} over the due date {due}")
+            
 
-    def get_fitness(self, split_types=False, detail=False):
+    def get_fitness(self, split_types=False, detail=False, weights=None):
         ''' 
         Get fitness values for all individuals in a generation.
         '''
-        wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
-        we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
-        wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
-        factors = (wf, wvf, we, wc, wb, wft)
+        if weights is None:
+            wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
+            we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
+            wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
+            factors = (wf, wvf, we, wc, wb, wft)
+        else:
+            factors = (weights['weight_failure'], weights['weight_virtual_failure'], weights['weight_energy'],
+                       weights['weight_conversion'], weights['weight_constraint'], weights['weight_flowtime'])
+            wf = weights['weight_failure']; wvf = weights['weight_virtual_failure']; we = weights['weight_energy']
+            wc = weights['weight_conversion']; wb = weights['weight_constraint']; wft = weights['weight_flowtime']
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             #for i in sub_pop:
