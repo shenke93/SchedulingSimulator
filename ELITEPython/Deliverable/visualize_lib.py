@@ -8,17 +8,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import datetime
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator, FuncFormatter
 import os
 
 def show_results(best_result, worst_result, mean_result):
+    plt.figure(figsize=[10, 5])
+    plt.rcParams["font.size"] = "16"
     plt.plot(best_result, label='best')
     plt.plot(worst_result, label='worst')
     plt.plot(mean_result, label='mean')
 #     plt.title('Result versus number of iterations')
     plt.xlabel('Iterations')
-    plt.ylabel('Cost(€)')
-    plt.legend()
+    plt.ylabel('Cost (€)')
+    plt.legend(loc='lower left', bbox_to_anchor=(0., 1.02, 1., .102), ncol=3, mode='expand', borderaxespad=0.)
 
     figure = plt.gcf()
     ax = figure.gca()
@@ -191,7 +193,8 @@ def save_energy_plot(tasks, prices, energy, name, folder, title='Schedule', colo
     plt.savefig(os.path.join(folder, name+"Sched.png"), dpi=300)
 
 #     plt.title('Energy price')
-    plt.figure(figsize=[20, 10])
+    plt.figure(figsize=[10, 5])
+    plt.rcParams["font.size"] = "16"
     plt.xlim(timerange[0], timerange[-1])
     plt.plot(table.Euro, drawstyle='steps-post')
     plt.ylabel('Price (€/100KWH)')
@@ -201,10 +204,13 @@ def save_energy_plot(tasks, prices, energy, name, folder, title='Schedule', colo
 
 
 #     plt.title('Energy consumption')
-    plt.figure(figsize=[20, 10])
+    plt.figure(figsize=[10, 5])
+    plt.rcParams["font.size"] = "16"
     plt.xlim(timerange[0], timerange[-1])
     plt.plot(table.Power, drawstyle='steps-post')
+    plt.ylabel('Power (KW)')
     plt.ylim(bottom=table.Power.min()*0.95, top=table.Power.max()*1.05)
+    plt.gca().get_yaxis().set_major_formatter(FuncFormatter(lambda x, p: format(int(x*1000), ',')))
     plt.tight_layout()
     plt.savefig(os.path.join(folder, name+"EnergyConsumption.png"), dpi=300)
 
