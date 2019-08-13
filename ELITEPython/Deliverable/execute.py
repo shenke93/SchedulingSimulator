@@ -201,18 +201,16 @@ def main(config):
 if __name__ == "__main__":
     # Read the config file
     if os.path.exists(CONFIGFILE):
-            config = read_config_file(CONFIGFILE)
+        config = read_config_file(CONFIGFILE)
     else:
-            raise ValueError("'{}' not found!".format(CONFIGFILE))
+        raise ValueError("'{}' not found!".format(CONFIGFILE))
 
     # Make the export folder and start logging in the logging file
     export_folder = config['output_config']['export_folder']
 
     if not os.path.exists(export_folder):
-            os.makedirs(export_folder)
+        os.makedirs(export_folder)
     start_logging(os.path.join(export_folder, 'out.log'))
     logging.info('Starting logging')
-    
-    main(config)
 
-        
+    main(config)   
