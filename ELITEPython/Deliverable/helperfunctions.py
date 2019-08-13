@@ -709,7 +709,8 @@ def read_config_file(path):
 
 class GA_settings:
     def __init__(self, pop_size=12, cross_rate=0.5, mut_rate=0.4, num_mutations=3,
-                 evolution_method='roulette', validation=False, pre_selection=False):
+                 evolution_method='roulette', validation=False, pre_selection=False,
+                 iterations=25000, stop_condition=None, stop_value=5000, adapt_ifin=[]):
         self.pop_size = pop_size
         self.cross_rate = cross_rate
         self.mut_rate = mut_rate
@@ -717,8 +718,17 @@ class GA_settings:
         self.evolution_method = evolution_method
         self.validation = validation
         self.pre_selection = pre_selection
+        self.iterations = iterations
+        if stop_condition in ['end_value', 'abs_time']:
+            self.stop_condition = stop_condition
+            self.stop_value = stop_value
+        else:
+            self.stop_condition = 'num_iterations'
+            self.stop_value = iterations
+        self.adapt_ifin = adapt_ifin
 
 def config_to_sched_objects(sections):
+    # get the values from dictionary
     test = sections['scenario_config']['test']
     down_duration_file = sections['input_config']['hdp_file']
     failure_file = sections['input_config']['fr_file']
@@ -824,8 +834,13 @@ def config_to_sched_objects(sections):
     evolution_method = sections['scenario_config']['evolution_method']
     validation = sections['scenario_config']['validation']
     pre_selection = sections['scenario_config']['pre_selection']
+    iterations = sections['scenario_config']['iterations']
+    stop_condition = sections['scenario_config']['stop_condition']
+    stop_value = sections['scenario_config']['stop_value']
+    adapt_ifin = sections['scenario_config']['adapt_ifin']
     
-    ga_set = GA_settings(pop_size, cross_rate, mut_rate, num_mutations, evolution_method, validation, pre_selection)
+    ga_set = GA_settings(pop_size, cross_rate, mut_rate, num_mutations, evolution_method, validation, pre_selection,
+                         iterations, stop_condition, stop_value, adapt_ifin)
 
     return first_schedule_list, ga_set
         

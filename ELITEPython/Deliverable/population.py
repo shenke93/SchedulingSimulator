@@ -60,7 +60,6 @@ def floor_dt(dt, delta):
     # q, r = divmod(dt - datetime.min, delta)
     # return (datetime.min + (q)*delta) if r else dt
 
-
 class Schedule:
     def __init__(self, order, job_dict, start_time, prc_dict, downdur_dict, price_dict, precedence_dict, failure_info, 
                  scenario, duration_str='duration', working_method='historical', weights=standard_weights):

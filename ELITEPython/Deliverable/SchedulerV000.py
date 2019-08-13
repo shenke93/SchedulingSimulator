@@ -657,14 +657,23 @@ def run_bf(start_time, end_time, down_duration_file, failure_file, prod_rel_file
 #             stop_condition='num_iterations', stop_value=None, weights={},
 #             duration_str='duration', evolution_method='roulette', validation=False, pre_selection=False, working_method='historical', add_time=0,
 #             remove_breaks=False):
-def run_opt(original_schedule, settings, start_time, iterations, stop_condition, stop_value, adaptive):
 
+def run_opt(original_schedule, settings, start_time=None):
+
+    iterations = settings.iterations
+    stop_condition = settings.stop_condition
+    stop_value = settings.stop_value
+    adaptive = settings.adapt_ifin
+    
     # if multiple schedules of course the costs of both the schedules will be saved
     # after the first schedule is calculated the end time is saved and then the next schedule is calculated from then on
     # initialise some data structures to save all of this
     logging.info('Using '+ str(original_schedule.working_method) + ' method')
-    logging.info("Original schedule start time: " +  str(start_time.isoformat()))
-    original_schedule.set_starttime(start_time)
+    if start_time == None:
+        logging.info("Original schedule start time: " +  str(original_schedule.start_time.isoformat()))
+    else:
+        logging.info("Original schedule start time: " +  str(start_time.isoformat()))
+        original_schedule.set_starttime(start_time)
     
     total_result = original_schedule.get_fitness()
     original_schedule.validate()
@@ -708,8 +717,7 @@ def run_opt(original_schedule, settings, start_time, iterations, stop_condition,
         best_result_list_no_constraint.append(pop[best_index].get_fitness(weights=no_constraint))
         worst_result_list_no_constraint.append(pop[worst_index].get_fitness(weights=no_constraint))
 
-        #if stop_condition == 'num_iterations':
-        if generation >= iterations:
+        if (stop_condition == 'num_iterations') and (generation >= iterations):
             stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
@@ -731,7 +739,7 @@ def run_opt(original_schedule, settings, start_time, iterations, stop_condition,
     timer1 = time.monotonic()
     elapsed_time = timer1-timer0
     
-    logging.info('Stopping after ', iterations, ' iterations.\nElapsed time: ', round(elapsed_time, 2))
+    logging.info('Stopping after ' + str(iterations) + ' iterations. Elapsed time: ' + str(round(elapsed_time, 2)))
 
     print()
     logging.info("Candidate schedule " + str(pop[best_index].order))

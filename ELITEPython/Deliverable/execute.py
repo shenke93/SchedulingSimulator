@@ -5,7 +5,7 @@ from visualize_lib import show_ga_results, plot_gantt, show_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
-#from configfile import adapt_ifin
+#from CONFIGFILE import adapt_ifin
 
 plt.style.use('seaborn-darkgrid')
 plt.rcParams.update({'figure.autolayout': True, 'figure.dpi': 144})
@@ -20,10 +20,17 @@ from helperfunctions import *
 #pathname = os.path.dirname(sys.argv[0])
 os.chdir(os.path.dirname(sys.argv[0]))
 
-configFile = 'config_pareto.ini'
-configFile = os.path.join(os.path.abspath(os.curdir), configFile)
+CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config_pareto.ini')
 
 def main(config):
+    '''
+    Main loop of the executable file
+    There are two options:
+    - GA (Genetic Algorithm) - run the file as a genetic algorithm
+    - PAR (Pareto) - run the pareto front file, this will use multiple configurations of 
+      the program, by adding different amounts of breaks in the production and exit 
+      by showing an overview of the Pareto front for these configurations
+    '''
     logging.info('Scheduler v0.0.5')
 
     # copy the config file to the export folder
@@ -32,11 +39,11 @@ def main(config):
     export = config['output_config']['export']
     export_paper = config['output_config']['export_paper']
     interactive = config['output_config']['interactive']
-    export_folder = config['output_config']['export_folder']
+    # export_folder = config['output_config']['export_folder']
 
     if export:
         import shutil
-        shutil.copy2(configFile, os.path.join(export_folder, r"config_bu.ini"))
+        shutil.copy2(CONFIGFILE, os.path.join(export_folder, r"config_bu.ini"))
         
     schedule_list, settings = config_to_sched_objects(config)
     test = config['scenario_config']['test']
@@ -44,10 +51,7 @@ def main(config):
     if test == 'GA':
         schedule = schedule_list[0]
         best_result, orig_result, best_sched, \
-        orig_sched, lists_result, list_result_nc = \
-        run_opt(schedule, settings, config['start_end']['start_time'], config['scenario_config']['iterations'],
-                config['scenario_config']['stop_condition'], config['scenario_config']['stop_value'], 
-                config['scenario_config']['adapt_ifin'])
+        orig_sched, lists_result, list_result_nc = run_opt(schedule, settings)
 
         logging.info('Execution finished.')
         
@@ -162,13 +166,8 @@ def main(config):
         i = 0
         for schedule in schedule_list:
             best_result, orig_result, best_sched, \
-            orig_sched, lists_result, list_result_nc = \
-            run_opt(schedule, settings, config['start_end']['start_time'], config['scenario_config']['iterations'],
-                    config['scenario_config']['stop_condition'], config['scenario_config']['stop_value'], 
-                    config['scenario_config']['adapt_ifin'])
+            orig_sched, lists_result, list_result_nc = run_opt(schedule, settings)
 
-            logging.info('Execution finished.')
-                
             logging.info('Execution finished.')
             #logging.info('Number of generations was {:}'.format(gen))
             
@@ -184,7 +183,7 @@ def main(config):
         logging.info('Final result')
         logging.info(list_added)
         logging.info(list_result)
-        
+
         df = pd.DataFrame({'added_time': list_added, 'result':list_result})
         df.to_csv(os.path.join(export_folder, 'results.csv'))
 
@@ -201,10 +200,10 @@ def main(config):
     
 if __name__ == "__main__":
     # Read the config file
-    if os.path.exists(configFile):
-            config = read_config_file(configFile)
+    if os.path.exists(CONFIGFILE):
+            config = read_config_file(CONFIGFILE)
     else:
-            raise ValueError("'{}' not found!".format(configFile))
+            raise ValueError("'{}' not found!".format(CONFIGFILE))
 
     # Make the export folder and start logging in the logging file
     export_folder = config['output_config']['export_folder']
@@ -214,7 +213,6 @@ if __name__ == "__main__":
     start_logging(os.path.join(export_folder, 'out.log'))
     logging.info('Starting logging')
     
-
     main(config)
 
         
