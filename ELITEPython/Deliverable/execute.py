@@ -20,7 +20,7 @@ from helperfunctions import *
 #pathname = os.path.dirname(sys.argv[0])
 os.chdir(os.path.dirname(sys.argv[0]))
 
-CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config_pareto.ini')
+CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config.ini')
 
 def main(config):
     '''
