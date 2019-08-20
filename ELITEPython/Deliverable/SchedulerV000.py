@@ -162,7 +162,7 @@ class Scheduler(object):
         self.pop = schedule.job_dict.keys()
         self.job_dict = schedule.job_dict
         self.price_dict = schedule.price_dict
-        self.product_related_characteristics_dict = schedule.prc_dict
+        #self.product_related_characteristics_dict = schedule.prc_dict
         self.down_duration_dict = schedule.downdur_dict
         # self.failure_info = failure_info
         # TODO: replace with input data from precedence file
@@ -672,7 +672,7 @@ def run_opt(original_schedule, settings, start_time=None):
     if start_time == None:
         logging.info("Original schedule start time: " +  str(original_schedule.start_time.isoformat()))
     else:
-        logging.info("Original schedule start time: " +  str(start_time.isoformat()))
+        logging.info("Schedule start time: " +  str(start_time.isoformat()))
         original_schedule.set_starttime(start_time)
     
     total_result = original_schedule.get_fitness()

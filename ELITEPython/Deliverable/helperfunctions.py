@@ -38,19 +38,21 @@ def read_product_related_characteristics(productFile):
         with open(productFile, encoding='utf-8') as jobInfo_csv:
             reader = csv.DictReader(jobInfo_csv)
             for row in reader:
+                prod_id = int(row['Product'])
                 job_entry = dict(zip(['unitprice', 'power', 'targetproduction'],
-                [round(float(row['UnitPrice']),3), float(row['Power']), float(row['TargetProductionRate'])]))
-                product_related_characteristics_dict.update({row['Product']: job_entry})
+                [float(row['UnitPrice']), float(row['Power']),
+                 float(row['TargetProductionRate'])]))
+                product_related_characteristics_dict.update({prod_id: job_entry})
                 if 'Type' in row:
-                    product_related_characteristics_dict[row['Product']]['type'] = row['Type']
+                    product_related_characteristics_dict[prod_id]['type'] = row['Type']
                 if 'Availability' in row:
-                    product_related_characteristics_dict[row['Product']]['availability'] = float(row['Availability'])
+                    product_related_characteristics_dict[prod_id]['availability'] = float(row['Availability'])
                 if 'Downtime_len' in row:
-                    product_related_characteristics_dict[row['Product']]['dt_len'] = float(row['Downtime_len'])
+                    product_related_characteristics_dict[prod_id]['dt_len'] = float(row['Downtime_len'])
                 if 'Weight' in row:
-                    product_related_characteristics_dict[row['Product']]['weight'] = float(row['Weight'])
+                    product_related_characteristics_dict[prod_id]['weight'] = float(row['Weight'])
     except:
-        print(f"Unexpected error when reading product related information from '{productfile}'")
+        print(f"Unexpected error when reading product related information from '{productFile}'")
         raise
     return product_related_characteristics_dict
 
@@ -218,6 +220,12 @@ class JobInfo(object):
         def noreleasedate(): 
             logging.warning("Release date could not be parsed")
             return datetime.min
+        def nounitprice():
+            logging.warning("No unit price found")
+            return 0.0
+        def nopower():
+            logging.waring("No power price found")
+            return 0.0
             
         
         operations = {
@@ -229,7 +237,10 @@ class JobInfo(object):
             'End': ['end', parsedate, donothing],
             'Type': ['type', str, notypefound],
             'Duedate': ['duedate', parsedate, noduedate],
-            'Releasedate': ['releasedate', parsedate, noreleasedate]
+            'Releasedate': ['releasedate', parsedate, noreleasedate],
+            'TargetProductionRate': ['targetproductionrate', float, donothing],
+            'UnitPrice': ['unitprice', float, nounitprice],
+            'Power': ['power', float, nopower],
         }
         
         try:
@@ -237,7 +248,7 @@ class JobInfo(object):
                 reader = csv.DictReader(jobInfo_csv)
                 for row in reader:
                     if row['Product'] != 'MAINTENANCE': # Do not read maintenance tasks
-                        job_num = int(row['ID'])
+                        job_num = int(row['ProductionRequestId'])
                         # insert product name
                         job_entry = dict({'product': row['Product']})
                         job_entry = {}
@@ -756,7 +767,7 @@ def config_to_sched_objects(sections):
     failure_downtimes = False
     if working_method == 'historical':
         try:
-            down_duration_dict = read_down_durations(down_duration_file, daterange=(start_time, end_time)) # File from EnergyConsumption/InputOutput
+            downdur_dict = read_down_durations(down_duration_file, daterange=(start_time, end_time)) # File from EnergyConsumption/InputOutput
             #print('test')
             #weight_failure = weights.get('weight_failure', 0)
             #if weight_failure != 0:
@@ -773,13 +784,13 @@ def config_to_sched_objects(sections):
     if (working_method != 'historical') or failure_downtimes:
         warnings.warn('No import of downtime durations.')
         #weight_failure = 0
-        down_duration_dict = {}
+        downdur_dict = {}
 
 #     print("down_duration_dict: ", down_duration_dict)
 #     print("hourly_failure_dict: ", hourly_failure_dict)
 #     exit()
     
-    product_related_characteristics_dict = read_product_related_characteristics(prod_rel_file)
+    #prc_dict = read_product_related_characteristics(prod_rel_file)
     if precedence_file is not None:
         precedence_dict = read_precedence(precedence_file)
     else:
@@ -810,8 +821,9 @@ def config_to_sched_objects(sections):
     if test == 'GA':
         if add_time > 0:
             ji.add_breaks(add_time)
-        sched = Schedule(ji.job_order, ji.job_dict, start_time, product_related_characteristics_dict, down_duration_dict,
-                        price_dict, precedence_dict, failure_info, scenario, duration_str, working_method, weights)
+        sched = Schedule(ji.job_order, ji.job_dict, start_time, downdur_dict,
+                        price_dict, precedence_dict, failure_info, scenario, 
+                        duration_str, working_method, weights)
         first_schedule_list.append(sched)
     if test == 'PAR':
         for time in add_time_list:
@@ -820,8 +832,9 @@ def config_to_sched_objects(sections):
             if time > 0:
                 ji_temp.add_breaks(time)
             sched = Schedule(ji_temp.job_order, ji_temp.job_dict, start_time, 
-                             product_related_characteristics_dict, down_duration_dict,
-                             price_dict, precedence_dict, failure_info, scenario, duration_str, working_method, weights)
+                             downdur_dict,
+                             price_dict, precedence_dict, failure_info, scenario, 
+                             duration_str, working_method, weights)
             first_schedule_list.append(sched)
     
     # first_schedule = Schedule(ji.job_order, ji.job_dict, start_time, product_related_characteristics_dict, down_duration_dict,

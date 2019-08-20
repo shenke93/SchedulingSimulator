@@ -140,7 +140,6 @@ def main(config):
         if export_paper is True:
             print('Export to {}'.format(export_folder))
             plt.savefig(os.path.join(export_folder, r"best_sched.pdf"))
-            #save_energy_plot(best, energy_price, prod_char, name='Best', folder=export_folder, title='Best schedule (GA) ({:} gen)'.format(gen), colors=namecolor, downtimes=downtimes)
         if interactive:
             plt.show()
 

@@ -83,14 +83,18 @@ def add_breaks(production, maxtime=7200):
     return production
 
 def group_productions(df_task, considered_reasons):
-    group = df_task.groupby('ProductionRequestId').agg({'Quantity':'first','StartDateUTC':'min', 'EndDateUTC':'max', 'ArticleName':'first'}).sort_values(by='StartDateUTC')
+    group = df_task.groupby('ProductionRequestId')\
+            .agg({'Quantity':'last','StartDateUTC':'min', 'EndDateUTC':'max', 'ArticleName':'first'})\
+            .sort_values(by='StartDateUTC')
     #print(len(group))
     # all of the uptime is counted here
-    group_uptime = df_task[df_task.ReasonId.isin([100])].groupby('ProductionRequestId').agg({'Duration':'sum'})
+    group_uptime = df_task[df_task.ReasonId.isin([100])].groupby('ProductionRequestId')\
+                   .agg({'Duration':'sum'})
     group_uptime.columns = ['Uptime']
     group_alltime = df_task.groupby('ProductionRequestId').agg({'Duration':'sum'})
     group_alltime.columns = ['Totaltime']
-    group_downtime = df_task[df_task.ReasonId.isin(considered_reasons)].groupby('ProductionRequestId').agg({'Duration':'sum'})
+    group_downtime = df_task[df_task.ReasonId.isin(considered_reasons)].groupby('ProductionRequestId')\
+                     .agg({'Duration':'sum'})
     group_downtime.columns = ['Downtime']
     group = pd.concat([group_uptime, group_downtime, group_alltime, group], axis=1)
     group.loc[group.ArticleName == 'NONE', 'Uptime'] = group.loc[group.ArticleName == 'NONE', 'Totaltime']
@@ -135,7 +139,7 @@ def save_downtimes(dt, output):
     out.index.name = 'ID'
     out.to_csv(output)
 
-def save_durations(group, output, beforedays=None, afterdays=None, randomfactor=None, ignore_break=True, 
+def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None, ignore_break=True, 
                    choice=' '):
     ''' Ignore_break adds functionality to ignore the type which is breaks '''
     out = group[['Uptime', 'Totaltime', 'Quantity', 'StartDateUTC', 'EndDateUTC', 'ArticleName']].copy()
@@ -167,44 +171,56 @@ def save_durations(group, output, beforedays=None, afterdays=None, randomfactor=
     
     for col in to_convert_dates:
         out[col] = out[col].dt.strftime("%Y-%m-%d %H:%M:%S.%f")
-    out.index.name = 'ID'
-    out.to_csv(output)
+    out.index.name = 'Product'
+    return out
+    #out.to_csv(output)
 
 def generate_energy_per_production(group, file_speed, choice=None, df_merged=None):
-    articlenum = len(group.ArticleName.unique())
-    fs = pd.read_csv(file_speed, index_col=0)
-    fs = fs[fs.ProductDescription.isin(list(group.ArticleName))].reset_index(drop=True)
-    #print(fs.ProductDescription)
-    rand1 = pd.Series(np.random.random_sample((len(fs),)) * 0.2 + 0.5)    # unit price
-    rand2 = pd.Series(np.random.random_sample((len(fs),)) * 2 + 0.5)  # power
-    energycons = pd.concat([pd.Series(fs.ProductDescription), 
+    
+    #articlenum = len(group.ArticleName.unique())
+    #fs = pd.read_csv(file_speed, index_col=0)
+    
+    group = group.merge(file_speed, left_index=True, right_on='ProductionRequestId', how='left')\
+                 .set_index('ProductionRequestId').fillna(1.0)
+    #file_speed = file_speed[file_speed['ProductionRequestId'].isin(group.index.tolist())]\
+    #             .reset_index(drop=True)
+    rand1 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='UnitPrice')    # unit price
+    rand2 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='Power')  # power
+    
+    energycons = pd.concat([group, 
                             rand1,
-                            rand2, 
-                            pd.Series(fs.TargetProductionRate)], axis=1)
-    if choice:
-        assert(df_merged is not None)
-        energycons = add_column_type(energycons, from_col='ProductDescription', choice=choice)
-        energycons = energycons.merge(df_merged[['Availability']], left_on=choice, right_index=True)
-        energycons = energycons.drop(choice, axis=1)
-        energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate', 'Availability']
-    else:
-        energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate']
+                            rand2], axis=1)
+    
+    energycons.loc[energycons['Product']=='NONE', 'UnitPrice'] = 0.0
+    energycons.loc[energycons['Product']=='NONE', 'Power'] = 0.0
+    energycons.loc[energycons['Product']=='NONE', 'Quantity'] = \
+        energycons.loc[energycons['Product']=='NONE', 'Totaltime']
+    
+    # if choice:
+    #     raise NameError('Not defined any more (please fix).')
+    #     assert(df_merged is not None)
+    #     energycons = add_column_type(energycons, from_col='ProductDescription', choice=choice)
+    #     energycons = energycons.merge(df_merged[['Availability']], left_on=choice, right_index=True)
+    #     energycons = energycons.drop(choice, axis=1)
+    #     energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate', 'Availability']
+    # else:
+    #     energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate']
     #energycons.insert(1, 'UnitPrice', 5)
     #energycons.insert(len(energycons.columns), 'TargetProductionRate', 3000)
     #energycons.loc[energycons.Product == 'NONE', 'Power'] = 0
-    if choice:
-        energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
-                                       'Availability': 1}, ignore_index=True)
-        energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
-                                       'Availability': 1}, ignore_index=True)
-    else:
-        energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 
-                                        'Power': 0, 'TargetProductionRate': 1}, ignore_index=True)
-        energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 
-                                        'TargetProductionRate': 1}, ignore_index=True)
-    energycons.loc[:, 'Weight'] = 1
-    energycons.loc[energycons.Product == 'NONE', 'Weight'] = 0
-    energycons.loc[energycons.Product == 'MAINTENANCE', 'Weight'] = 0
+    # if choice:
+    #     energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
+    #                                    'Availability': 1}, ignore_index=True)
+    #     energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
+    #                                    'Availability': 1}, ignore_index=True)
+    #else:
+    #    energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 
+    #                                    'Power': 0, 'TargetProductionRate': 1}, ignore_index=True)
+    #    energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 
+    #                                    'TargetProductionRate': 1}, ignore_index=True)
+    # energycons.loc[:, 'Weight'] = 1
+    # energycons.loc[energycons.Product == 'NONE', 'Weight'] = 0
+    # energycons.loc[energycons.Product == 'MAINTENANCE', 'Weight'] = 0
     return energycons
 
 def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):

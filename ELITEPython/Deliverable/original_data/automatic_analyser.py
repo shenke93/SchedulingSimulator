@@ -15,8 +15,6 @@ from os.path import splitext, join, exists
 from os import mkdir
 import os, sys
 
-
-
 # Define all reasons
 reasons_relative = [7]
 reasons_absolute = [9, 10, 11]
@@ -33,6 +31,14 @@ cu = 300
 assert(set(reasons_absolute_cleaning + reasons_absolute_conversion) == set(reasons_absolute))
 considered_reasons = sorted(list(set(reasons_relative + reasons_absolute + reasons_absolute_conversion
                             + reasons_absolute_cleaning + reasons_break + reasons_availability)))
+
+print_all = True; export_all = True
+turn_off_if = 3600 # seconds # the machine can be turned off if time if larger than this
+break_pauses = None # seconds # breaks will be split in these periods
+
+# turn_off_if has to be smaller than break_pauses in order for this program to run well
+if (turn_off_if is not None) and (break_pauses is not None):
+    assert (turn_off_if < break_pauses), 'Variable break_pauses should be larger then turn_off_if'
 
 def plot_hist(runtime, obs_run, cutoff_perc, fitter):
     # alpha ~ MTBF only if beta close to 1
@@ -51,7 +57,8 @@ def plot_hist(runtime, obs_run, cutoff_perc, fitter):
     c_fail = df_hist['FailCDF']
     p_fail = df_hist['Failures']/len(runtime)
     plt.bar(ran[:-1] + (ran[1]-ran[0])/2, p_fail, width=ran[1]-ran[0], edgecolor='k')
-    plt.bar(ran[:-1] + (ran[1]-ran[0])/2, c_fail, width=ran[1]-ran[0], alpha=0.1, edgecolor='k', yerr=df_hist['Std']**(0.5))
+    plt.bar(ran[:-1] + (ran[1]-ran[0])/2, c_fail, width=ran[1]-ran[0], 
+            alpha=0.1, edgecolor='k', yerr=df_hist['Std']**(0.5))
     plt.xlabel(r'time (h)')
     plt.ylabel(r'F(t)')
     plt.plot(t , fitter.failure_cdf(t), 'r', label=fitter)
@@ -75,12 +82,6 @@ print(__doc__)
 curdir = os.path.dirname(sys.argv[0])
 os.chdir(os.path.dirname(sys.argv[0]))
 
-break_pauses = None # seconds # breaks will be split in these periods
-turn_off_if = 3600 # seconds # the machine can be turned off if time if larger than this
-# turn_off_if has to be smaller than break_pauses in order for this program to run well
-if (turn_off_if is not None) and (break_pauses is not None):
-    assert (turn_off_if < break_pauses), 'Variable break_pauses should be larger then turn_off_if'
-
 # per choice: (inputfile, target production rate per type, type name)
 # outputfolder determined by name of inputfile
 choices = {'prod': ('productionfile.csv', 'prod_speed.csv', 'PastaType'),
@@ -101,9 +102,7 @@ for choice in choices:
     print('Making output folder: ' + outfolder)
     if not exists(outfolder):
         mkdir(outfolder)
-    output_used = join(outfolder,  'outputfile.xml')
-
-    print_all = True; export_all = True
+    output_used = os.path.join(outfolder,  'outputfile.xml')
 
     print('> Starting XML tree')
     if export_all:
@@ -113,11 +112,15 @@ for choice in choices:
     # assert that all reasons have been defined
     # INITIAL CHECKS
     try:
-        assert(set(reasons_relative + reasons_absolute + reasons_break + reasons_availability + reasons_not_considered) == set(list_reasons))
+        assert(set(reasons_relative + reasons_absolute + reasons_break + \
+                   reasons_availability + reasons_not_considered) == set(list_reasons))
     except:
-        print(reasons_relative, reasons_absolute, reasons_break, reasons_availability, reasons_not_considered, list_reasons)
+        print(reasons_relative, reasons_absolute, reasons_break, reasons_availability, 
+              reasons_not_considered, list_reasons)
         raise
     
+
+    print(df.head())
 
     # ADD TYPE COLUMN
     print('Adding type column with type = ' + choice_type)
@@ -126,40 +129,53 @@ for choice in choices:
     # NORMALISE THE BREAKS
     print('Normalising breaks to have a time of '+ str(break_pauses))
     df_task = df.copy()
+    # Set the ReasonId to 100 if there is RunTime
     df_task['ReasonId'] = np.where(df_task.Type == 'RunTime', 100, df_task.ReasonId)
-    df_task = df_task[['ProductionRequestId', 'StartDateUTC' , 'EndDateUTC', 'Duration', 'ReasonId', 'ArticleName', 'Quantity']]
-    #df_task = df_task[df_task['StartDateUTC'] < df_task['StartDateUTC'][0] + pd.to_timedelta('14days')]
-    df_task = df_task[df_task.ArticleName != 'NONE']
-    #df_task = df_task[df_task.ProductionRequestId.isin(df.ProductionRequestId.unique()[10:40])]
-    df_task = add_breaks(df_task, maxtime=break_pauses)
+    df_task = df_task[['ProductionRequestId', 'StartDateUTC' , 'EndDateUTC', 
+                       'Duration', 'ReasonId', 'ArticleName', 'Quantity']]
+    #df_task = df_task[df_task.ArticleName != 'NONE']
+    #df_task = add_breaks(df_task, maxtime=break_pauses)
     df_task = add_column_type(df_task, choice=choice_type)
     df_task.head()
+    
+    print(df_task.head())
+    #import pdb; pdb.set_trace()
 
-    # MERGE PER PRODUCTION
-    from probplot import merge_per_production, merge_per_article
-    df_agg = merge_per_production(df, [choice_type, 'ProductionRequestId', 'Type', 'ReasonId'], considered_reasons)
+    # # MERGE PER PRODUCTION
+    # from probplot import merge_per_production
+    # df_agg = merge_per_production(df, [choice_type, 'ProductionRequestId', 'Type', 'ReasonId'], 
+    #                               considered_reasons)
 
-    # MERGE PER ARTICLE
-    df_merged = merge_per_article(df_agg, choice_type, list_reasons)
+    # # MERGE PER ARTICLE
+    # from probplot import merge_per_article
+    # df_merged = merge_per_article(df_agg, choice_type, list_reasons)
 
     #print(len(df_task))
     print('Saving downtimes')
     group = group_productions(df_task, considered_reasons)
+    
+    print(group.head())
+    #import pdb; pdb.set_trace()
+    
+    
+    
     #print(len(group))
-    group = remove_breaks(group, turn_off_if)
+    #group = remove_breaks(group, turn_off_if)
     downtime = construct_downtimes(df_task, considered_reasons)
     save_downtimes(downtime, join(outfolder, 'historicalDownPeriods.csv'))
 
     print('Saving job info')
-    save_durations(group, os.path.join(outfolder,'generated_jobInfoProd.csv'), beforedays=7, afterdays=7, randomfactor=3, choice=choice_type)
-
+    dur = generate_durations(group, beforedays=7, afterdays=7, randomfactor=3, choice=choice_type)
+    #dur.to_csv(os.path.join(outfolder,'generated_jobInfoProd.csv'))
+    
     print('Generating product related characteristics')
-    energycons = generate_energy_per_production(group, file_speed, choice=choice_type, df_merged=df_merged)
+    energycons = generate_energy_per_production(dur, pd.read_csv(file_speed, index_col=0))#, choice=choice_type, df_merged=df_merged)
     # GENERATE THE MEAN PRODUCT RELATED CHARACTERISTIC
-    tempmean = energycons[(energycons.loc[:, 'Product'] != 'NONE') | (energycons.loc[:, 'Product'] != 'MAINTENANCE')].mean()
-    tempmean['Product'] = 'MEAN'
-    energycons = energycons.append(tempmean, ignore_index=True)
-    energycons.to_csv(join(outfolder, 'generated_productRelatedCharacteristics.csv'), index=False)
+    #tempmean = energycons[(energycons.loc[:, 'Product'] != 'NONE') | (energycons.loc[:, 'Product'] != 'MAINTENANCE')].mean()
+    #tempmean['Product'] = 'MEAN'
+    #energycons = energycons.append(tempmean, ignore_index=True)
+    energycons.to_csv(join(outfolder, 'generated_jobInfoProd.csv'), index=True)
+    
     startdate = group.StartDateUTC.min()
     firstofmonth = (startdate - pd.offsets.MonthBegin(1)).floor('D')
     enddate = group.StartDateUTC.max()
@@ -301,7 +317,7 @@ for choice in choices:
             new_element.text = item
             plot_hist(uptime, obs_up, 99, weib)
             plt.title(f'Probability of failure in time [{item}], reasons: ' +  ', '.join([str(x) for x in reasons_relative]))
-            plt.savefig(f'./figures/fail_prob_{file_used.split(".")[0]}_{item}.png', dpi=2400, layout='tight')
+            plt.savefig(f'./figures/fail_prob_{file_used.split(".")[0]}_{item}.pdf', dpi=2400, layout='tight')
             plt.close()
         weib_dict[item] = weib
 
@@ -325,7 +341,7 @@ for choice in choices:
     print('Exporting the conversion time matrix')
     ct = ConversionTable(df_task, reasons_absolute, 'ProductionRequestId', choice_type)
     ct.generate_conversion_table()
-    mean_conversions = ct.return_median_conversions()
+    median_conversions = ct.return_median_conversions()
     #import pdb; pdb.set_trace()
     #mean_conversions = generate_conversion_table(df_task, reasons_absolute_conversion + reasons_absolute_cleaning, 
     #                                             'ProductionRequestId', choice_type)
@@ -336,7 +352,7 @@ for choice in choices:
 
     print('Adapting the conversion time matrix - Redefining diagonal')
     #new_mc = adapt_standard_matrix(mean_conversions)
-    new_mc = mean_conversions
+    new_mc = median_conversions
 
     if print_all:
         print(new_mc)

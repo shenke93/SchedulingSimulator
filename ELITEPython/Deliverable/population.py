@@ -61,12 +61,11 @@ def floor_dt(dt, delta):
     # return (datetime.min + (q)*delta) if r else dt
 
 class Schedule:
-    def __init__(self, order, job_dict, start_time, prc_dict, downdur_dict, price_dict, precedence_dict, failure_info, 
+    def __init__(self, order, job_dict, start_time, downdur_dict, price_dict, precedence_dict, failure_info, 
                  scenario, duration_str='duration', working_method='historical', weights=standard_weights):
         self.order = order
         self.job_dict = job_dict
         self.start_time = start_time
-        self.prc_dict = prc_dict
         self.downdur_dict = downdur_dict
         self.price_dict = price_dict
         self.precedence_dict = precedence_dict
@@ -82,7 +81,7 @@ class Schedule:
         
     def copy_random(self):
         return_sched = Schedule(np.random.choice(self.order, size=len(self.order), replace=False),
-                                self.job_dict, self.start_time, self.prc_dict, self.downdur_dict, self.price_dict, 
+                                self.job_dict, self.start_time, self.downdur_dict, self.price_dict, 
                                 self.precedence_dict, self.failure_info, self.scenario, 
                                 self.duration_str, self.working_method, 
                                 self.weights)
@@ -90,7 +89,7 @@ class Schedule:
     
     def copy_neworder(self, assign_order):
         return_sched = Schedule(assign_order,
-                                self.job_dict, self.start_time, self.prc_dict, self.downdur_dict, self.price_dict, 
+                                self.job_dict, self.start_time, self.downdur_dict, self.price_dict, 
                                 self.precedence_dict, self.failure_info, self.scenario, 
                                 self.duration_str, self.working_method, 
                                 self.weights)
@@ -113,7 +112,7 @@ class Schedule:
             t_start = t_now
             #t_downtime = 0
             
-            unit1 = self.job_dict.get(item, -1)
+            unit1 = self.job_dict[item]
        
             
             # calculate duration based on quantity or based on expected uptime duration
@@ -122,23 +121,22 @@ class Schedule:
             elif self.duration_str == 'quantity':
                 quantity = unit1['quantity']
                 product_type = unit1['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type)
+                #unit2 = self.prc_dict.get(item)
                 try:
-                    du = quantity / unit2['targetproduction'] # get job duration
+                    du = quantity / unit1['targetproductionrate'] # get job duration
                 except:
-                    print(quantity, unit2['targetproduction'])
+                    #du = quantity
+                    print(quantity, unit1['targetproductionrate'])
                     raise
             else:
                 raise NameError('Faulty value inserted')
 
             if self.working_method == 'historical':
-                raise ValueError('not possible to get failure probability in {} mode'.format(self.working_method))
+                raise ValueError("not possible to get failure probability in '{}' mode".format(self.working_method))
             elif self.working_method == 'expected':
                 product_type = unit1['product'] # get job product type
                 product_cat = unit1['type']
                 # the total duration without failure (ideal case)
-                #print(self.prc_dict)
-                unit2 = self.prc_dict.get(product_type)
                 t_down = 0
                 t_changeover = 0
                 t_clean = 0
@@ -176,8 +174,8 @@ class Schedule:
                         v_start_time = fail_dist.get_t_from_reliability(cur_rel)
                         t_down += t_repair * (fail_dist.failure_cdf(v_start_time+du) - fail_dist.failure_cdf(v_start_time))
 
-                        if 'availability' in unit2:
-                            t_down += float(du) * (1/float(unit2['availability'])- 1)
+                        if 'availability' in unit1:
+                            t_down += float(du) * (1/float(unit1['availability'])- 1)
 
                         #if get_failure_schedule
                         #extend_df = pd.DataFrame(data = ran + v_start_time)
@@ -253,10 +251,10 @@ class Schedule:
             t_start = t_now
             #t_downtime = 0
             
-            unit1 = self.job_dict.get(item, -1)
+            unit1 = self.job_dict[item]
             try:
                 product_type = unit1['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type)
+                #unit2 = self.prc_dict.get(item)
             except:
                 logging.warning("No product related information found for + '" + str(product_type) + "'.")
             
@@ -268,18 +266,19 @@ class Schedule:
                         quantity = unit1['quantity']
                     else:
                         #calculate quantity
-                        quantity = du * unit2['targetproduction']
+                        quantity = du * unit1['targetproductionrate']
                 except:
                     logging.warning('No correct duration information found, go to debugging')
                     import pdb; pdb.set_trace()
             elif self.duration_str == 'quantity':
                 quantity = unit1['quantity']
                 product_type = unit1['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type)
+                #unit2 = self.prc_dict.get(item)
                 try:
-                    du = quantity / unit2['targetproduction'] # get job duration
+                    du = quantity / unit1['targetproductionrate'] # get job duration
                 except:
-                    print(quantity, unit2['targetproduction'])
+                    #du = quantity
+                    print(quantity, unit1['targetproductionrate'])
                     raise
             else:
                 raise NameError('Faulty value inserted: {}'.format(str(self.duration_str)))
@@ -318,7 +317,7 @@ class Schedule:
                 product_type = unit1['product'] # get job product type
                 product_cat = unit1['type']
                 #print(self.prc_dict)
-                unit2 = self.prc_dict.get(product_type)
+                #unit2 = self.prc_dict.get(item)
                 t_down = 0
                 t_changeover = 0
                 t_clean = 0
@@ -358,8 +357,8 @@ class Schedule:
                         v_start_time = fail_dist.get_t_from_reliability(cur_rel)
                         t_down += t_repair * (fail_dist.failure_cdf(v_start_time+duration) - fail_dist.failure_cdf(v_start_time))
 
-                        if 'availability' in unit2:
-                            t_down += float(du) * (1/float(unit2['availability'])- 1)
+                        #if 'availability' in unit2:
+                        #    t_down += float(du) * (1/float(unit2['availability'])- 1)
 
                         # if get_failure_schedule:
                         #     ran = np.arange(v_start_time, v_start_time + duration, 1/3)
@@ -467,7 +466,7 @@ class Schedule:
                 #import pdb; pdb.set_trace()
                 if self.scenario == 1: # using unit cost and production rate
                     # get product info
-                    prc = self.prc_dict.get(product_type, -1)
+                    prc = self.prc_dict.get(item)
                     prc_up = prc['unitprice']
                     prc_tpr = prc['targetproduction']
                     # get total downtime duration
@@ -520,7 +519,7 @@ class Schedule:
         if self.working_method == 'expected':
             for item in detailed_dict:
                 product_type = detailed_dict[item]['product']
-                prc = self.prc_dict.get(product_type, -1)
+                prc = self.prc_dict.get(item)
                 prc_av = prc['availability']
                 down_duration = detailed_dict[item]['down_duration']
                 loss = 0; virtual_loss = 0
@@ -615,22 +614,25 @@ class Schedule:
 
         time_dict = self.time_dict
         price_dict = self.price_dict
-        prc_dict = self.prc_dict
+        #prc_dict = self.prc_dict
 
         for item in time_dict:
             job_en_cost = 0
 
-            product_type = time_dict[item]['product'] # get job product type
+            unit1 = self.job_dict[item]
+            product_type = unit1['product'] # get job product type
             #if product_type == 'MAINTENANCE': product_type = 'NONE'
-            unit2 = prc_dict.get(product_type, -1)
+            #unit2 = prc_dict.get(str(item))
             try:
-                power = unit2['power']
+                power = unit1['power']
             except:
+                # doesn't occur within the database; assume it is a break
+                #power = 0
                 print(product_type)
                 raise
 
-            t_start = time_dict[item]['start']
-            t_end = time_dict[item]['end']
+            t_start = unit1['start']
+            t_end = unit1['end']
 
             t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start right border
             t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
@@ -719,13 +721,14 @@ class Schedule:
                     # first_product = self.job_dict[item1]['product']
                     # prc_up = self.prc_dict[first_product]['unitprice']
                     # prc_tp = self.prc_dict[first_product]['targetproduction']
-                    if 'MEAN' in self.prc_dict:
+                    if False:
                         mean = self.prc_dict.get('MEAN', -1)
                         mean_up = mean['unitprice']; mean_tpr = mean['targetproduction']
                     else:
-                        temp_df = pd.DataFrame.from_dict(self.prc_dict).T
-                        temp_mean = temp_df.mean(axis=0)
-                        mean_up = temp_mean['unitprice']; mean_tpr = temp_mean['targetproduction']
+                        temp_df = pd.DataFrame.from_dict(self.job_dict).T
+                        #temp_mean = temp_df.mean(axis=0)
+                        mean_up = temp_df['unitprice'].mean()
+                        mean_tpr = temp_df['targetproductionrate'].mean()
                     total_availability = conversion_time * mean_up * mean_tpr
                     if detail:
                         conversion_cost.append(total_availability)
@@ -799,7 +802,10 @@ class Schedule:
             count = True
             if item in self.job_dict: # this function eliminates all maintenance jobs
                 product = self.time_dict[item]['product']
-                weight = self.prc_dict[product]['weight']
+                try:
+                    weight = self.prc_dict[item]['weight']
+                except:
+                    weight = 0
                 flowtime = weight * (self.time_dict[item]['end'] - t_now).total_seconds() / 3600
                 #if (product != 'NONE') and (product != 'MAINTENANCE'):
                 #    enddate = self.time_dict[item]['end']
