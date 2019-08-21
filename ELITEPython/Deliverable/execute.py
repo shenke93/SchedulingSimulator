@@ -272,6 +272,10 @@ def main(config):
     logging.shutdown()
     
 if __name__ == "__main__":
+    
+    curdir = os.path.dirname(sys.argv[0])
+    os.chdir(curdir)
+    
     # Read the config file
     if os.path.exists(configFile):
             config = read_config_file(configFile)
@@ -285,8 +289,6 @@ if __name__ == "__main__":
             os.makedirs(export_folder)
     start_logging(os.path.join(export_folder, 'out.log'))
     logging.info('Starting logging')
-    
-    
     
     main(config)
 
