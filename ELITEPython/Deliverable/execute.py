@@ -119,12 +119,12 @@ def main(config):
 
         # Make the columns be the correct format for plotting
         best = best[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
-        best.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Power']
+        best.columns = ['Start', 'End', 'TotalTime', 'ArticleName', 'Type', 'Power']
 
         if export_paper is True:
             print('Export to {}'.format(export_folder))
             fig = plt.figure(figsize=(15, 7), dpi=2400)
-            plot_gantt(best, namecolor, namecolor, startdate='StartDateUTC', enddate='EndDateUTC', downtimes=downtimes)
+            plot_gantt(best, namecolor, namecolor, startdate='Start', enddate='End', downtimes=downtimes)
             plt.title('Gantt plot')
             plt.savefig(os.path.join(export_folder, r"gantt_plot.pdf"))
             plt.close()
@@ -136,7 +136,7 @@ def main(config):
         show_energy_plot(best, energy_price, 
                          'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()), 
                          namecolor, downtimes=downtimes, failure_rate=best_failure,
-                         startdate='StartDateUTC', enddate='EndDateUTC')
+                         startdate='Start', enddate='End')
         if export:
             print('Export to {}'.format(export_folder))
             plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
@@ -147,12 +147,12 @@ def main(config):
             plt.show()
 
         orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
-        orig.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Power']
+        orig.columns = ['Start', 'End', 'TotalTime', 'ArticleName', 'Type', 'Power']
 
         show_energy_plot(orig, energy_price,
                          'Original schedule - Fitness {:.1f} €'.format(orig_sched.get_fitness()),
                          namecolor, downtimes=downtimes, failure_rate=orig_failure,
-                         startdate='StartDateUTC', enddate='EndDateUTC')
+                         startdate='Start', enddate='End')
         if export:
             plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
         if export_paper is True:
@@ -217,4 +217,4 @@ if __name__ == "__main__":
     start_logging(os.path.join(export_folder, 'out.log'))
     logging.info('Starting logging')
 
-    main(config)   
+    main(config)

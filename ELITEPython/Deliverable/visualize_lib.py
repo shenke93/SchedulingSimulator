@@ -200,7 +200,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName',
     # plot the energy consumption
     fig.add_subplot(5, 1, 2)
     plt.title('Energy consumption')
-    timetasks = tasks[['StartDateUTC' ,'Power']].set_index('StartDateUTC')
+    timetasks = tasks[[startdate ,'Power']].set_index(startdate)
     plt.plot(timetasks, drawstyle='steps-post')
     plt.ylim(bottom=-timetasks['Power'].max()*0.05, top=timetasks['Power'].max()*1.05)
     plt.xlim(timerange[0], timerange[-1])
@@ -209,6 +209,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName',
     if failure_rate is not None:
         fig.add_subplot(5, 1, 3)
         plt.title('Failure rate')
+        failure_rate = failure_rate.replace('NaN', np.nan)
         plt.plot(failure_rate, drawstyle='steps-post')
         plt.xlim(timerange[0], timerange[-1])
         plt.ylim(bottom=-0.05, top=1.05)

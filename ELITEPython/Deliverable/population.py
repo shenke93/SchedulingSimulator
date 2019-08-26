@@ -639,7 +639,7 @@ class Schedule:
         for item in time_dict:
             job_en_cost = 0
 
-            unit1 = self.job_dict[item]
+            unit1 = self.time_dict[item]
             product_type = unit1['product'] # get job product type
             #if product_type == 'MAINTENANCE': product_type = 'NONE'
             #unit2 = prc_dict.get(str(item))
