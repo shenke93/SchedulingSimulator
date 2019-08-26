@@ -90,19 +90,20 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     plt.xlim(timerange.min(), timerange.max())
     return label
 
-def calculate_energy_table(df_tasks, df_cost, df_cons):
+def calculate_energy_table(df_tasks, df_cost):
     lastenddate = df_tasks.iloc[-1]['EndDateUTC']
-    new_row = pd.Series({'ProductionRequestId': -1000,
-                     'StartDateUTC': lastenddate,
+    new_row = pd.Series({'StartDateUTC': lastenddate,
                      'EndDateUTC': lastenddate + pd.Timedelta(1, 's'),
-                     'Duration': 1,
-                     'ReasonId': 0,
-                     'ArticleName': 'NONE'})
+                     'ArticleName': 'NONE',
+                     'Type': 'NONE'})
     df_tasks = df_tasks.append(new_row, ignore_index=True)
+    df_tasks = df_tasks.set_index('StartDateUTC', drop=True)
     #print(df_tasks)
 
     # Set timedateindex
-    df_tasks = df_tasks.merge(df_cons, how='left', left_on='ArticleName', right_on='Product').set_index('StartDateUTC', drop=True)
+    #df_tasks = df_tasks.merge(df_cons, how='left', left_on='ArticleName', right_on='Product').set_index('StartDateUTC', drop=True)
+    
+    import pdb; pdb.set_trace()
 
     # Concatenate the list of tasks and the energy cost on axis 0
     out_table = pd.concat([df_tasks, df_cost]).sort_index()
@@ -171,7 +172,7 @@ def calculate_energy_table(df_tasks, df_cost, df_cons):
 #     else:
 #         return total_sum
 
-def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleName', 
+def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', 
                      downtimes=None, failure_rate=None, startdate='Start', enddate='End'):
     ''' Expects a few tables with the following columns:
     dataframe tasks with columns:
@@ -179,8 +180,9 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
         -  EndDateUTC
         -  TotalTime (in hours)
         -  ArticleName
-        -  Type'''
-    table = calculate_energy_table(tasks, prices, energy)
+        -  Type
+    '''
+    #table = calculate_energy_table(tasks, prices)
 
     fig = plt.figure(dpi=50, figsize=(20, 15))
     # first plot the gantt chart and its title
@@ -191,18 +193,18 @@ def show_energy_plot(tasks, prices, energy, title='Schedule', colors='ArticleNam
     # now plot the energy prices
     ax2 = fig.add_subplot(5, 1, 1)
     plt.title('Energy price')
+    plt.plot(prices['Euro'], drawstyle='steps-post')
+    plt.ylim(bottom=-prices['Euro'].max()*0.05, top=prices['Euro'].max()*1.05)
     plt.xlim(timerange[0], timerange[-1])
-    plt.plot(table['Euro'], drawstyle='steps-post')
-    plt.ylim(bottom=-table['Euro'].max()*0.05, top=table['Euro'].max()*1.05)
     
     # plot the energy consumption
     fig.add_subplot(5, 1, 2)
     plt.title('Energy consumption')
+    timetasks = tasks[['StartDateUTC' ,'Power']].set_index('StartDateUTC')
+    plt.plot(timetasks, drawstyle='steps-post')
+    plt.ylim(bottom=-timetasks['Power'].max()*0.05, top=timetasks['Power'].max()*1.05)
     plt.xlim(timerange[0], timerange[-1])
 
-    plt.plot(table.Power, drawstyle='steps-post')
-    plt.ylim(bottom=-table.Power.max()*0.05, top=table.Power.max()*1.05)
-    
     # plot the failure rate if available
     if failure_rate is not None:
         fig.add_subplot(5, 1, 3)

@@ -97,7 +97,8 @@ def read_price(priceFile):
             for row in reader:
                 price_dict.update({datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"):float(row['Euro'])})
     except:
-        print("Unexpected error when reading energy price:", sys.exc_info()[0]) 
+        print("Unexpected error when reading energy price:")
+        raise
         exit()
     return price_dict
 
@@ -448,9 +449,10 @@ def make_df(timing_dict):
     #all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration', 'Cleaning_duration']
     df = pd.DataFrame.from_dict(timing_dict, orient='index')
     df = df.rename(columns={'start': 'Start', 'end':'End', 'totaltime': 'Totaltime', 'uptime': 'Uptime',  
-                                       'product': 'Product', 'type': 'Type', 'releasedate': 'Releasedate', 'duedate': 'Duedate', 'quantity': 'Quantity'})
+                                       'product': 'Product', 'type': 'Type', 'releasedate': 'Releasedate', 'duedate': 'Duedate', 'quantity': 'Quantity',
+                                       'unitprice': 'UnitPrice', 'power': 'Power'})
     df = df.reindex(list(timing_dict))
-    df = df[['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product', 'Type', 'Releasedate', 'Duedate']]
+    df = df[['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product', 'Type', 'Releasedate', 'Duedate', 'UnitPrice', 'Power']]
     return df
 
 class writer :
@@ -470,7 +472,7 @@ class writer :
 def read_failure_info(file):
     '''
     Read a certain failure file in XML format.
-    Throw errors if in a wrong format.
+    Raise errors if in a wrong format.
     '''
     import xml.etree.ElementTree as ET
     tree = ET.parse(file)
@@ -521,13 +523,6 @@ def read_failure_info(file):
 
     failure_info = (fail_dict, rep_dist, mean, maint_time, repair_time, conversion_times, cleaning_time)
     return failure_info
-
-
-class SchedulerInitiator(object):
-    def __init__(configfile):
-        config_entries = read_config_file(configfile)
-        
-        
 
 
 def my_config_parser(in_dict, config_section, out_dict={}):
@@ -601,7 +596,7 @@ def read_config_file(path):
         } 
         return_sections['input_config'] = my_config_parser(input_actions, this_section)
     else:
-        raise NameError('No input section found!')
+        raise NameError("No input section 'input-config' found!")
 
     if 'start-end' in sections:
         start_end = {}
@@ -618,7 +613,7 @@ def read_config_file(path):
                                 config.getint('start', 'start_minute'), config.getint('start', 'start_second')) # Date range of jobs to choose
         start_end['end_time'] = None
     else:
-        raise NameError('No section with start date found!')
+        raise NameError("No section with start date 'start-end' or 'start' found!")
     return_sections['start_end'] = start_end
 
     if 'output-config' in sections:
@@ -641,7 +636,7 @@ def read_config_file(path):
         
         return_sections['output_config'] = my_config_parser(output_actions, this_section)
     else:
-        raise NameError('No output section found!')
+        raise NameError("No output section 'output-config' found!")
 
     if 'scenario-config' in sections:
         scenario_config = {}
@@ -714,7 +709,7 @@ def read_config_file(path):
         
         return_sections['scenario_config'] = scenario_config
     else:
-        raise NameError('No configuration section found!')
+        raise NameError("No configuration section 'scenario-config' found!")
 
     return return_sections
 

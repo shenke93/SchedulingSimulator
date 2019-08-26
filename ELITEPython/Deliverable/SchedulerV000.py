@@ -759,32 +759,32 @@ def run_opt(original_schedule, settings, start_time=None):
     original_cost = original_schedule.get_fitness()
     
     #print(duration_str)
-    result_dict = candidate_schedule.get_time()
+    #result_dict = candidate_schedule.get_time()
     #result_dict = visualize(candidate_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, 
     #                        down_duration_dict, hourly_failure_dict, energy_on=True, failure_on=True, duration_str=duration_str, working_method=working_method)
     #import pdb; pdb.set_trace()
-    result_dict_origin = original_schedule.get_time()
+    #result_dict_origin = original_schedule.get_time()
     #result_dict_origin = visualize(original_schedule, first_start_time, job_dict_new, price_dict_new, product_related_characteristics_dict, 
     #                               down_duration_dict, hourly_failure_dict, energy_on=True, failure_on=True, duration_str=duration_str, working_method=working_method)
 #     print("Visualize_dict_origin:", result_dict)
 #     print("Down_duration", down_duration_dict)
 
 
-    # Output for visualization
-    with open('executionRecords.csv', 'w', newline='\n') as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in result_dict.items():
-            writer.writerow([key, value['start'], value['end'], value['totaltime']])
+    # # Output for visualization
+    # with open('executionRecords.csv', 'w', newline='\n') as csv_file:
+    #     writer = csv.writer(csv_file)
+    #     for key, value in result_dict.items():
+    #         writer.writerow([key, value['start'], value['end'], value['totaltime']])
             
-    with open('originalRecords.csv', 'w', newline='\n') as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in result_dict_origin.items():
-            writer.writerow([key, value['start'], value['end'], value['totaltime']])
+    # with open('originalRecords.csv', 'w', newline='\n') as csv_file:
+    #     writer = csv.writer(csv_file)
+    #     for key, value in result_dict_origin.items():
+    #         writer.writerow([key, value['start'], value['end'], value['totaltime']])
             
-    with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in original_schedule.downdur_dict.items():
-            writer.writerow([key, value[0], value[1]])       
+    # with open('downDurationRecords.csv', 'w', newline='\n') as csv_file:
+    #     writer = csv.writer(csv_file)
+    #     for key, value in original_schedule.downdur_dict.items():
+    #         writer.writerow([key, value[0], value[1]])       
     
     return total_cost, original_cost, candidate_schedule, original_schedule, lists_result, lists_result_no_constraint
 

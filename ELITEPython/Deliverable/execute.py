@@ -20,7 +20,7 @@ from helperfunctions import *
 #pathname = os.path.dirname(sys.argv[0])
 os.chdir(os.path.dirname(sys.argv[0]))
 
-CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config_pareto.ini')
+CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config.ini')
 
 def main(config):
     '''
@@ -84,6 +84,7 @@ def main(config):
         # make dataframes from dicts
         best = make_df(result_dict)
         orig = make_df(result_dict_origin)
+        
         # output files to csv's
         orig.to_csv(os.path.join(export_folder, config['output_config']['output_init']))
         best.to_csv(os.path.join(export_folder, config['output_config']['output_final']))
@@ -117,8 +118,8 @@ def main(config):
             namecolor='ArticleName'
 
         # Make the columns be the correct format for plotting
-        best = best[['Start', 'End', 'Totaltime', 'Product', 'Type']]
-        best.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
+        best = best[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
+        best.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Power']
 
         if export_paper is True:
             print('Export to {}'.format(export_folder))
@@ -129,11 +130,13 @@ def main(config):
             plt.close()
 
         energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
-        prod_char = pd.read_csv(config['input_config']['prc_file'])
+        #prod_char = pd.read_csv(config['input_config']['prc_file'])
 
-        show_energy_plot(best, energy_price, prod_char, 'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()), 
-                            namecolor, downtimes=downtimes, failure_rate=best_failure,
-                            startdate='StartDateUTC', enddate='EndDateUTC')
+
+        show_energy_plot(best, energy_price, 
+                         'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()), 
+                         namecolor, downtimes=downtimes, failure_rate=best_failure,
+                         startdate='StartDateUTC', enddate='EndDateUTC')
         if export:
             print('Export to {}'.format(export_folder))
             plt.savefig(os.path.join(export_folder, r"best_sched.png"), dpi=300)
@@ -143,11 +146,13 @@ def main(config):
         if interactive:
             plt.show()
 
-        orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type']]
-        orig.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type']
-        show_energy_plot(orig, energy_price, prod_char, 'Original schedule - Fitness {:.1f} €'.format(orig_sched.get_fitness()), 
-                            namecolor, downtimes=downtimes, failure_rate=orig_failure,
-                        startdate='StartDateUTC', enddate='EndDateUTC')
+        orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
+        orig.columns = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Power']
+
+        show_energy_plot(orig, energy_price,
+                         'Original schedule - Fitness {:.1f} €'.format(orig_sched.get_fitness()),
+                         namecolor, downtimes=downtimes, failure_rate=orig_failure,
+                         startdate='StartDateUTC', enddate='EndDateUTC')
         if export:
             plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)
         if export_paper is True:
