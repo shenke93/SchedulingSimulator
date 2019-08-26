@@ -230,6 +230,7 @@ def executeNormal():
                         import shutil
                         shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
 
+
 def executeUrgentJobs():
     # Reuse read_jobs to read urgent job information
     print_ul('Scheduler v0.0.0 for urgent jobs')
@@ -516,22 +517,30 @@ def executeSuddenBreakdowns():
                                 plt.show()
                         
                         plt.clf()
+                        
+                        # Return or processing best_sched, orig_sched
+#                         return best_sched, orig_sched
+                        
                 else:
                     print("No matching method!")     
                     
                 if export:
                         import shutil
                         shutil.copy2('config.ini', os.path.join(export_folder, r"config_bu.ini"))
-   
- 
     
 if __name__ == "__main__":
     while True:
-        executeNormal()
+        n = input('Normal execution?')
+        if n.strip() in ['Yes', 'yes', 'Y', 'y']:
+            executeNormal()
+            
         print('Dealing with sudden breakdown?')
         n = input("Your answer:")
         if n.strip() in ['Yes', 'yes', 'Y', 'y']:
             executeSuddenBreakdowns()
+            # Cut the candidate schedule of the original schedule
+            # Calculate the original cost
+                
         print('Dealing with urgent jobs?')
         n = input("Your answer:")
         if n.strip() in ['Yes', 'yes', 'Y', 'y']: 

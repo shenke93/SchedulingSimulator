@@ -2042,8 +2042,8 @@ def run_opt_breakdowns(start_time, end_time, down_duration_file, failure_file, p
                 
     breakdown_timestamp = read_breakdown_record(breakdown_record_file)
    
-   
-    job_dict_new = make_new_jobs_dict_breakdown(job_dict_origin, breakdown_timestamp)
+    # Find the jobs after the breakdown timestamp: all executed jobs have been removed from the waiting list
+    job_dict_new = make_new_jobs_dict_breakdown(job_dict_origin, breakdown_timestamp) # Return this one?
     # TODO: change
 #     print("failure_dict", failure_dict)
 #     exit()
