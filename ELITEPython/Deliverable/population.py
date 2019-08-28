@@ -77,9 +77,11 @@ class Schedule:
         self.time_dict = self.get_time()
         
         temp_df = pd.DataFrame.from_dict(self.job_dict).T
+        temp_df = temp_df[temp_df['type'] != "NONE"]
         #temp_mean = temp_df.mean(axis=0)
-        self.mean_up = temp_df['unitprice'].mean()
-        self.mean_tpr = temp_df['targetproductionrate'].mean()
+        
+        self.mean_up = failure_info[7]
+        self.mean_tpr = failure_info[8]
         
     def set_starttime(self, time):
         self.start_time = time
@@ -422,7 +424,7 @@ class Schedule:
                                                       [t_start, t_end, du + t_down + t_changeover + t_clean, 
                                                        du, unit1['product'], unit1['type'],
                                                        t_down, t_changeover, t_clean, releasedate, duedate, quantity,
-                                                       unit1['unitprice'], unit1['power']]))
+                                                       unit1.get('unitprice', 0), unit1.get('power', 0)]))
                                       })
             except:
                 # Start a debugger to find out what the cause was

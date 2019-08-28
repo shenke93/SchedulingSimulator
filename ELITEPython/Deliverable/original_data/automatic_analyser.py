@@ -43,7 +43,7 @@ if (turn_off_if is not None) and (break_pauses is not None):
 def plot_hist(runtime, obs_run, cutoff_perc, fitter):
     # alpha ~ MTBF only if beta close to 1
     from probdist import make_hist_frame, sturges_rule
-    from lifelines import KaplanMeierFitter
+    #from lifelines import KaplanMeierFitter
     #kmf = KaplanMeierFitter()
     numbins = sturges_rule(len(runtime))
 
@@ -79,8 +79,9 @@ from functions_auto_analyser import *
 
 print(__doc__)
 
-curdir = os.path.dirname(sys.argv[0])
-os.chdir(os.path.dirname(sys.argv[0]))
+curdir = os.path.abspath(os.path.dirname(sys.argv[0]))
+print(curdir)
+os.chdir(curdir)
 
 # per choice: (inputfile, target production rate per type, type name)
 # outputfolder determined by name of inputfile
@@ -170,11 +171,19 @@ for choice in choices:
     
     print('Generating product related characteristics')
     energycons = generate_energy_per_production(dur, pd.read_csv(file_speed, index_col=0))#, choice=choice_type, df_merged=df_merged)
-    # GENERATE THE MEAN PRODUCT RELATED CHARACTERISTIC
-    #tempmean = energycons[(energycons.loc[:, 'Product'] != 'NONE') | (energycons.loc[:, 'Product'] != 'MAINTENANCE')].mean()
-    #tempmean['Product'] = 'MEAN'
-    #energycons = energycons.append(tempmean, ignore_index=True)
+    
+
     energycons.to_csv(join(outfolder, 'generated_jobInfoProd.csv'), index=True)
+    
+    # GENERATE THE MEAN PRODUCT RELATED CHARACTERISTIC
+    if export_all:
+        tempmean = energycons[(energycons.loc[:, 'Product'] != 'NONE') & (energycons.loc[:, 'Product'] != 'MAINTENANCE')].mean()
+        mean_unitprice = float(tempmean['UnitPrice'].mean())
+        mean_power = float(tempmean['Power'].mean())
+        mean_up = ET.SubElement(root, 'mean_unitprice')
+        mean_up.text = str(mean_unitprice)
+        mean_pw = ET.SubElement(root, 'mean_power')
+        mean_pw.text = str(mean_power)
     
     startdate = group.StartDateUTC.min()
     firstofmonth = (startdate - pd.offsets.MonthBegin(1)).floor('D')
@@ -209,6 +218,7 @@ for choice in choices:
     except:
         print(uptime)
         raise
+    
     if print_all:
         print(weib)
     if export_all:
@@ -317,7 +327,9 @@ for choice in choices:
             new_element.text = item
             plot_hist(uptime, obs_up, 99, weib)
             plt.title(f'Probability of failure in time [{item}], reasons: ' +  ', '.join([str(x) for x in reasons_relative]))
-            plt.savefig(f'./figures/fail_prob_{file_used.split(".")[0]}_{item}.pdf', dpi=2400, layout='tight')
+            if not os.path.exists(join(outfolder, 'figures')):
+                os.mkdir(join(outfolder, 'figures'))
+            plt.savefig(join(outfolder, f'figures/fail_prob_{file_used.split(".")[0]}_{item}.pdf'), dpi=2400, layout='tight')
             plt.close()
         weib_dict[item] = weib
 

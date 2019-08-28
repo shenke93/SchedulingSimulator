@@ -519,9 +519,13 @@ def read_failure_info(file):
         cleaning_file = root.find('files').find('cleaning_time').text
         cleaning_time = pd.read_csv(os.path.join(os.path.split(file)[0], cleaning_file), index_col = 0)
     else:
-        cleaning_time = None       
+        cleaning_time = None
+    
+    mean_unitprice = float(root.find('mean_unitprice').text)
+    mean_power = float(root.find('mean_power').text)
 
-    failure_info = (fail_dict, rep_dist, mean, maint_time, repair_time, conversion_times, cleaning_time)
+    failure_info = (fail_dict, rep_dist, mean, maint_time, repair_time, conversion_times, cleaning_time,
+                    mean_unitprice, mean_power)
     return failure_info
 
 
