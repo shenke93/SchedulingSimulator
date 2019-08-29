@@ -799,8 +799,7 @@ def config_to_sched_objects(sections):
         #job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
         ji.limit_range(start_time, end_time)
     elif (start_time != None):
-        #job_dict_new = read_jobs(job_file)
-        pass
+        ji.limit_range(start_time)
     else:
         raise NameError('No start time found!')
     

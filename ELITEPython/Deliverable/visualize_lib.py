@@ -13,16 +13,25 @@ import os
 
 def show_ga_results(result):
     #fig, ax = plt.subplots(figsize=(6, 4))
+    #result_rolling = result.rolling(int(len(result)/20)).mean()
+    #result_rolling.columns = [c + '_rolling_mean' for c in result_rolling.columns]
     result.plot()
     ax = plt.gca()
     ax.set(title='Fitness evolution graph', xlabel='# iterations', ylabel='Predicted cost')
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.legend()
-    return plt.gcf()
+    #return plt.gcf()
 
 def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', enddate='EndDateUTC', order=False, downtimes=None):
-    ''' Reason_str determines which tasks get a separate color
-    Articlename determined is a task is put in a separate line
+    ''' 
+    Make a gantt plot of the production file
+    - df_task is the pandas DataFrame
+    - Reason_str determines which tasks get a separate color
+    - Articlename determines if a task is put in a separate line
+    - Startdate determines the start date of a production
+    - Enddate determines the end date of a production
+    - Order can give a custom order to the productions
+    - Downtimes is a dataframe indicating downtimes of the production line
     '''
     df_task = df_task.reset_index(drop=True) # make index unique (necessary)
 
@@ -172,7 +181,7 @@ def calculate_energy_table(df_tasks, df_cost):
 #     else:
 #         return total_sum
 
-def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', 
+def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', productions='ArticleName',
                      downtimes=None, failure_rate=None, startdate='Start', enddate='End'):
     ''' Expects a few tables with the following columns:
     dataframe tasks with columns:
@@ -187,7 +196,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName',
     fig = plt.figure(dpi=50, figsize=(20, 15))
     # first plot the gantt chart and its title
     ax1 = fig.add_subplot(5, 1, (4,5))
-    timerange = plot_gantt(tasks, colors, 'ArticleName', downtimes=downtimes, startdate=startdate, enddate=enddate)
+    timerange = plot_gantt(tasks, colors, productions, downtimes=downtimes, startdate=startdate, enddate=enddate)
     plt.title(title, y=1.15)
 
     # now plot the energy prices

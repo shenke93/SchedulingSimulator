@@ -56,7 +56,7 @@ def main(config):
         logging.info('Execution finished.')
         
         # Show iteration results
-        fig = show_ga_results(lists_result)
+        show_ga_results(lists_result)
         if export:
             out_df = lists_result
             out_df.to_csv(os.path.join(export_folder, 'iterations_results.csv'))
@@ -66,7 +66,7 @@ def main(config):
         if interactive:
             plt.show()
             
-        fig = show_ga_results(list_result_nc)
+        show_ga_results(list_result_nc)
         if export:
             out_df = list_result_nc
             out_df.to_csv(os.path.join(export_folder, 'iterations_results_noconstraintcost.csv'))
@@ -119,12 +119,11 @@ def main(config):
 
         # Make the columns be the correct format for plotting
         best = best[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
-        best.columns = ['Start', 'End', 'TotalTime', 'ArticleName', 'Type', 'Power']
 
         if export_paper is True:
             print('Export to {}'.format(export_folder))
             fig = plt.figure(figsize=(15, 7), dpi=2400)
-            plot_gantt(best, namecolor, namecolor, startdate='Start', enddate='End', downtimes=downtimes)
+            plot_gantt(best, 'Type', 'Product', startdate='Start', enddate='End', downtimes=downtimes)
             plt.title('Gantt plot')
             plt.savefig(os.path.join(export_folder, r"gantt_plot.pdf"))
             plt.close()
@@ -135,7 +134,7 @@ def main(config):
 
         show_energy_plot(best, energy_price, 
                          'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()), 
-                         namecolor, downtimes=downtimes, failure_rate=best_failure,
+                         colors='Type', productions='Product', downtimes=downtimes, failure_rate=best_failure,
                          startdate='Start', enddate='End')
         if export:
             print('Export to {}'.format(export_folder))
@@ -147,11 +146,10 @@ def main(config):
             plt.show()
 
         orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
-        orig.columns = ['Start', 'End', 'TotalTime', 'ArticleName', 'Type', 'Power']
 
         show_energy_plot(orig, energy_price,
                          'Original schedule - Fitness {:.1f} €'.format(orig_sched.get_fitness()),
-                         namecolor, downtimes=downtimes, failure_rate=orig_failure,
+                         colors='Type', productions='Product', downtimes=downtimes, failure_rate=orig_failure,
                          startdate='Start', enddate='End')
         if export:
             plt.savefig(os.path.join(export_folder, r"orig_sched.png"), dpi=300)

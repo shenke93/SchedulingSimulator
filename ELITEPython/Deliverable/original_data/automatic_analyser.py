@@ -317,7 +317,7 @@ for choice in choices:
             new_element.text = item
             plot_hist(uptime, obs_up, 99, weib)
             plt.title(f'Probability of failure in time [{item}], reasons: ' +  ', '.join([str(x) for x in reasons_relative]))
-            plt.savefig(f'./figures/fail_prob_{file_used.split(".")[0]}_{item}.pdf', dpi=2400, layout='tight')
+            plt.savefig(f'./{file_used.split(".")[0]}/figures/fail_prob_{file_used.split(".")[0]}_{item}.pdf', dpi=2400, layout='tight')
             plt.close()
         weib_dict[item] = weib
 
@@ -353,6 +353,33 @@ for choice in choices:
     print('Adapting the conversion time matrix - Redefining diagonal')
     #new_mc = adapt_standard_matrix(mean_conversions)
     new_mc = median_conversions
+    
+    def fillna_matrix(mat):
+        mat.loc['NONE', 'NONE'] = 0
+        
+        if mat.loc[:, 'NONE'].isnull().any():
+            import warnings
+            warnings.warn('There are null values in the NONE column')
+            for i in mat.index:
+                if np.isnan(mat.loc[i, 'NONE']):
+                    mat.loc[i, 'NONE'] = (mat.loc[:, 'NONE']).max()
+                    
+        if mat.loc['NONE', :].isnull().any():
+            import warnings
+            warnings.warn('There are null values in the NONE row')
+            for i in mat.columns:
+                if np.isnan(mat.loc['NONE', i]):
+                    mat.loc['NONE', i] = (mat.loc['NONE', :]).max()
+        
+        assert not mat.loc[:, 'NONE'].isnull().any(), 'Null values in the column'
+        assert not mat.loc['NONE', :].isnull().any(), 'Null values in the row'
+        from itertools import product
+        for i, j in product(mat.index, mat.columns):
+            if (i == j) and np.isnan(mat.loc[i, j]):
+                mat.loc[i, j] = mat.loc[i, 'NONE'] + mat.loc['NONE', j] 
+            elif (i!=j) and np.isnan(mat.loc[i, j]):
+                mat.loc[i, j] = (mat.loc[i, 'NONE'] + mat.loc['NONE', j]) * 2
+        return mat
 
     if print_all:
         print(new_mc)
@@ -361,30 +388,8 @@ for choice in choices:
         new_mc.to_csv(splitext(output_used)[0] + '_conversions_rough.csv')
         newname = splitext(output_used)[0] + '_conversions.csv'
         # fill the nan values with another value from the data
-        new_mc.loc['NONE', 'NONE'] = 0
+        new_mc = fillna_matrix(new_mc)
         
-        if new_mc.loc[:, 'NONE'].isnull().any():
-            import warnings
-            warnings.warn('There are null values in the NONE column')
-            for i in new_mc.index:
-                if np.isnan(new_mc.loc[i, 'NONE']):
-                    new_mc.loc[i, 'NONE'] = (new_mc.loc[:, 'NONE']).max()
-                    
-        if new_mc.loc['NONE', :].isnull().any():
-            import warnings
-            warnings.warn('There are null values in the NONE row')
-            for i in new_mc.columns:
-                if np.isnan(new_mc.loc['NONE', i]):
-                    new_mc.loc['NONE', i] = (new_mc.loc['NONE', :]).max()
-        
-        assert not new_mc.loc[:, 'NONE'].isnull().any(), 'Null values in the column'
-        assert not new_mc.loc['NONE', :].isnull().any(), 'Null values in the row'
-        from itertools import product
-        for i, j in product(new_mc.index, new_mc.columns):
-            if (i == j) and np.isnan(new_mc.loc[i, j]):
-                new_mc.loc[i, j] = new_mc.loc[i, 'NONE'] + new_mc.loc['NONE', j] 
-            elif np.isnan(new_mc.loc[i, j]):
-                new_mc.loc[i, j] = (new_mc.loc[i, 'NONE'] + new_mc.loc['NONE', j]) * 2
         #temp = np.array(new_mc).flatten()
         #temp = temp[~np.isnan(temp)]
         #mean = np.max(temp) * 2

@@ -186,13 +186,16 @@ def generate_energy_per_production(group, file_speed, choice=None, df_merged=Non
     #             .reset_index(drop=True)
     rand1 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='UnitPrice')    # unit price
     rand2 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='Power')  # power
+    rand3 = pd.Series(np.random.randint(1, 10, (len(group),)), index=group.index, name='Weight') #weights
     
     energycons = pd.concat([group, 
                             rand1,
-                            rand2], axis=1)
+                            rand2,
+                            rand3], axis=1)
     
     energycons.loc[energycons['Product']=='NONE', 'UnitPrice'] = 0.0
     energycons.loc[energycons['Product']=='NONE', 'Power'] = 0.0
+    energycons.loc[energycons['Product']=='NONE', 'Weight'] = 0
     energycons.loc[energycons['Product']=='NONE', 'Quantity'] = \
         energycons.loc[energycons['Product']=='NONE', 'Totaltime']
     
