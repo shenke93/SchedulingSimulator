@@ -6,7 +6,7 @@ import logging
 
 C1 = 10 # Used for failure cost calculation in run-down scenario
 C2 = 30
-num_minutes_lost = 10
+num_seconds_lost = 600 # the number of seconds of production that go lost if failure
 
 standard_weights = {'weight_energy': 1,
                     'weight_virtual_failure': 0,
@@ -60,15 +60,12 @@ def floor_dt(dt, delta):
     # q, r = divmod(dt - datetime.min, delta)
     # return (datetime.min + (q)*delta) if r else dt
 
-
 class Schedule:
-    def __init__(self, order, start_time, job_dict, failure_dict, prc_dict, downdur_dict, price_dict, precedence_dict, failure_info, 
+    def __init__(self, order, job_dict, start_time, downdur_dict, price_dict, precedence_dict, failure_info, 
                  scenario, duration_str='duration', working_method='historical', weights=standard_weights):
         self.order = order
-        self.start_time = start_time
         self.job_dict = job_dict
-        self.failure_dict = failure_dict
-        self.prc_dict = prc_dict
+        self.start_time = start_time
         self.downdur_dict = downdur_dict
         self.price_dict = price_dict
         self.precedence_dict = precedence_dict
@@ -78,14 +75,48 @@ class Schedule:
         self.working_method = working_method
         self.weights = weights
         self.time_dict = self.get_time()
+        
+        temp_df = pd.DataFrame.from_dict(self.job_dict).T
+        #temp_mean = temp_df.mean(axis=0)
+        self.mean_up = temp_df['unitprice'].mean()
+        self.mean_tpr = temp_df['targetproductionrate'].mean()
+        
+    def set_starttime(self, time):
+        self.start_time = time
+        
+    def copy_random(self):
+        return_sched = Schedule(np.random.choice(self.order, size=len(self.order), replace=False),
+                                self.job_dict, self.start_time, self.downdur_dict, self.price_dict, 
+                                self.precedence_dict, self.failure_info, self.scenario, 
+                                self.duration_str, self.working_method, 
+                                self.weights)
+        return return_sched
     
-    def get_failure_prob(self):
-        # Assistant function to visualize the processing of a candidate schedule throughout the time horizon
+    def copy_neworder(self, assign_order):
+        assert (set(assign_order) == set(self.job_dict.keys())), 'The keys inserted are not the same as the key of the jobs'
+        return_sched = Schedule(assign_order,
+                                self.job_dict, self.start_time, self.downdur_dict, self.price_dict, 
+                                self.precedence_dict, self.failure_info, self.scenario, 
+                                self.duration_str, self.working_method, 
+                                self.weights)
+        return return_sched
+        
+    
+    def get_failure_prob(self, cumulative=True):
+        '''Assistant function to visualize the processing of a candidate schedule throughout the time horizon
+        Parameters
+        ----------
+        cumulative : boolean
+            Sets the output to a cdf if True, else uses a pdf.
+        Returns
+        -------
+        
+        '''
         detailed_dict = {}
         t_now = t_start_begin = self.start_time
         t_last_maint = t_now
         cumulative_failure_prob = pd.Series([])
-        cur_rel=1
+        cur_rel = 1
         if self.working_method == 'expected':
             total_duration_nofail = 0
 
@@ -94,7 +125,7 @@ class Schedule:
             t_start = t_now
             #t_downtime = 0
             
-            unit1 = self.job_dict.get(item, -1)
+            unit1 = self.job_dict[item]
        
             
             # calculate duration based on quantity or based on expected uptime duration
@@ -102,24 +133,23 @@ class Schedule:
                 du = unit1['uptime']
             elif self.duration_str == 'quantity':
                 quantity = unit1['quantity']
-                product_type = unit1['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type)
+                #product_type = unit1['product'] # get job product type
+                #unit2 = self.prc_dict.get(item)
                 try:
-                    du = quantity / unit2['targetproduction'] # get job duration
+                    du = quantity / unit1['targetproductionrate'] # get job duration
                 except:
-                    print(quantity, unit2['targetproduction'])
+                    #du = quantity
+                    print(quantity, unit1['targetproductionrate'])
                     raise
             else:
                 raise NameError('Faulty value inserted')
 
             if self.working_method == 'historical':
-                raise ValueError('not possible to get failure probability in {} mode'.format(self.working_method))
+                raise ValueError("not possible to get failure probability in '{}' mode".format(self.working_method))
             elif self.working_method == 'expected':
                 product_type = unit1['product'] # get job product type
                 product_cat = unit1['type']
                 # the total duration without failure (ideal case)
-                #print(self.prc_dict)
-                unit2 = self.prc_dict.get(product_type)
                 t_down = 0
                 t_changeover = 0
                 t_clean = 0
@@ -138,7 +168,7 @@ class Schedule:
                         t_end_maint = t_start + timedelta(hours=failure_info[4])
 
                         time_ran = np.arange((t_start - t_start_begin).total_seconds(), (t_end_maint- t_start_begin).total_seconds(), 60)
-                        extend_df = pd.Series(index=time_ran, data=1)
+                        extend_df = pd.Series(index=time_ran, data='NaN')
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
                         
                         t_start = t_end_maint
@@ -157,16 +187,18 @@ class Schedule:
                         v_start_time = fail_dist.get_t_from_reliability(cur_rel)
                         t_down += t_repair * (fail_dist.failure_cdf(v_start_time+du) - fail_dist.failure_cdf(v_start_time))
 
-                        if 'availability' in unit2:
-                            t_down += float(du) * (1/float(unit2['availability'])- 1)
+                        if 'availability' in unit1:
+                            t_down += float(du) * (1/float(unit1['availability'])- 1)
 
                         #if get_failure_schedule
                         #extend_df = pd.DataFrame(data = ran + v_start_time)
                         
                         time_ran = np.arange((t_start - t_start_begin).total_seconds(), ((t_start + timedelta(hours=du + t_down)) - t_start_begin).total_seconds(), 60)
                         ran = np.linspace(v_start_time, v_start_time + du, num=len(time_ran))
-                        fp = [fail_dist.failure_cdf(i) for i in ran]
-                        #import pdb; pdb.set_trace()
+                        if cumulative:
+                            fp = [fail_dist.failure_cdf(i) for i in ran]
+                        else:
+                            fp = [fail_dist.failure_pdf(i) for i in ran]
                         extend_df = pd.Series(index=time_ran, data=fp)
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
 
@@ -189,11 +221,11 @@ class Schedule:
                         # get the changeover time and extend the current graph
                         time_ran = np.arange(((t_start + timedelta(hours=du + t_down)) - t_start_begin).total_seconds(), 
                                             ((t_start + timedelta(hours=du + t_down + t_changeover + t_clean)) - t_start_begin).total_seconds(), 60)
-                        extend_df = pd.Series(index=time_ran, data=float(1-cur_rel))
+                        extend_df = pd.Series(index=time_ran, data='NaN')
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
                     else:
                         time_ran = np.arange((t_start - t_start_begin).total_seconds(), ((t_start + timedelta(hours=du + t_down)) - t_start_begin).total_seconds(), 60)
-                        extend_df = pd.Series(index=time_ran, data=float(1-cur_rel))
+                        extend_df = pd.Series(index=time_ran, data='NaN')
                         cumulative_failure_prob = cumulative_failure_prob.append(extend_df)
                         #import pdb; pdb.set_trace()
                     
@@ -206,9 +238,8 @@ class Schedule:
                 #print(t_end)
             t_now = t_end
 
-        cumulative_failure_prob.index = [(t_start_begin + timedelta(hours = ( l / 3600))) for l in cumulative_failure_prob.index.tolist()]
-
-        #import pdb; pdb.set_trace()
+        cumulative_failure_prob.index = \
+        [(t_start_begin + timedelta(hours = ( l / 3600))) for l in cumulative_failure_prob.index.tolist()]
 
         return cumulative_failure_prob
             
@@ -224,16 +255,18 @@ class Schedule:
         maintenance_int = 0
         if self.working_method == 'expected':
             total_duration_nofail = 0
+            
+        #import pdb; pdb.set_trace()
 
         for i in range(len(self.order)):
             item = self.order[i]
             t_start = t_now
             #t_downtime = 0
             
-            unit1 = self.job_dict.get(item, -1)
+            unit1 = self.job_dict[item]
             try:
                 product_type = unit1['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type)
+                #unit2 = self.prc_dict.get(item)
             except:
                 logging.warning("No product related information found for + '" + str(product_type) + "'.")
             
@@ -245,17 +278,19 @@ class Schedule:
                         quantity = unit1['quantity']
                     else:
                         #calculate quantity
-                        quantity = du * unit2['targetproduction']
+                        quantity = du * unit1['targetproductionrate']
                 except:
+                    logging.warning('No correct duration information found, go to debugging')
                     import pdb; pdb.set_trace()
             elif self.duration_str == 'quantity':
                 quantity = unit1['quantity']
                 product_type = unit1['product'] # get job product type
-                unit2 = self.prc_dict.get(product_type)
+                #unit2 = self.prc_dict.get(item)
                 try:
-                    du = quantity / unit2['targetproduction'] # get job duration
+                    du = quantity / unit1['targetproductionrate'] # get job duration
                 except:
-                    print(quantity, unit2['targetproduction'])
+                    #du = quantity
+                    print(quantity, unit1['targetproductionrate'])
                     raise
             else:
                 raise NameError('Faulty value inserted: {}'.format(str(self.duration_str)))
@@ -270,7 +305,7 @@ class Schedule:
 
                 for value in self.downdur_dict.values():
                     # DowntimeDuration already added
-                    t_down = 0
+                    #t_down = 0
                     #print(value)
                     if t_end < value[0]:
                         continue
@@ -294,7 +329,7 @@ class Schedule:
                 product_type = unit1['product'] # get job product type
                 product_cat = unit1['type']
                 #print(self.prc_dict)
-                unit2 = self.prc_dict.get(product_type)
+                #unit2 = self.prc_dict.get(item)
                 t_down = 0
                 t_changeover = 0
                 t_clean = 0
@@ -309,10 +344,17 @@ class Schedule:
                     val1 = total_duration_nofail
                     if (val2 >= failure_info[3]) and (product_type != 'NONE'):    # a maintenance should be planned after a fixed time
                         t_end_maint = t_start + timedelta(hours=failure_info[4])
-                        if maintenance_int in detailed_dict:
+                        while maintenance_int in detailed_dict:
                             maintenance_int -= 1
-                        detailed_dict.update({maintenance_int : dict(zip(['start', 'end', 'totaltime', 'uptime', 'product', 'type', 'down_duration', 'changeover_duration', 'cleaning_time', 'quantity'],
-                                                                         [t_start, t_end_maint, failure_info[4], 0, 'MAINTENANCE', 'NONE', failure_info[4], 0, 0, failure_info[4]]))
+                        detailed_dict.update({maintenance_int : dict(zip(['start', 'end', 'totaltime', 'uptime', 
+                                                                          'product', 'type', 'down_duration', 
+                                                                          'changeover_duration', 'cleaning_time', 'quantity',
+                                                                          'unitprice', 'power',
+                                                                          'weight', 'targetproductionrate'],
+                                                                         [t_start, t_end_maint, failure_info[4], 0, 
+                                                                          'MAINTENANCE', 'NONE', failure_info[4], 
+                                                                          0, 0, failure_info[4],
+                                                                          0, 0, 0, 1]))
                                              })
                         #import pdb; pdb.set_trace()
                         t_start = t_end_maint
@@ -334,8 +376,8 @@ class Schedule:
                         v_start_time = fail_dist.get_t_from_reliability(cur_rel)
                         t_down += t_repair * (fail_dist.failure_cdf(v_start_time+duration) - fail_dist.failure_cdf(v_start_time))
 
-                        if 'availability' in unit2:
-                            t_down += float(du) * (1/float(unit2['availability'])- 1)
+                        #if 'availability' in unit2:
+                        #    t_down += float(du) * (1/float(unit2['availability'])- 1)
 
                         # if get_failure_schedule:
                         #     ran = np.arange(v_start_time, v_start_time + duration, 1/3)
@@ -373,8 +415,17 @@ class Schedule:
                 releasedate = unit1['releasedate']
                 duedate = unit1['duedate']
                 # get all other info used by the input parser
-                detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 'product', 'type', 'down_duration', 'changeover_duration', 'cleaning_time', 'releasedate', 'duedate', 'quantity'],
-                                                      [t_start, t_end, du + t_down + t_changeover + t_clean, du, unit1['product'], unit1['type'], t_down, t_changeover, t_clean, releasedate, duedate, quantity]))
+                #import pdb; pdb.set_trace()
+                detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 
+                                                       'product', 'type', 'down_duration', 'changeover_duration', 
+                                                       'cleaning_time', 'releasedate', 'duedate', 'quantity',
+                                                       'unitprice', 'power', 'weight',
+                                                       'targetproductionrate'],
+                                                      [t_start, t_end, du + t_down + t_changeover + t_clean, 
+                                                       du, unit1['product'], unit1['type'],
+                                                       t_down, t_changeover, t_clean, releasedate, duedate, quantity,
+                                                       unit1['unitprice'], unit1['power'],
+                                                       unit1['weight'], unit1['targetproductionrate']]))
                                       })
             except:
                 # Start a debugger to find out what the cause was
@@ -435,9 +486,10 @@ class Schedule:
                 startdate = time_dict[item]['start']
                 enddate = time_dict[item]['end']
                 product_type = time_dict[item]['product']
+                #import pdb; pdb.set_trace()
                 if self.scenario == 1: # using unit cost and production rate
                     # get product info
-                    prc = self.prc_dict.get(product_type, -1)
+                    prc = self.prc_dict.get(item)
                     prc_up = prc['unitprice']
                     prc_tpr = prc['targetproduction']
                     # get total downtime duration
@@ -449,7 +501,7 @@ class Schedule:
                         # len downdur_select means the number of failures during a certain production
 
                         # product loss
-                        loss = len(downdur_select) * prc_up * prc_tpr / 60 * num_minutes_lost # suppose for each failure 10 minutes of production gets lost
+                        loss = len(downdur_select) * prc_up * prc_tpr / 3600 * num_seconds_lost # suppose for each failure 10 minutes of production gets lost
                         sum_len = 0
                         for item in downdur_select: # add up all failure times
                             sum_len += downdur_select[item][2]
@@ -490,7 +542,7 @@ class Schedule:
         if self.working_method == 'expected':
             for item in detailed_dict:
                 product_type = detailed_dict[item]['product']
-                prc = self.prc_dict.get(product_type, -1)
+                prc = self.prc_dict.get(item)
                 prc_av = prc['availability']
                 down_duration = detailed_dict[item]['down_duration']
                 loss = 0; virtual_loss = 0
@@ -511,7 +563,7 @@ class Schedule:
                         # = estimated number of downtimes
                         #
                         # item loss
-                        loss += (down_duration / mean_length_downtime) * (prc_up * prc_tpr / 60 * num_minutes_lost)
+                        loss += (down_duration / mean_length_downtime) * prc_up * prc_tpr / 3600 * num_seconds_lost
                 if self.scenario == 2:
                     # same, but with C1 and C2 as constants
                     # time loss
@@ -585,22 +637,27 @@ class Schedule:
 
         time_dict = self.time_dict
         price_dict = self.price_dict
-        prc_dict = self.prc_dict
+        #prc_dict = self.prc_dict
 
         for item in time_dict:
             job_en_cost = 0
 
-            product_type = time_dict[item]['product'] # get job product type
+            unit1 = self.time_dict[item]
+            product_type = unit1['product'] # get job product type
             #if product_type == 'MAINTENANCE': product_type = 'NONE'
-            unit2 = prc_dict.get(product_type, -1)
+            #unit2 = prc_dict.get(str(item))
             try:
-                power = unit2['power']
+                power = unit1['power']
             except:
+                # doesn't occur within the database; assume it is a break
+                #power = 0
+                import pdb; pdb.set_trace()
                 print(product_type)
+                print(unit1)
                 raise
 
-            t_start = time_dict[item]['start']
-            t_end = time_dict[item]['end']
+            t_start = unit1['start']
+            t_end = unit1['end']
 
             t_su = ceil_dt(t_start, timedelta(hours=1)) # t_start right border
             t_ed = floor_dt(t_end, timedelta(hours=1)) #  t_end left border
@@ -664,59 +721,64 @@ class Schedule:
             print('No conversion cost')
             return conversion_cost
 
-        for item1, item2 in zip(list(self.time_dict.keys())[:-1], list(self.time_dict.keys())[1:]):
-            # if item2 == 0:
-            #     pass
-            # elif item1 == 0:
-            #     if detail:
-            #         conversion_cost.append(0)
-            try:
-                first_product_type = self.job_dict[item1]['type']
-            except:
-                if detail:
-                    conversion_cost.append(0)
-                continue
-            try:
-                second_product_type = self.job_dict[item2]['type']
-            except:
-                continue
-            if self.failure_info is not None:
-                fi = self.failure_info[5]
-                conversion_time = int(fi.loc[first_product_type, second_product_type]) / 3600 # get the conversion time and convert to hours
-                #import pdb; pdb.set_trace()
-                # first_product = self.job_dict[item1]['product']
-                # prc_up = self.prc_dict[first_product]['unitprice']
-                # prc_tp = self.prc_dict[first_product]['targetproduction']
-                if 'MEAN' in self.prc_dict:
-                    mean = self.prc_dict.get('MEAN', -1)
-                    mean_up = mean['unitprice']; mean_tpr = mean['targetproduction']
-                else:
-                    temp_df = pd.DataFrame.from_dict(self.prc_dict).T
-                    temp_mean = temp_df.mean(axis=0)
-                    mean_up = temp_mean['unitprice']; mean_tpr = temp_mean['targetproduction']
-                total_availability = conversion_time * mean_up * mean_tpr
-                if detail:
-                    conversion_cost.append(total_availability)
-                else:
-                    conversion_cost += total_availability
-            else:
-                # Alternatively get the product info from another database
-                # self.failure_info[6]
-                # first_product_type = related_chars_dict[first_product][4]
-                # second_product_type = related_chars_dict[second_product][4]
-                if first_product_type != second_product_type:
-                    # add conversion cost
-                    # suppose cost is fixed
-                    if detail:
-                        conversion_cost.append(1)
-                    else:
-                        conversion_cost += 1
-                else:
+
+        if self.working_method == 'expected':
+            for item1, item2 in zip(list(self.time_dict.keys())[:-1], list(self.time_dict.keys())[1:]):
+                # if item2 == 0:
+                #     pass
+                # elif item1 == 0:
+                #     if detail:
+                #         conversion_cost.append(0)
+                try:
+                    first_product_type = self.job_dict[item1]['type']
+                except:
                     if detail:
                         conversion_cost.append(0)
-        if detail:
-            conversion_cost.append(0)
-        return conversion_cost
+                    continue
+                try:
+                    second_product_type = self.job_dict[item2]['type']
+                except:
+                    continue
+                if self.failure_info is not None:
+                    fi = self.failure_info[5]
+                    conversion_time = int(fi.loc[first_product_type, second_product_type]) / 3600 # get the conversion time and convert to hours
+                    #import pdb; pdb.set_trace()
+                    # first_product = self.job_dict[item1]['product']
+                    # prc_up = self.prc_dict[first_product]['unitprice']
+                    # prc_tp = self.prc_dict[first_product]['targetproduction']
+                    # if False:
+                    #     mean = self.prc_dict.get('MEAN', -1)
+                    #     mean_up = mean['unitprice']; mean_tpr = mean['targetproduction']
+
+                    total_availability = conversion_time * self.mean_up * self.mean_tpr
+                    if detail:
+                        conversion_cost.append(total_availability)
+                    else:
+                        conversion_cost += total_availability
+                else:
+                    # Alternatively get the product info from another database
+                    # self.failure_info[6]
+                    # first_product_type = related_chars_dict[first_product][4]
+                    # second_product_type = related_chars_dict[second_product][4]
+                    if first_product_type != second_product_type:
+                        # add conversion cost
+                        # suppose cost is fixed
+                        if detail:
+                            conversion_cost.append(1)
+                        else:
+                            conversion_cost += 1
+                    else:
+                        if detail:
+                            conversion_cost.append(0)
+            if detail:
+                conversion_cost.append(0)
+            return conversion_cost
+        elif self.working_method == 'historical':
+            if detail:
+                conversion_cost = [0] * len(self.order)
+            else:
+                conversion_cost = 0
+            return conversion_cost
 
     def get_constraint_cost(self, detail=False):
         #import pdb; pdb.set_trace()
@@ -761,7 +823,10 @@ class Schedule:
             count = True
             if item in self.job_dict: # this function eliminates all maintenance jobs
                 product = self.time_dict[item]['product']
-                weight = self.prc_dict[product]['weight']
+                try:
+                    weight = self.prc_dict[item]['weight']
+                except:
+                    weight = 0
                 flowtime = weight * (self.time_dict[item]['end'] - t_now).total_seconds() / 3600
                 #if (product != 'NONE') and (product != 'MAINTENANCE'):
                 #    enddate = self.time_dict[item]['end']
@@ -781,6 +846,7 @@ class Schedule:
         time_dict = self.get_time()
     #     print(time_dict)
         flag = True
+        # validate due date
         for key, value in time_dict.items():
             if key in self.job_dict.keys():
                 due = self.job_dict[key]['duedate'] # due date of a job
@@ -788,33 +854,57 @@ class Schedule:
                     print("For candidate schedule:", self.order)
                     print(f"Job {key} will finish at {value['end']} over the due date {due}")
                     flag = False
-                    break
-        return flag
-        # validate precedence
-        ind = set(self.order)
-        jobs = list(self.order.copy())
-        for item in ind:
-            if item in precedence_dict:
-                prec = set(precedence_dict[item])
-                jobs_temp = set(jobs[:jobs.index(item)])
-                #jobs.remove(item)
-                #print('Remove ' + str(item))
-                # print("Item:", item)
-                # print("Prec:", prec)
-                # print("afters:", jobs)
-                if not prec.isdisjoint(jobs_temp): # prec set and remain jobs have intersections
+                release= self.job_dict[key]['releasedate']
+                if value['start'] < release:
+                    print("For candidate schedule:", self.order)
+                    print(f"Job {key} will finish at {value['start']} below the release date {release}")
                     flag = False
-                    break
+        # validate precedence
+        #jobs = list(self.order.copy())
+        order = list(self.order)
+        if self.precedence_dict is not None:
+            for item in order:
+                if item in self.precedence_dict:
+                    prec = set(self.precedence_dict[item])
+                    #import pdb; pdb.set_trace()
+                    jobs_temp = set(order[:order.index(item)])
+                    #jobs.remove(item)
+                    #print('Remove ' + str(item))
+                    # print("Item:", item)
+                    # print("Prec:", prec)
+                    # print("afters:", jobs)
+                    if not prec.isdisjoint(jobs_temp): # prec set and the executed jobs have intersections
+                        flag = False
+                        break
         return flag
+    
+    # def fix_validation(self):
+    #     # get time
+    #     time_dict = self.get_time()
+    #     # print (time_dict)
+    #     #fix due dates:
+    #     for key, value in time_dict.items():
+    #         if key in self.job_dict.keys():
+    #             due = self.job_dict[key]['duedate'] # due date of a job
+    #             if value['end'] > due:
+    #                 print("For candidate schedule:", self.order)
+    #                 print(f"Job {key} will finish at {value['end']} over the due date {due}")
+            
 
-    def get_fitness(self, split_types=False, detail=False):
+    def get_fitness(self, split_types=False, detail=False, weights=None):
         ''' 
         Get fitness values for all individuals in a generation.
         '''
-        wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
-        we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
-        wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
-        factors = (wf, wvf, we, wc, wb, wft)
+        if weights is None:
+            wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
+            we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
+            wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
+            factors = (wf, wvf, we, wc, wb, wft)
+        else:
+            factors = (weights['weight_failure'], weights['weight_virtual_failure'], weights['weight_energy'],
+                       weights['weight_conversion'], weights['weight_constraint'], weights['weight_flowtime'])
+            wf = weights['weight_failure']; wvf = weights['weight_virtual_failure']; we = weights['weight_energy']
+            wc = weights['weight_conversion']; wb = weights['weight_constraint']; wft = weights['weight_flowtime']
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             #for i in sub_pop:

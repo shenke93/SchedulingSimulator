@@ -18,9 +18,9 @@ def add_column_type(df, from_col='ArticleName', choice='BigPack'):
                      'EUROSHOPPER', 'AH', 'PASTA MARE', 'OKE', 'TOP BUDGET', 'FIORINI', 'BIO VILLAGE', 'MONOPP', 'RINATURA',
                      'JUMBO', 'BONI', 'CASINO', 'TURINI']
     elif newname == choices[2]:
-        stringlist = [['MACARONI', 'MAC.', 'ZITTI'], 'FUSILLI', ['SPIRELLI', 'SPIRAL', 'TORSADES'], ['HORENTJE', 'HELICES'], 
+        stringlist = [['MACARONI', 'MAC.'], 'FUSILLI', ['SPIRELLI', 'SPIRAL', 'TORSADES'], ['HORENTJE', 'HELICES'], 
                       ['VERMICELLI', 'VERMICELL'], ['NOODLES', 'NOUILLES'], 'TORTI',
-                     ['PENNE', 'PIPE'], ['ELLEBOOGJES', 'COQUILLETTE', 'COQ.'], 'NONE']
+                     ['PENNE', 'PIPE'], ['ELLEBOOGJE', 'ELLEBOOG', 'COQUILLETTE', 'COQ.'], 'NONE']
     elif newname == choices[3]:
         stringlist = [ ['SMALL', ' 8', ' 10', ' 12'], ['LARGE', ' 16', ' 18', ' 20'], 'NONE']
     else:
@@ -83,14 +83,18 @@ def add_breaks(production, maxtime=7200):
     return production
 
 def group_productions(df_task, considered_reasons):
-    group = df_task.groupby('ProductionRequestId').agg({'Quantity':'first','StartDateUTC':'min', 'EndDateUTC':'max', 'ArticleName':'first'}).sort_values(by='StartDateUTC')
+    group = df_task.groupby('ProductionRequestId')\
+            .agg({'Quantity':'last','StartDateUTC':'min', 'EndDateUTC':'max', 'ArticleName':'first'})\
+            .sort_values(by='StartDateUTC')
     #print(len(group))
     # all of the uptime is counted here
-    group_uptime = df_task[df_task.ReasonId.isin([100])].groupby('ProductionRequestId').agg({'Duration':'sum'})
+    group_uptime = df_task[df_task.ReasonId.isin([100])].groupby('ProductionRequestId')\
+                   .agg({'Duration':'sum'})
     group_uptime.columns = ['Uptime']
     group_alltime = df_task.groupby('ProductionRequestId').agg({'Duration':'sum'})
     group_alltime.columns = ['Totaltime']
-    group_downtime = df_task[df_task.ReasonId.isin(considered_reasons)].groupby('ProductionRequestId').agg({'Duration':'sum'})
+    group_downtime = df_task[df_task.ReasonId.isin(considered_reasons)].groupby('ProductionRequestId')\
+                     .agg({'Duration':'sum'})
     group_downtime.columns = ['Downtime']
     group = pd.concat([group_uptime, group_downtime, group_alltime, group], axis=1)
     group.loc[group.ArticleName == 'NONE', 'Uptime'] = group.loc[group.ArticleName == 'NONE', 'Totaltime']
@@ -135,7 +139,7 @@ def save_downtimes(dt, output):
     out.index.name = 'ID'
     out.to_csv(output)
 
-def save_durations(group, output, beforedays=None, afterdays=None, randomfactor=None, ignore_break=True, 
+def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None, ignore_break=True, 
                    choice=' '):
     ''' Ignore_break adds functionality to ignore the type which is breaks '''
     out = group[['Uptime', 'Totaltime', 'Quantity', 'StartDateUTC', 'EndDateUTC', 'ArticleName']].copy()
@@ -167,44 +171,59 @@ def save_durations(group, output, beforedays=None, afterdays=None, randomfactor=
     
     for col in to_convert_dates:
         out[col] = out[col].dt.strftime("%Y-%m-%d %H:%M:%S.%f")
-    out.index.name = 'ID'
-    out.to_csv(output)
+    out.index.name = 'Product'
+    return out
+    #out.to_csv(output)
 
 def generate_energy_per_production(group, file_speed, choice=None, df_merged=None):
-    articlenum = len(group.ArticleName.unique())
-    fs = pd.read_csv(file_speed, index_col=0)
-    fs = fs[fs.ProductDescription.isin(list(group.ArticleName))].reset_index(drop=True)
-    #print(fs.ProductDescription)
-    rand1 = pd.Series(np.random.random_sample((len(fs),)) * 0.2 + 0.5)    # unit price
-    rand2 = pd.Series(np.random.random_sample((len(fs),)) * 2 + 0.5)  # power
-    energycons = pd.concat([pd.Series(fs.ProductDescription), 
+    
+    #articlenum = len(group.ArticleName.unique())
+    #fs = pd.read_csv(file_speed, index_col=0)
+    
+    group = group.merge(file_speed, left_index=True, right_on='ProductionRequestId', how='left')\
+                 .set_index('ProductionRequestId').fillna(1.0)
+    #file_speed = file_speed[file_speed['ProductionRequestId'].isin(group.index.tolist())]\
+    #             .reset_index(drop=True)
+    rand1 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='UnitPrice')    # unit price
+    rand2 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='Power')  # power
+    rand3 = pd.Series(np.random.randint(1, 10, (len(group),)), index=group.index, name='Weight') #weights
+    
+    energycons = pd.concat([group, 
                             rand1,
-                            rand2, 
-                            pd.Series(fs.TargetProductionRate)], axis=1)
-    if choice:
-        assert(df_merged is not None)
-        energycons = add_column_type(energycons, from_col='ProductDescription', choice=choice)
-        energycons = energycons.merge(df_merged[['Availability']], left_on=choice, right_index=True)
-        energycons = energycons.drop(choice, axis=1)
-        energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate', 'Availability']
-    else:
-        energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate']
+                            rand2,
+                            rand3], axis=1)
+    
+    energycons.loc[energycons['Product']=='NONE', 'UnitPrice'] = 0.0
+    energycons.loc[energycons['Product']=='NONE', 'Power'] = 0.0
+    energycons.loc[energycons['Product']=='NONE', 'Weight'] = 0
+    energycons.loc[energycons['Product']=='NONE', 'Quantity'] = \
+        energycons.loc[energycons['Product']=='NONE', 'Totaltime']
+    
+    # if choice:
+    #     raise NameError('Not defined any more (please fix).')
+    #     assert(df_merged is not None)
+    #     energycons = add_column_type(energycons, from_col='ProductDescription', choice=choice)
+    #     energycons = energycons.merge(df_merged[['Availability']], left_on=choice, right_index=True)
+    #     energycons = energycons.drop(choice, axis=1)
+    #     energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate', 'Availability']
+    # else:
+    #     energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate']
     #energycons.insert(1, 'UnitPrice', 5)
     #energycons.insert(len(energycons.columns), 'TargetProductionRate', 3000)
     #energycons.loc[energycons.Product == 'NONE', 'Power'] = 0
-    if choice:
-        energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
-                                       'Availability': 1}, ignore_index=True)
-        energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
-                                       'Availability': 1}, ignore_index=True)
-    else:
-        energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 
-                                        'Power': 0, 'TargetProductionRate': 1}, ignore_index=True)
-        energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 
-                                        'TargetProductionRate': 1}, ignore_index=True)
-    energycons.loc[:, 'Weight'] = 1
-    energycons.loc[energycons.Product == 'NONE', 'Weight'] = 0
-    energycons.loc[energycons.Product == 'MAINTENANCE', 'Weight'] = 0
+    # if choice:
+    #     energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
+    #                                    'Availability': 1}, ignore_index=True)
+    #     energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
+    #                                    'Availability': 1}, ignore_index=True)
+    #else:
+    #    energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 
+    #                                    'Power': 0, 'TargetProductionRate': 1}, ignore_index=True)
+    #    energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 
+    #                                    'TargetProductionRate': 1}, ignore_index=True)
+    # energycons.loc[:, 'Weight'] = 1
+    # energycons.loc[energycons.Product == 'NONE', 'Weight'] = 0
+    # energycons.loc[energycons.Product == 'MAINTENANCE', 'Weight'] = 0
     return energycons
 
 def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):
@@ -217,44 +236,82 @@ def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):
     #prices = prices.loc[prices['Euro'].diff(1) != 0]
     return prices
 
-def generate_conversion_table(df, reasons, unique_col='ProductionRequestId', type_col='PastaType',  duration_col = 'Duration'):
-    l = list(df[unique_col].unique())
-    length_list = []
-    # First make a list
-    # It contains the product id, the product type, conversion of the first half of the job, conversion time of the second half of the job, breaktime between the jobs if short
-    for prid in l:
-        # Save the total length and the type
-        df_temp = df[df[unique_col] == prid]
-        half_duration = df_temp.Duration.sum() / 2
-        #print(df_temp.columns)
-        #type of the next production task
-        c_type = str(df_temp.loc[:, type_col].iloc[-1])
-        #print(c_type)
-        #import pdb; pdb.set_trace()
 
-        time_uptonow = np.insert(np.array(np.cumsum((df_temp[duration_col])))[:-1:], 0, 0)
+class ConversionTable(object):
+    def __init__(self, df, reasons, unique_col='ProductionRequestId', type_col='PastaType', duration_col='Duration'):
+        self.df = df
+        self.reasons = reasons
+        self.unique_col = unique_col
+        self.type_col = type_col
+        self.duration_col = duration_col
+        self.job_list = self.generate_conversion_table()
 
-        df_temp.loc[:, 'BeforeDuration'] = time_uptonow
+    def generate_conversion_table(self):
+        l = list(self.df[self.unique_col].unique())
+        output_list = []
+        # First make a list
+        # It contains the product id, the product type, conversion of the first half of the job, conversion time of the second half of the job, breaktime between the jobs if short
+        for prid in l:
+            # Save the total length and the type
+            df_temp = self.df[self.df[self.unique_col] == prid]
+            half_duration = df_temp[self.duration_col].sum() / 2
+            #type of the production task
+            c_type = str(list(df_temp[self.type_col])[-1])
+            #print(c_type)
+            #import pdb; pdb.set_trace()
 
-        convert_firsthalf = df_temp[(df_temp['BeforeDuration'] < half_duration) & df_temp.ReasonId.isin(reasons)][duration_col].sum()
-        convert_secondhalf = df_temp[(df_temp['BeforeDuration'] >= half_duration) & df_temp.ReasonId.isin(reasons)][duration_col].sum()
-        #convert_rest = df_temp[df_temp.ReasonId.isin(reasons)].Duration.sum()
+            time_uptonow = np.insert(np.array(np.cumsum((df_temp[self.duration_col])))[:-1:], 0, 0)
 
-        length_list.append([prid, c_type, convert_firsthalf, convert_secondhalf])
+            #df_temp['BeforeDuration'] = time_uptonow
 
-    # Convert the list into a matrix 
-    l = list(df[type_col].unique())
-    sum_conversions = pd.DataFrame(0, index=l, columns=l)
-    num_conversions = pd.DataFrame(0, index=l, columns=l)
-    for first, second in zip(length_list[:-1], length_list[1:]):
-        first_type = first[1]; second_type = second[1]
-        sum_convert = first[3] + second[2]
-        #print(first_type, second_type, first[3], second[2])
-        sum_conversions.loc[first_type, second_type] += sum_convert
-        num_conversions.loc[first_type, second_type] += 1
+            convert_firsthalf = df_temp[(time_uptonow < half_duration) & df_temp.ReasonId.isin(self.reasons)][self.duration_col].sum()
+            convert_secondhalf = df_temp[(time_uptonow >= half_duration) & df_temp.ReasonId.isin(self.reasons)][self.duration_col].sum()
+            #convert_rest = df_temp[df_temp.ReasonId.isin(reasons)].Duration.sum()
 
-    mean_conversions = sum_conversions/num_conversions
-    return mean_conversions
+            output_list.append([prid, c_type, convert_firsthalf, convert_secondhalf])
+        return output_list
+        
+    # Convert into matrix:
+    #l = 
+    
+    def output_matrix(self):
+        # Convert into matrix with all separate times for conversions
+        l = sorted(list(self.df[self.type_col].unique()))
+        indexer = range(len(l))
+        mat = [[[] for i in indexer] for j in indexer] 
+        for first, second in zip(self.job_list[:-1], self.job_list[1:]):
+            first_type = first[1]; second_type = second[1]
+            sum_convert = first[3] + second[2]
+            mat[l.index(first_type)][l.index(second_type)].append(sum_convert)
+        return (l, mat)
+            
+    
+    def return_mean_conversions(self, drop_zeros=True):
+        # Convert the list into a matrix
+        from itertools import product
+        l, mat = self.output_matrix()
+        copy_mat = mat.copy()
+        for i, j in product(range(len(l)), range(len(l))):
+            #all_nonzeros = [k for k in mat[i][j] if k != 0]
+            all_complete = mat[i][j]
+            mean_conversions = np.mean(all_complete)
+            copy_mat[i][j] = mean_conversions
+        pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
+        return pd_out
+    
+    def return_median_conversions(self, drop_zeros=True):
+        # Convert the list into a matrix
+        from itertools import product
+        l, mat = self.output_matrix()
+        copy_mat = mat.copy()
+        for i, j in product(range(len(l)), range(len(l))):
+            #all_nonzeros = [k for k in mat[i][j] if k != 0]
+            all_complete = mat[i][j]
+            median_conversions = np.median(all_complete)
+            copy_mat[i][j] = median_conversions
+        pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
+        return pd_out
+
 
 def adapt_standard_matrix(mean_conversions):
     new_mc = mean_conversions.copy()

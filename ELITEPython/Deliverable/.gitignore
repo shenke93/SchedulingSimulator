@@ -3,3 +3,4 @@ Results/
 __pycache__/
 build/
 dist/
+original_data/figures
