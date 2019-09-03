@@ -58,36 +58,45 @@ class SimpleSchedule:
             timing_list[job] = current_time             
         return timing_list                
             
-    def get_weighted_tardiness_cost(self):
+    def get_weighted_tardiness_cost(self, detail=False):
         """
         Get the weighted tardiness cost for a certain
         job_list order
         """
-        current_cost = 0
+        if detail:
+            current_cost = []
+        else:
+            current_cost = 0
         for job in self.job_list:
             current_priority = self.priority_list[job]
             current_duedate = self.duedate_list[job]
             current_time = self.timing_list[job]
             if current_time > current_duedate:
-                current_cost += (current_time - current_duedate)\
-                                * current_priority
-            
+                extra_cost = (current_time - current_duedate)\
+                             * current_priority
+                if detail:
+                    current_cost.append(extra_cost)
+                else:
+                    current_cost += extra_cost
+            else:
+                if detail:
+                    current_cost.append(0)
         return current_cost
             
-    def get_fitness(self, weights=None):
+    def get_fitness(self, detail=False):
         """
         Get fitness values for a generation
         """
         
         if self.weights['weighted_tardiness']:
-            tardiness_cost = self.get_weighted_tardiness_cost()
+            tardiness_cost = self.get_weighted_tardiness_cost(detail=detail)
             
         total_cost = np.array(tardiness_cost) * self.weights['weighted_tardiness']
         
         return total_cost
     
-    def print_fitness(self, weights=None):
+    def print_fitness(self):
         """
         Print fitness values
         """
-        print("Total fitness value is:", self.get_fitness(weights))
+        print("Total fitness value is:", self.get_fitness())

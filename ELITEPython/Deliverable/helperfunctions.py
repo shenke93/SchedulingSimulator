@@ -225,7 +225,10 @@ class JobInfo(object):
             logging.warning("No unit price found")
             return 0.0
         def nopower():
-            logging.waring("No power price found")
+            logging.warning("No power price found")
+            return 0.0
+        def noweight():
+            logging.warning("No weight value found")
             return 0.0
             
         
@@ -242,6 +245,7 @@ class JobInfo(object):
             'TargetProductionRate': ['targetproductionrate', float, donothing],
             'UnitPrice': ['unitprice', float, nounitprice],
             'Power': ['power', float, nopower],
+            'Weight': ['weight', float, noweight]
         }
         
         try:
@@ -393,8 +397,11 @@ class JobInfo(object):
         while break_hours > 0:
             min_key -= 1
             dur = 2 if break_hours > 2 else break_hours
-            new_dict = {'product': 'NONE', 'totaltime': dur, 'uptime': dur, 'quantity': dur, 'type': 'NONE', 
-                        'duedate': datetime.max, 'releasedate': datetime.min}
+            new_dict = {'product': 'NONE', 'totaltime': dur, 
+                        'uptime': dur, 'quantity': dur, 'type': 'NONE', 
+                        'duedate': datetime.max, 'releasedate': datetime.min,
+                        'targetproductionrate': 1, 'unitprice': 0,
+                        'power': 0, 'weight': 0}
             job_dict[min_key] = new_dict
             job_order.append(min_key)
             break_hours -= 2
@@ -449,10 +456,15 @@ def make_df(timing_dict):
     #all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration', 'Cleaning_duration']
     df = pd.DataFrame.from_dict(timing_dict, orient='index')
     df = df.rename(columns={'start': 'Start', 'end':'End', 'totaltime': 'Totaltime', 'uptime': 'Uptime',  
-                                       'product': 'Product', 'type': 'Type', 'releasedate': 'Releasedate', 'duedate': 'Duedate', 'quantity': 'Quantity',
-                                       'unitprice': 'UnitPrice', 'power': 'Power'})
+                                       'product': 'Product', 'type': 'Type', 'releasedate': 'Releasedate', 
+                                       'duedate': 'Duedate', 'quantity': 'Quantity',
+                                       'unitprice': 'UnitPrice', 'power': 'Power', 
+                                       'weight':'Weight', 
+                                       'targetproductionrate': 'TargetProductionRate'})
     df = df.reindex(list(timing_dict))
-    df = df[['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product', 'Type', 'Releasedate', 'Duedate', 'UnitPrice', 'Power']]
+    df = df[['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product', 'Type', 
+             'Releasedate', 'Duedate', 'TargetProductionRate', 'UnitPrice', 
+             'Power', 'Weight']]
     return df
 
 class writer :

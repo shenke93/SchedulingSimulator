@@ -349,11 +349,12 @@ class Schedule:
                         detailed_dict.update({maintenance_int : dict(zip(['start', 'end', 'totaltime', 'uptime', 
                                                                           'product', 'type', 'down_duration', 
                                                                           'changeover_duration', 'cleaning_time', 'quantity',
-                                                                          'unitprice', 'power'],
+                                                                          'unitprice', 'power',
+                                                                          'weight', 'targetproductionrate'],
                                                                          [t_start, t_end_maint, failure_info[4], 0, 
                                                                           'MAINTENANCE', 'NONE', failure_info[4], 
                                                                           0, 0, failure_info[4],
-                                                                          0, 0]))
+                                                                          0, 0, 0, 1]))
                                              })
                         #import pdb; pdb.set_trace()
                         t_start = t_end_maint
@@ -418,11 +419,13 @@ class Schedule:
                 detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 
                                                        'product', 'type', 'down_duration', 'changeover_duration', 
                                                        'cleaning_time', 'releasedate', 'duedate', 'quantity',
-                                                       'unitprice', 'power'],
+                                                       'unitprice', 'power', 'weight',
+                                                       'targetproductionrate'],
                                                       [t_start, t_end, du + t_down + t_changeover + t_clean, 
                                                        du, unit1['product'], unit1['type'],
                                                        t_down, t_changeover, t_clean, releasedate, duedate, quantity,
-                                                       unit1['unitprice'], unit1['power']]))
+                                                       unit1['unitprice'], unit1['power'],
+                                                       unit1['weight'], unit1['targetproductionrate']]))
                                       })
             except:
                 # Start a debugger to find out what the cause was
