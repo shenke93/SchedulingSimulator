@@ -143,11 +143,17 @@ def executeNormal():
                         print('Best:', best_result, '\t', * best_sched)
                         print('Original:', orig_result, '\t', * orig_sched)
                         
+#                         print(best_sched)
+#                         
+#                         exit()
+#                         
                         fig = show_results(best_curve, worst_curve, mean_curve)
                         if export is True:
                                 plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
                         if interactive:
                                 fig.show()
+                                
+                        
                         best = make_df(best_sched)
                         orig = make_df(orig_sched)
 
@@ -201,7 +207,7 @@ def executeNormal():
 
                         print('Best:',best_result, '\t', * best_sched)
                         print('Worst:', worst_result, '\t', * worst_sched)
-
+                        
                         best = make_df(best_sched)
                         worst = make_df(worst_sched)
 

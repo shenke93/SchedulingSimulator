@@ -714,8 +714,8 @@ def get_conversion_cost(schedule, job_info_dict, related_chars_dict, detail=Fals
 
     for item1, item2 in zip(schedule[:-1], schedule[1:]):
         # find product made:
-        first_product = job_info_dict[item1]['product']
-        second_product = job_info_dict[item2]['product']
+#         first_product = job_info_dict[item1]['product']
+#         second_product = job_info_dict[item2]['product']
 
         try:
             first_product_type = job_info_dict[item1]['type']
