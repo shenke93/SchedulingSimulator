@@ -714,12 +714,12 @@ def read_config_file(path):
     return return_sections
 
 class GA_settings:
-    def __init__(self, pop_size=12, cross_rate=0.5, mut_rate=0.4, num_mutations=3,
+    def __init__(self, pop_size=12, cross_rate=0.5, mutation_rate=0.4, num_mutations=3,
                  evolution_method='roulette', validation=False, pre_selection=False,
                  iterations=25000, stop_condition=None, stop_value=5000, adapt_ifin=[]):
         self.pop_size = pop_size
         self.cross_rate = cross_rate
-        self.mut_rate = mut_rate
+        self.mutation_rate = mutation_rate
         self.num_mutations = num_mutations
         self.evolution_method = evolution_method
         self.validation = validation

@@ -283,7 +283,7 @@ class GA(Scheduler):
         self.schedule = schedule
         self.pop_size = settings.pop_size
         self.cross_rate = settings.cross_rate
-        self.mutation_rate = settings.mut_rate
+        self.mutation_rate = settings.mutation_rate
         self.num_mutations = settings.num_mutations
         self.evolution_method = settings.evolution_method
         self.validation = settings.validation
@@ -668,15 +668,18 @@ def run_opt(original_schedule, settings, start_time=None):
     # if multiple schedules of course the costs of both the schedules will be saved
     # after the first schedule is calculated the end time is saved and then the next schedule is calculated from then on
     # initialise some data structures to save all of this
-    logging.info('Using '+ str(original_schedule.working_method) + ' method')
-    if start_time == None:
-        logging.info("Original schedule start time: " +  str(original_schedule.start_time.isoformat()))
-    else:
-        logging.info("Schedule start time: " +  str(start_time.isoformat()))
-        original_schedule.set_starttime(start_time)
+    try:
+        logging.info('Using '+ str(original_schedule.working_method) + ' method')
+        if start_time == None:
+            logging.info("Original schedule start time: " +  str(original_schedule.start_time.isoformat()))
+        else:
+            logging.info("Schedule start time: " +  str(start_time.isoformat()))
+            original_schedule.set_starttime(start_time)
+    except: 
+        pass
     
     total_result = original_schedule.get_fitness()
-    original_schedule.validate()
+    # original_schedule.validate()
     result_dict = {}
     result_dict.update({0:total_result})
     

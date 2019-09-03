@@ -18,7 +18,7 @@ def add_column_type(df, from_col='ArticleName', choice='BigPack'):
                      'EUROSHOPPER', 'AH', 'PASTA MARE', 'OKE', 'TOP BUDGET', 'FIORINI', 'BIO VILLAGE', 'MONOPP', 'RINATURA',
                      'JUMBO', 'BONI', 'CASINO', 'TURINI']
     elif newname == choices[2]:
-        stringlist = [['MACARONI', 'MAC.', 'ZITTI'], 'FUSILLI', ['SPIRELLI', 'SPIRAL', 'TORSADES'], ['HORENTJE', 'HELICES'], 
+        stringlist = [['MACARONI', 'MAC.'], 'FUSILLI', ['SPIRELLI', 'SPIRAL', 'TORSADES'], ['HORENTJE', 'HELICES'], 
                       ['VERMICELLI', 'VERMICELL'], ['NOODLES', 'NOUILLES'], 'TORTI',
                      ['PENNE', 'PIPE'], ['ELLEBOOGJE', 'ELLEBOOG', 'COQUILLETTE', 'COQ.'], 'NONE']
     elif newname == choices[3]:
@@ -292,8 +292,9 @@ class ConversionTable(object):
         l, mat = self.output_matrix()
         copy_mat = mat.copy()
         for i, j in product(range(len(l)), range(len(l))):
-            all_nonzeros = [k for k in mat[i][j] if k != 0]
-            mean_conversions = np.mean(all_nonzeros)
+            #all_nonzeros = [k for k in mat[i][j] if k != 0]
+            all_complete = mat[i][j]
+            mean_conversions = np.mean(all_complete)
             copy_mat[i][j] = mean_conversions
         pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
         return pd_out
@@ -304,8 +305,9 @@ class ConversionTable(object):
         l, mat = self.output_matrix()
         copy_mat = mat.copy()
         for i, j in product(range(len(l)), range(len(l))):
-            all_nonzeros = [k for k in mat[i][j] if k != 0]
-            median_conversions = np.median(all_nonzeros)
+            #all_nonzeros = [k for k in mat[i][j] if k != 0]
+            all_complete = mat[i][j]
+            median_conversions = np.median(all_complete)
             copy_mat[i][j] = median_conversions
         pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
         return pd_out
