@@ -51,6 +51,8 @@ if __name__ == "__main__":
     
     list_optimal = []
     
+    num = 0
+    
     for (job, priority, duedate) in zip(job_list, priority_list, duedate_list):
         
         # Convert the input file to a SimpleSchedule object
@@ -62,6 +64,9 @@ if __name__ == "__main__":
                                num_mutations=3, iterations=1000000,
                                adapt_ifin=[25000, 50000, 750000, 100000])
     
+        num += 1
+        print('Run #'+ str(num))
+        
         # Run the optimizer
         total_cost, original_cost, candidate_schedule,\
         original_schedule, lists_result, lists_result_no_constraint =\

@@ -248,7 +248,8 @@ def run_opt(original_schedule, settings):
         best_index = np.argmin(res)
         worst_index = np.argmax(res)
         mean = np.mean(res)
-        print(str(generation) + '/' + str(iterations) + ':\t' +  str(res[best_index]), end='\r')
+        print(f'{generation}/{iterations}:\t{res[best_index]:15.1f}', end='')
+        print('\r', end='')
         #print('\r ', end='\r') # overwrite this line continually
         generation += 1
 

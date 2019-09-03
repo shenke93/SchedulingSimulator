@@ -344,7 +344,7 @@ class Schedule:
                     val1 = total_duration_nofail
                     if (val2 >= failure_info[3]) and (product_type != 'NONE'):    # a maintenance should be planned after a fixed time
                         t_end_maint = t_start + timedelta(hours=failure_info[4])
-                        if maintenance_int in detailed_dict:
+                        while maintenance_int in detailed_dict:
                             maintenance_int -= 1
                         detailed_dict.update({maintenance_int : dict(zip(['start', 'end', 'totaltime', 'uptime', 
                                                                           'product', 'type', 'down_duration', 
