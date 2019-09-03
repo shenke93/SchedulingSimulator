@@ -475,15 +475,15 @@ class GA(Scheduler):
                 for k in range(self.num_mutations):
                     # determine mismatch for each task
                     if evolution == 'roulette':
-                        detailed_fitness = self.get_fitness([self.schedule.copy_neworder(loser)], detail=True)[0]
+                        # detailed_fitness = self.get_fitness([self.schedule.copy_neworder(loser)], detail=True)[0]
                         # detailed_fitness = self.get_fitness([Schedule(loser, self.job_dict, self.start_time, 
                         #                                               self.product_related_characteristics_dict,
                         #                                               self.down_duration_dict, self.price_dict, self.precedence_dict, self.failure_info,
                         #                                               self.scenario, self.duration_str, self.working_method, self.weights)], detail=True)[0]
                         #print(detailed_fitness)
-                        mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
-                        #loser = self.mutate(loser)
-                        loser = self.mutate(loser, mutation_prob)
+                        #mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
+                        loser = self.mutate(loser)
+                        #loser = self.mutate(loser, mutation_prob)
                     else:
                         loser = self.mutate(loser)
                 winner_loser[1] = loser
