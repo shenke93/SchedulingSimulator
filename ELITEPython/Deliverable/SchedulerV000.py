@@ -398,7 +398,7 @@ class GA(Scheduler):
             # inverse = list(np.array(prob).max() - np.array(prob))
             # inverse = inverse / sum(inverse)
             perimeter = 3
-            random_number = np.random.choice(list(range(-perimeter, 1)) + list(range(1, perimeter+1)), size=1)
+            random_number = np.random.choice(list(range(-perimeter, perimeter+1)), size=1)
             swap_point = int(point) + int(random_number)
             if swap_point >= len(loser):
                 swap_point = len(loser)-1
@@ -406,7 +406,7 @@ class GA(Scheduler):
                 swap_point = 0
             #swap_point = np.random.choice(tmpl, size=1, replace=False)
             #import pdb; pdb.set_trace()
-            swap_point = int(swap_point); point = int(point)
+            # swap_point = int(swap_point); point = int(point)
             # point, swap_point = np.random.randint(0, self.dna_size, size=2)
             loser[swap_point], loser[point] = loser[point], loser[swap_point]
         return loser

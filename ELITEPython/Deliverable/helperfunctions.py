@@ -253,9 +253,10 @@ class JobInfo(object):
                 reader = csv.DictReader(jobInfo_csv)
                 for row in reader:
                     if row['Product'] != 'MAINTENANCE': # Do not read maintenance tasks
+                        #import pdb; pdb.set_trace()
                         job_num = int(row['ProductionRequestId'])
                         # insert product name
-                        job_entry = dict({'product': row['Product']})
+                        #job_entry = dict({'product': row['Product']})
                         job_entry = {}
                         for key, value in operations.items():
                             try:
@@ -465,6 +466,7 @@ def make_df(timing_dict):
     df = df[['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product', 'Type', 
              'Releasedate', 'Duedate', 'TargetProductionRate', 'UnitPrice', 
              'Power', 'Weight']]
+    df.index = df.index.rename('ProductionRequestId')
     return df
 
 class writer :
