@@ -11,10 +11,9 @@ from population import Schedule
 
 def read_breakdown_record(breakdownRecordFile):
     try:
-        with open(breakdownRecordFile, encoding='utf-8') as breakdown_csv:
-            reader = csv.DictReader(breakdown_csv)
-            for row in reader:
-                stamp = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
+        with open(breakdownRecordFile, encoding='utf-8') as breakdown:
+            read_data = breakdown.read()
+            stamp = datetime.strptime(read_data, "%Y-%m-%d %H:%M:%S.%f")
     except:
         print("Unexpected error when reading breakdown record from {}:".format(breakdownRecordFile))
         raise

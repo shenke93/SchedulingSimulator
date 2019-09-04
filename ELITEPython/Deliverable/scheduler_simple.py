@@ -76,12 +76,11 @@ class SimpleGA:
                     point = np.random.choice(tmpl, size=1, replace=False)
             except:
                 import pdb; pdb.set_trace()
-            # tmpl.pop(int(point))
+            tmpl.pop(point)
             # prob.pop(int(point))
             # inverse = list(np.array(prob).max() - np.array(prob))
             # inverse = inverse / sum(inverse)
-            # random_number = np.random.choice(list(range(-perimeter, 1)) + \
-            #                                   list(range(1, perimeter+1)), size=1)
+            # random_number = np.random.choice(list(range(-perimeter, perimeter+1)), size=1)
             # swap_point = int(point) + int(random_number)
             # if swap_point >= len(loser):
             #     swap_point = len(loser)-1
