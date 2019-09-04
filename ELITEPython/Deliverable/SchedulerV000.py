@@ -16,6 +16,7 @@ import operator
 #import logging
 import os
 import math
+import random
 import itertools
 import time
 import msvcrt
@@ -307,15 +308,45 @@ class GA(Scheduler):
         ''' Using microbial genetic evolution strategy, the crossover result is used to represent the loser.
         An example image of this can be found in 'Production Scheduling and Rescheduling with Genetic Algorithms, C. Bierwirth, page 6'.
         '''
+        def crossover_function(L, W):
+            M = [bool(random.randint(0, 1)) for item in L]
+            temp = list(W.copy())
+            for (m, i) in zip(M, range(len(L))):
+                if m:
+                    temp.remove(L[i])
+            #print(temp)
+
+            child = []
+            j = 0
+            for (m, i) in zip(M, range(len(L))):
+                if m:
+                    child.append(L[i])
+                else:
+                    child.append(temp[j])
+                    j += 1
+            return child
+        
         # crossover for loser
         if np.random.rand() < self.cross_rate:
             try:
-                cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool)
-                keep_job =  winner_loser[1][~cross_points] # see the progress explained in the paper
-                swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
-                winner_loser[1][:] = np.concatenate((keep_job, swap_job))
+                #import pdb; pdb.set_trace()
+                #mask = np.random.randint(0, 2, len(winner_loser[0])).astype(np.bool))
+                #keep_job = winner_loser[1][~mask]
+                
+                #np.place(winner_loser[0], ~mask, keep_job)
+                winner = winner_loser[0]
+                loser = winner_loser[1]
+                
+                child = crossover_function(loser, winner)
+                winner_loser[1] = child
+                
+                if False: # do not execute this any more
+                    cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool)
+                    keep_job =  winner_loser[1][~cross_points] # see the progress explained in the paper
+                    swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
+                    winner_loser[1][:] = np.concatenate((keep_job, swap_job))
             except:
-                print(keep_job)
+                #print(keep_job)
                 raise
         return winner_loser
 
@@ -377,8 +408,7 @@ class GA(Scheduler):
             #import pdb; pdb.set_trace()
             swap_point = int(swap_point); point = int(point)
             # point, swap_point = np.random.randint(0, self.dna_size, size=2)
-            swap_A, swap_B = loser[point], loser[swap_point]
-            loser[point], loser[swap_point] = swap_B, swap_A
+            loser[swap_point], loser[point] = loser[point], loser[swap_point]
         return loser
     
 
@@ -475,7 +505,8 @@ class GA(Scheduler):
                 for k in range(self.num_mutations):
                     # determine mismatch for each task
                     if evolution == 'roulette':
-                        # detailed_fitness = self.get_fitness([self.schedule.copy_neworder(loser)], detail=True)[0]
+                        #detailed_fitness = self.schedule.copy_neworder(loser).get_fitness(detail=True)
+                        #detailed_fitness = self.get_fitness([self.schedule.copy_neworder(loser)], detail=True)[0]
                         # detailed_fitness = self.get_fitness([Schedule(loser, self.job_dict, self.start_time, 
                         #                                               self.product_related_characteristics_dict,
                         #                                               self.down_duration_dict, self.price_dict, self.precedence_dict, self.failure_info,
@@ -484,8 +515,10 @@ class GA(Scheduler):
                         #mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
                         loser = self.mutate(loser)
                         #loser = self.mutate(loser, mutation_prob)
-                    else:
+                    elif evolution == 'random':
                         loser = self.mutate(loser)
+                    else:
+                        raise ValueError('Evolution parameter should be one of [random, roulette], not found.')
                 winner_loser[1] = loser
 
                 # for i in np.arange(, self.pop_size):

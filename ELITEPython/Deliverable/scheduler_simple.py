@@ -27,13 +27,36 @@ class SimpleGA:
         'Production Scheduling and Rescheduling 
         with Genetic Algorithms, C. Bierwirth, page 6'.
         '''
+        def crossover_function(L, W):
+            M = [bool(random.randint(0, 1)) for item in L]
+            temp = list(W.copy())
+            for (m, i) in zip(M, range(len(L))):
+                if m:
+                    temp.remove(L[i])
+            #print(temp)
+
+            child = []
+            j = 0
+            for (m, i) in zip(M, range(len(L))):
+                if m:
+                    child.append(L[i])
+                else:
+                    child.append(temp[j])
+                    j += 1
+            return child
         # crossover for loser
         if np.random.rand() < self.cross_rate:
             try:
-                cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool)
-                keep_job =  winner_loser[1][~cross_points] # see the progress explained in the paper
-                swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
-                winner_loser[1][:] = np.concatenate((keep_job, swap_job))
+                
+                winner = winner_loser[0]
+                loser = winner_loser[1]
+                
+                child = crossover_function(loser, winner)
+                winner_loser[1] = child
+                # cross_points = np.random.randint(0, 2, self.dna_size).astype(np.bool)
+                # keep_job =  winner_loser[1][~cross_points] # see the progress explained in the paper
+                # swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
+                # winner_loser[1][:] = np.concatenate((keep_job, swap_job))
             except:
                 print(keep_job)
                 raise
@@ -67,8 +90,7 @@ class SimpleGA:
             swap_point = np.random.choice(tmpl, size=1, replace=False)
             swap_point = int(swap_point); point = int(point)
             # point, swap_point = np.random.randint(0, self.dna_size, size=2)
-            swap_A, swap_B = loser[point], loser[swap_point]
-            loser[point], loser[swap_point] = swap_B, swap_A
+            loser[swap_point], loser[point] = loser[point], loser[swap_point]
         return loser
     
     def evolve(self, n, evolution=None):
@@ -257,8 +279,8 @@ def run_opt(original_schedule, settings):
         worst_result_list.append(res[worst_index])
         mean_result_list.append(mean)
         
-        best_result_list_no_constraint.append(pop[best_index].get_fitness(weights=no_constraint))
-        worst_result_list_no_constraint.append(pop[worst_index].get_fitness(weights=no_constraint))
+        #best_result_list_no_constraint.append(pop[best_index].get_fitness(weights=no_constraint))
+        #worst_result_list_no_constraint.append(pop[worst_index].get_fitness(weights=no_constraint))
 
         if (stop_condition == 'num_iterations') and (generation >= iterations):
             stop = True
@@ -277,7 +299,7 @@ def run_opt(original_schedule, settings):
                 stop = True
     
     lists_result = pd.DataFrame({'best': best_result_list, 'mean': mean_result_list, 'worst': worst_result_list})
-    lists_result_no_constraint = pd.DataFrame({'best': best_result_list_no_constraint, 'worst': worst_result_list_no_constraint})
+    #lists_result_no_constraint = pd.DataFrame({'best': best_result_list_no_constraint, 'worst': worst_result_list_no_constraint})
     
     timer1 = time.monotonic()
     elapsed_time = timer1-timer0
@@ -331,4 +353,4 @@ def run_opt(original_schedule, settings):
     #     for key, value in original_schedule.downdur_dict.items():
     #         writer.writerow([key, value[0], value[1]])       
     
-    return total_cost, original_cost, candidate_schedule, original_schedule, lists_result, lists_result_no_constraint
+    return total_cost, original_cost, candidate_schedule, original_schedule, lists_result

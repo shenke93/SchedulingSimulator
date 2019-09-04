@@ -18,7 +18,7 @@ def sturges_rule(length):
     * length: int
     * returns int'''
     assert isinstance(length, int), 'Only integers permitted'
-    return int(np.round(1 + 3.3 * np.log10(length)))
+    return int(np.round(1 + 3.322 * np.log10(length)))
 
 def make_hist_frame(duration, observed=None, numbins=None, range=None, return_bins=False):
     duration = np.array(duration)

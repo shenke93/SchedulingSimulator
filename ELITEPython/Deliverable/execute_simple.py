@@ -62,14 +62,14 @@ if __name__ == "__main__":
         # Get the settings for the scheduler
         settings = GA_settings(pop_size=12, cross_rate=0.3, mutation_rate=0.7,
                                num_mutations=3, iterations=1000000,
-                               adapt_ifin=[25000, 50000, 750000, 100000])
+                               adapt_ifin=[25000, 50000, 75000, 100000])
     
         num += 1
         print('Run #'+ str(num))
         
         # Run the optimizer
         total_cost, original_cost, candidate_schedule,\
-        original_schedule, lists_result, lists_result_no_constraint =\
+        original_schedule, lists_result =\
         run_opt(simplesched, settings)
         
         list_optimal.append(total_cost)
