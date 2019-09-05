@@ -823,6 +823,7 @@ def config_to_sched_objects(sections):
         record = read_breakdown_record(breakdown_record_file)
         print('Limiting range of file after disruption at time', record)
         ji.limit_range_disruptions(record)
+        start_time = record
         
     if urgent_job_info:
         ji_new = JobInfo()
