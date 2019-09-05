@@ -290,6 +290,7 @@ class Schedule:
                     du = quantity / unit1['targetproductionrate'] # get job duration
                 except:
                     #du = quantity
+                    import pdb; pdb.set_trace()
                     print(quantity, unit1['targetproductionrate'])
                     raise
             else:
@@ -371,7 +372,10 @@ class Schedule:
                         val1 = (t_start - t_last_maint).total_seconds() / 3600
                         cur_rel = 1
                     if product_type != 'NONE':    # all products except breaks should be extended
-                        fail_dist = failure_info[0][product_cat]
+                        try:
+                            fail_dist = failure_info[0][product_cat]
+                        except:
+                            import pdb; pdb.set_trace()
                         duration = val2 - val1
                         v_start_time = fail_dist.get_t_from_reliability(cur_rel)
                         t_down += t_repair * (fail_dist.failure_cdf(v_start_time+duration) - fail_dist.failure_cdf(v_start_time))

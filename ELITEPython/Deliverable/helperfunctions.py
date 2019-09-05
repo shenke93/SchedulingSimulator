@@ -809,6 +809,8 @@ def config_to_sched_objects(sections):
     ji = JobInfo()
     ji.read_from_file(job_file)
     
+    #import pdb; pdb.set_trace()
+    
     if (start_time != None) and (end_time != None):
         #job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
         ji.limit_range(start_time, end_time)
