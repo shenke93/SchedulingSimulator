@@ -20,15 +20,16 @@ reasons_relative = [7]
 reasons_absolute = [9, 10, 11]
 reasons_absolute_conversion = [9, 10]
 reasons_absolute_cleaning = [11]
-reasons_break = []
-reasons_availability = [0, 1, 2, 3, 5, 8]
+reasons_break = [8]
+reasons_availability = [0, 1, 2, 3, 5]
 reasons_not_considered = []
 
 # Define cost of preventive maintenance and of unexpected maintenance
 cp = 100
 cu = 300
 
-assert(set(reasons_absolute_cleaning + reasons_absolute_conversion) == set(reasons_absolute))
+assert(set(reasons_absolute_cleaning + reasons_absolute_conversion) == set(reasons_absolute)),\
+    'Absolute reasons are incorrectly defined'
 considered_reasons = sorted(list(set(reasons_relative + reasons_absolute + reasons_absolute_conversion
                             + reasons_absolute_cleaning + reasons_break + reasons_availability)))
 
@@ -113,7 +114,8 @@ for choice in choices:
     # INITIAL CHECKS
     try:
         assert(set(reasons_relative + reasons_absolute + reasons_break + \
-                   reasons_availability + reasons_not_considered) == set(list_reasons))
+                   reasons_availability + reasons_not_considered) == set(list_reasons)),\
+                       'Not all reasons have been defined'
     except:
         print(reasons_relative, reasons_absolute, reasons_break, reasons_availability, 
               reasons_not_considered, list_reasons)
@@ -133,12 +135,12 @@ for choice in choices:
     df_task['ReasonId'] = np.where(df_task.Type == 'RunTime', 100, df_task.ReasonId)
     df_task = df_task[['ProductionRequestId', 'StartDateUTC' , 'EndDateUTC', 
                        'Duration', 'ReasonId', 'ArticleName', 'Quantity']]
-    #df_task = df_task[df_task.ArticleName != 'NONE']
-    #df_task = add_breaks(df_task, maxtime=break_pauses)
+    df_task = df_task[df_task.ArticleName != 'NONE']
+    df_task = add_breaks(df_task, maxtime=break_pauses)
     df_task = add_column_type(df_task, choice=choice_type)
-    df_task.head()
+    #df_task.head()
     
-    print(df_task.head())
+    #print(df_task.head())
     #import pdb; pdb.set_trace()
 
     # # MERGE PER PRODUCTION
@@ -155,7 +157,6 @@ for choice in choices:
     group = group_productions(df_task, considered_reasons)
     
     print(group.head())
-    #import pdb; pdb.set_trace()
     
     
     
@@ -339,10 +340,12 @@ for choice in choices:
     #[df.ArticleName != 'NONE']
     print('Generating conversion times between the types')
     print('Exporting the conversion time matrix')
+
     ct = ConversionTable(df_task, reasons_absolute, 'ProductionRequestId', choice_type)
-    ct.generate_conversion_table()
+    # ct.generate_conversion_table()
     median_conversions = ct.return_median_conversions()
-    #import pdb; pdb.set_trace()
+    
+    num_conversions = ct.return_num_conversions()
     #mean_conversions = generate_conversion_table(df_task, reasons_absolute_conversion + reasons_absolute_cleaning, 
     #                                             'ProductionRequestId', choice_type)
 
@@ -355,7 +358,8 @@ for choice in choices:
     new_mc = median_conversions
     
     def fillna_matrix(mat):
-        mat.loc['NONE', 'NONE'] = 0
+        if np.isnan(mat.loc['NONE', 'NONE']):
+            mat.loc['NONE', 'NONE'] = 0
         
         if mat.loc[:, 'NONE'].isnull().any():
             import warnings
@@ -371,8 +375,8 @@ for choice in choices:
                 if np.isnan(mat.loc['NONE', i]):
                     mat.loc['NONE', i] = (mat.loc['NONE', :]).max()
         
-        assert not mat.loc[:, 'NONE'].isnull().any(), 'Null values in the column'
-        assert not mat.loc['NONE', :].isnull().any(), 'Null values in the row'
+        #assert not mat.loc[:, 'NONE'].isnull().any(), 'Null values in the column'
+        #assert not mat.loc['NONE', :].isnull().any(), 'Null values in the row'
         from itertools import product
         for i, j in product(mat.index, mat.columns):
             if (i == j) and np.isnan(mat.loc[i, j]):
@@ -396,12 +400,18 @@ for choice in choices:
         #mean_export = new_mc.fillna(0)
         # export
         new_mc.to_csv(newname)
+        num_conversions.to_csv(splitext(output_used)[0] + '_num_conversions.csv')
         conversion_times = ET.SubElement(files, "conversion_times")
         conversion_times.text = os.path.split(newname)[1]    
 
     sns.heatmap(new_mc, annot=True, fmt=".0f")
     plt.tight_layout()
     plt.savefig(splitext(output_used)[0] + '_conversions.png', dpi=2400, figsize=(6, 8))
+    plt.show()
+    
+    sns.heatmap(num_conversions, annot=True, fmt=".0f")
+    plt.tight_layout()
+    plt.savefig(splitext(output_used)[0] + '_num_conversions.png', dpi=2400, figsize=(6, 8))
     plt.show()
     
 

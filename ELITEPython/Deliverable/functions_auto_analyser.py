@@ -311,6 +311,19 @@ class ConversionTable(object):
             copy_mat[i][j] = median_conversions
         pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
         return pd_out
+    
+    def return_num_conversions(self):
+        # Convert the list into a numeric matrix
+        from itertools import product
+        l, mat = self.output_matrix()
+        copy_mat = mat.copy()
+        for i, j in product(range(len(l)), range(len(l))):
+            #all_nonzeros = [k for k in mat[i][j] if k != 0]
+            all_complete = mat[i][j]
+            num_conversions = len(all_complete)
+            copy_mat[i][j] = num_conversions
+        pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
+        return pd_out
 
 
 def adapt_standard_matrix(mean_conversions):

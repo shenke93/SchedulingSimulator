@@ -276,6 +276,7 @@ class JobInfo(object):
 
 
     def insert_urgent_jobs(self, urgent_dict):
+        import pdb; pdb.set_trace()
         stamp = min(x.get('releasedate') for x in urgent_dict.values()) # Find the smallest release date
         print(stamp)
         res_dict = {}
@@ -818,7 +819,13 @@ def config_to_sched_objects(sections):
     
     if breakdown_record_file:
         record = read_breakdown_record(breakdown_record_file)
+        print('Limiting range of file after disruption at time', record)
         ji.limit_range_disruptions(record)
+        
+    if urgent_job_info:
+        ji_new = JobInfo()
+        ji_new.read_from_file(urgent_job_info)
+        ji = ji_new + ji
         
     if remove_breaks:
         ji.remove_all_breaks()

@@ -4,6 +4,7 @@ import logging
 import msvcrt
 import pandas as pd
 import sys
+import random
 
 class SimpleGA:
     def __init__(self, schedule, settings):
@@ -58,7 +59,6 @@ class SimpleGA:
                 # swap_job = winner_loser[0, np.isin(winner_loser[0].ravel(), keep_job, invert=True)]
                 # winner_loser[1][:] = np.concatenate((keep_job, swap_job))
             except:
-                print(keep_job)
                 raise
         return winner_loser
     
@@ -76,7 +76,7 @@ class SimpleGA:
                     point = np.random.choice(tmpl, size=1, replace=False)
             except:
                 import pdb; pdb.set_trace()
-            tmpl.pop(point)
+            #tmpl.pop(point)
             # prob.pop(int(point))
             # inverse = list(np.array(prob).max() - np.array(prob))
             # inverse = inverse / sum(inverse)

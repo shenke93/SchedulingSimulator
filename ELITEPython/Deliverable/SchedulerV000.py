@@ -777,7 +777,7 @@ def run_opt(original_schedule, settings, start_time=None):
     timer1 = time.monotonic()
     elapsed_time = timer1-timer0
     
-    logging.info('Stopping after ' + str(iterations) + ' iterations. Elapsed time: ' + str(round(elapsed_time, 2)))
+    logging.info('Stopping after ' + str(generation) + ' iterations. Elapsed time: ' + str(round(elapsed_time, 2)))
 
     print()
     logging.info("Candidate schedule " + str(pop[best_index].order))

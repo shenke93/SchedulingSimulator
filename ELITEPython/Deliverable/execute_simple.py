@@ -10,7 +10,7 @@ os.chdir(curdir)
 #from SchedulerV000 import run_opt
 #from visualise_lib import show_ga_results, plot_gantt, show_energy_plot
 
-NUM = 40
+NUM = 50
 FILENAME = r'OR dataset\wt{}.txt'.format(NUM)
 OUTPUT_FILENAME = r'OR dataset\wtself{}.txt'.format(NUM)
 
@@ -60,8 +60,8 @@ if __name__ == "__main__":
                                      job, priority, duedate)
     
         # Get the settings for the scheduler
-        settings = GA_settings(pop_size=12, cross_rate=0.3, mutation_rate=0.7,
-                               num_mutations=3, iterations=1000000,
+        settings = GA_settings(pop_size=20, cross_rate=0.7, mutation_rate=0.5,
+                               num_mutations=5, iterations=100000,
                                adapt_ifin=[25000, 50000, 75000, 100000])
     
         num += 1
