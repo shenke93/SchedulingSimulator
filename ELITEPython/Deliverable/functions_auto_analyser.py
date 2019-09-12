@@ -12,7 +12,8 @@ def add_column_type(df, from_col='ArticleName', choice='BigPack'):
     newname = choice
 
     if newname == choices[0]:
-        stringlist = [' 8', ' 10', ' 12', ' 16', ' 18' ,' 20']
+        stringlist = [['8X', ' 8'], ['10X', ' 10'], ['12X', ' 12'], ['16X',' 16'], 
+                      ['18X', ' 18'] ,['20X', ' 20']]
     elif newname == choices[1]:
         stringlist = ['DLL 365', 'VALUE', 'AMBRA', 'EVERYDAY', 'WINNY', 'CARREFOUR', 'ALDI', 'ECO+', 'TOSCA', 'CASA ITALIANA',
                      'EUROSHOPPER', 'AH', 'PASTA MARE', 'OKE', 'TOP BUDGET', 'FIORINI', 'BIO VILLAGE', 'MONOPP', 'RINATURA',
@@ -34,10 +35,10 @@ def add_column_type(df, from_col='ArticleName', choice='BigPack'):
             new_s = ('|'.join(s))
             bp = np.where(name.str.contains(new_s), s[0], bp)
         else:
-            if newname == 'BigPack':
-                bp = np.where(name.str.contains(s), s + 'X', bp)
-            else:
-                bp = np.where(name.str.contains(s), s, bp)
+            # if newname == 'BigPack':
+            #     bp = np.where(name.str.contains(s), s + 'X', bp)
+            # else:
+            bp = np.where(name.str.contains(s), s, bp)
     df[newname] = bp
     return df
 
@@ -136,7 +137,7 @@ def save_downtimes(dt, output):
     out = dt.copy()
     out = out[['StartDateUTC', 'EndDateUTC']]
     out = out.reset_index(drop=True)
-    out.index.name = 'ID'
+    out.index.name = 'index'
     out.to_csv(output)
 
 def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None, ignore_break=True, 
@@ -175,15 +176,15 @@ def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None
     return out
     #out.to_csv(output)
 
-def generate_energy_per_production(group, file_speed, choice=None, df_merged=None):
+def generate_energy_per_production(group, choice=None, df_merged=None):
     
     #articlenum = len(group.ArticleName.unique())
     #fs = pd.read_csv(file_speed, index_col=0)
     
-    group = group.merge(file_speed, left_index=True, right_on='ProductionRequestId', how='left')\
-                 .set_index('ProductionRequestId').fillna(1.0)
     #file_speed = file_speed[file_speed['ProductionRequestId'].isin(group.index.tolist())]\
     #             .reset_index(drop=True)
+    # group = group.merge(file_speed, left_index=True, right_on='ProductionRequestId', how='left')\
+    #                     .set_index('ProductionRequestId').fillna(1.0)
     rand1 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='UnitPrice')    # unit price
     rand2 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='Power')  # power
     rand3 = pd.Series(np.random.randint(1, 10, (len(group),)), index=group.index, name='Weight') #weights

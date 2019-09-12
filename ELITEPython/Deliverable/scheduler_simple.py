@@ -71,9 +71,9 @@ class SimpleGA:
             tmpl = list(range(self.dna_size))
             try:
                 if prob:
-                    point = np.random.choice(tmpl, size=1, replace=False, p=prob)
+                    point = int(np.random.choice(tmpl, size=1, replace=False, p=prob))
                 else:
-                    point = np.random.choice(tmpl, size=1, replace=False)
+                    point = int(np.random.choice(tmpl, size=1, replace=False))
             except:
                 import pdb; pdb.set_trace()
             #tmpl.pop(point)
@@ -86,8 +86,7 @@ class SimpleGA:
             #     swap_point = len(loser)-1
             # if swap_point < 0:
             #     swap_point = 0
-            swap_point = np.random.choice(tmpl, size=1, replace=False)
-            swap_point = int(swap_point); point = int(point)
+            swap_point = int(np.random.choice(tmpl, size=1, replace=False))
             # point, swap_point = np.random.randint(0, self.dna_size, size=2)
             loser[swap_point], loser[point] = loser[point], loser[swap_point]
         return loser
@@ -159,15 +158,17 @@ class SimpleGA:
                     # determine mismatch for each task
                     if evolution == 'roulette':
                     #    import pdb; pdb.set_trace()
-                        #detailed_fitness = self.schedule.copy_neworder(loser).get_fitness()
+                        detailed_fitness = self.schedule.copy_neworder(loser).get_fitness(detail=True)
+                        if sum(detailed_fitness) == 0:
+                            detailed_fitness = [(f+1) for f in detailed_fitness]
                         # detailed_fitness = self.get_fitness([Schedule(loser, self.job_dict, self.start_time, 
                         #                                               self.product_related_characteristics_dict,
                         #                                               self.down_duration_dict, self.price_dict, self.precedence_dict, self.failure_info,
                         #                                               self.scenario, self.duration_str, self.working_method, self.weights)], detail=True)[0]
                         #print(detailed_fitness)
-                        #mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
-                        loser = self.mutate(loser)
-                        #loser = self.mutate(loser, mutation_prob)
+                        mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
+                        #loser = self.mutate(loser)
+                        loser = self.mutate(loser, mutation_prob)
                     else:
                         loser = self.mutate(loser)
                 winner_loser[1] = loser

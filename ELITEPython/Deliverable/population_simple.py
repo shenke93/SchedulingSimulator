@@ -68,10 +68,10 @@ class SimpleSchedule:
         else:
             current_cost = 0
         for job in self.job_list:
-            current_priority = self.priority_list[job]
             current_duedate = self.duedate_list[job]
             current_time = self.timing_list[job]
             if current_time > current_duedate:
+                current_priority = self.priority_list[job]
                 extra_cost = (current_time - current_duedate)\
                              * current_priority
                 if detail:
@@ -99,4 +99,5 @@ class SimpleSchedule:
         """
         Print fitness values
         """
+        print("Total weighted tardiness cost is:", self.get_weighted_tardiness_cost())
         print("Total fitness value is:", self.get_fitness())

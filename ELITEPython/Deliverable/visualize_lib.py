@@ -31,7 +31,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     - Startdate determines the start date of a production
     - Enddate determines the end date of a production
     - Order can give a custom order to the productions
-    - Downtimes is a dataframe indicating downtimes of the production line
+    - Downtimes is an optional dataframe indicating downtimes of the production line
     '''
     df_task = df_task.reset_index(drop=True) # make index unique (necessary)
 
@@ -42,11 +42,10 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     df_task.loc[:, 'Vis_End'] = (df_task.loc[:, enddate] - firstdate).dt.total_seconds()/3600
     if isinstance(downtimes, pd.DataFrame): # if downtimes included in the correct format
         #print(downtimes)
-        downtimes.loc[:, 'Vis_Start'] = (downtimes.loc[:, startdate] - firstdate).dt.total_seconds()/3600
-        downtimes.loc[:, 'Vis_End'] = (downtimes.loc[:, enddate] - firstdate).dt.total_seconds()/3600
+        downtimes.loc[:, 'Vis_Start'] = (downtimes.loc[:, 'StartDateUTC'] - firstdate).dt.total_seconds()/3600
+        downtimes.loc[:, 'Vis_End'] = (downtimes.loc[:, 'EndDateUTC'] - firstdate).dt.total_seconds()/3600
     # Plot a line for every line of data in your file
-    reasons = list(df_task[reason_str].unique())
-    color = cm.rainbow(np.linspace(0, 1, len(reasons)))
+    
     # from cycler import cycler
     # cy = cycler(color=['b','g','orange','c','m','yellow','steelblue', 'tan',
     #                                           'grey', 'cyan', 'lightgreen', 'crimson', 'greenyellow', 'darkviolet', 'fuchsia',
@@ -56,7 +55,9 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     if order:
         reasons = list(order)
     else:
+        reasons = list(df_task[reason_str].unique())
         reasons.sort()
+    color = cm.rainbow(np.linspace(0, 1, len(reasons)))
     color_dict = dict(zip(reasons, color))
     
     articles = np.sort(df_task[articlename].unique()).tolist()

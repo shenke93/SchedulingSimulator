@@ -119,17 +119,17 @@ def read_down_durations(downDurationFile, daterange=None):
         with open(downDurationFile, encoding='utf-8') as downDurationInfo_csv:
             reader = csv.DictReader(downDurationInfo_csv)
             for row in reader:
-                start = datetime.strptime(row['Start'], "%Y-%m-%d %H:%M:%S.%f")
-                end = datetime.strptime(row['End'], "%Y-%m-%d %H:%M:%S.%f")
+                start = datetime.strptime(row['StartDateUTC'], "%Y-%m-%d %H:%M:%S.%f")
+                end = datetime.strptime(row['EndDateUTC'], "%Y-%m-%d %H:%M:%S.%f")
                 if daterange is None:
                     duration = (end - start).total_seconds() / 3600
-                    down_duration_dict.update({row['ID']:[start, 
+                    down_duration_dict.update({row['index']:[start, 
                                                           end,
                                                           duration]})
                 if (daterange is not None):
                     if (daterange[0] < start < daterange[1]):
                         duration = (end - start).total_seconds() / 3600
-                        down_duration_dict.update({row['ID']:[start, 
+                        down_duration_dict.update({row['index']:[start, 
                                                               end,
                                                               duration]})
     except:
@@ -252,7 +252,6 @@ class JobInfo(object):
                 reader = csv.DictReader(jobInfo_csv)
                 for row in reader:
                     if row['Product'] != 'MAINTENANCE': # Do not read maintenance tasks
-                        #import pdb; pdb.set_trace()
                         job_num = int(row['ProductionRequestId'])
                         # insert product name
                         #job_entry = dict({'product': row['Product']})
@@ -273,6 +272,8 @@ class JobInfo(object):
             raise
         self.job_dict = job_dict
         self.job_order = job_order
+        
+        #import pdb; pdb.set_trace()
 
 
     def insert_urgent_jobs(self, urgent_dict):
@@ -455,6 +456,7 @@ def make_df(timing_dict):
     Make a dataframe from a dictionary
     '''
     #all_cols = ['StartDateUTC', 'EndDateUTC', 'TotalTime', 'ArticleName', 'Type', 'Down_duration', 'Changeover_duration', 'Cleaning_duration']
+    # create a dataframe from the dictionary
     df = pd.DataFrame.from_dict(timing_dict, orient='index')
     df = df.rename(columns={'start': 'Start', 'end':'End', 'totaltime': 'Totaltime', 'uptime': 'Uptime',  
                                        'product': 'Product', 'type': 'Type', 'releasedate': 'Releasedate', 
@@ -519,7 +521,7 @@ def read_failure_info(file):
         mu = float(root.find('repair_dist').get('mu'))
         from probdist import Lognormal
         rep_dist = Lognormal(sigma, mu)
-        mean = float(root.find('repair_dist').get('mean'))
+        rep_mean = float(root.find('repair_dist').get('mean'))
     else:
         print('Faulty distribution detected!')
         raise NameError("Error")
@@ -533,9 +535,21 @@ def read_failure_info(file):
         cleaning_file = root.find('files').find('cleaning_time').text
         cleaning_time = pd.read_csv(os.path.join(os.path.split(file)[0], cleaning_file), index_col = 0)
     else:
-        cleaning_time = None       
+        cleaning_time = None
+         
+        
+    import ast
+    availability_dict = ast.literal_eval(root.find('availability').text)
 
-    failure_info = (fail_dict, rep_dist, mean, maint_time, repair_time, conversion_times, cleaning_time)
+    failure_info = {'fail_dict': fail_dict, 
+                    'rep_dist': rep_dist, 
+                    'rep_mean': rep_mean, 
+                    'maint_time': maint_time, 
+                    'repair_time': repair_time, 
+                    'conversion_times': conversion_times, 
+                    'cleaning_time': cleaning_time, 
+                    'availability_dict': availability_dict}
+    
     return failure_info
 
 

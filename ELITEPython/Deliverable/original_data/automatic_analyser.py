@@ -20,13 +20,13 @@ reasons_relative = [7]
 reasons_absolute = [9, 10, 11]
 reasons_absolute_conversion = [9, 10]
 reasons_absolute_cleaning = [11]
-reasons_break = [8]
-reasons_availability = [0, 1, 2, 3, 5]
+reasons_break = []
+reasons_availability = [0, 1, 2, 3, 5, 8]
 reasons_not_considered = []
 
 # Define cost of preventive maintenance and of unexpected maintenance
 cp = 100
-cu = 300
+cu = 250
 
 assert(set(reasons_absolute_cleaning + reasons_absolute_conversion) == set(reasons_absolute)),\
     'Absolute reasons are incorrectly defined'
@@ -59,7 +59,8 @@ def plot_hist(runtime, obs_run, cutoff_perc, fitter):
     p_fail = df_hist['Failures']/len(runtime)
     plt.bar(ran[:-1] + (ran[1]-ran[0])/2, p_fail, width=ran[1]-ran[0], edgecolor='k')
     plt.bar(ran[:-1] + (ran[1]-ran[0])/2, c_fail, width=ran[1]-ran[0], 
-            alpha=0.1, edgecolor='k', yerr=df_hist['Std']**(0.5))
+            alpha=0.1, edgecolor='k'#, yerr=df_hist['Std']**(0.5)
+            )
     plt.xlabel(r'time (h)')
     plt.ylabel(r'F(t)')
     plt.plot(t , fitter.failure_cdf(t), 'r', label=fitter)
@@ -76,7 +77,9 @@ sys.path.append(os.path.split(sys.path[0])[0])
 
 from probdist import duration_run_down, Weibull, Lognormal
 from lifelines import WeibullFitter, LogNormalFitter
-from functions_auto_analyser import *
+from functions_auto_analyser import add_column_type, add_breaks, group_productions, remove_breaks, construct_downtimes,\
+                                    save_downtimes, generate_durations, generate_energy_per_production,\
+                                    construct_energy_2tarifs, adapt_standard_matrix, ConversionTable
 
 print(__doc__)
 
@@ -85,10 +88,10 @@ os.chdir(os.path.dirname(sys.argv[0]))
 
 # per choice: (inputfile, target production rate per type, type name)
 # outputfolder determined by name of inputfile
-choices = {'prod': ('productionfile.csv', 'prod_speed.csv', 'PastaType'),
-           'pack': ('packagingfile_old.csv', 'pack_speed.csv', 'BigPack-simple')}
+choices = {'production': ('productionfile.csv', 'prod_speed.csv', 'PastaType'),
+           'packaging': ('packagingfile_old.csv', 'pack_speed.csv', 'BigPack-simple')}
 for choice in choices:
-    print('Executing for: '+ str(choice))
+    print(f'Executing for: {choice}')
     file_used, file_speed, choice_type = choices[choice]
     try:
         df = pd.read_csv(file_used, parse_dates=['StartDateUTC', 'EndDateUTC'])
@@ -100,8 +103,8 @@ for choice in choices:
     # Make the output folder if it doesn't exist yet
     outfolder = splitext(file_used)[0]
     outfolder = os.path.join(curdir, outfolder)
-    print('Making output folder: ' + outfolder)
     if not exists(outfolder):
+        print('Making output folder: ' + outfolder)
         mkdir(outfolder)
     output_used = os.path.join(outfolder,  'outputfile.xml')
 
@@ -124,24 +127,24 @@ for choice in choices:
 
     print(df.head())
 
-    # ADD TYPE COLUMN
-    print('Adding type column with type = ' + choice_type)
     df = add_column_type(df, choice=choice_type)
 
     # NORMALISE THE BREAKS
     print('Normalising breaks to have a time of '+ str(break_pauses))
     df_task = df.copy()
     # Set the ReasonId to 100 if there is RunTime
-    df_task['ReasonId'] = np.where(df_task.Type == 'RunTime', 100, df_task.ReasonId)
+    df_task['ReasonId'] = np.where(df_task['Type'] == 'RunTime', 100, df_task['ReasonId'])
     df_task = df_task[['ProductionRequestId', 'StartDateUTC' , 'EndDateUTC', 
                        'Duration', 'ReasonId', 'ArticleName', 'Quantity']]
-    df_task = df_task[df_task.ArticleName != 'NONE']
+    df_task = df_task[df_task['ArticleName'] != 'NONE']
     df_task = add_breaks(df_task, maxtime=break_pauses)
+    
+    # ADD TYPE COLUMN
+    print('Adding type column with type = ' + choice_type)
     df_task = add_column_type(df_task, choice=choice_type)
     #df_task.head()
     
     #print(df_task.head())
-    #import pdb; pdb.set_trace()
 
     # # MERGE PER PRODUCTION
     # from probplot import merge_per_production
@@ -155,13 +158,12 @@ for choice in choices:
     #print(len(df_task))
     print('Saving downtimes')
     group = group_productions(df_task, considered_reasons)
-    
     print(group.head())
     
     
     
     #print(len(group))
-    #group = remove_breaks(group, turn_off_if)
+    group = remove_breaks(group, turn_off_if)
     downtime = construct_downtimes(df_task, considered_reasons)
     save_downtimes(downtime, join(outfolder, 'historicalDownPeriods.csv'))
 
@@ -170,7 +172,10 @@ for choice in choices:
     #dur.to_csv(os.path.join(outfolder,'generated_jobInfoProd.csv'))
     
     print('Generating product related characteristics')
-    energycons = generate_energy_per_production(dur, pd.read_csv(file_speed, index_col=0))#, choice=choice_type, df_merged=df_merged)
+    dur = dur.merge(pd.read_csv(file_speed, index_col = 0), left_index=True, 
+                        right_on='ProductionRequestId', how='left')\
+                        .set_index('ProductionRequestId').fillna(1.0)
+    energycons = generate_energy_per_production(dur)#, choice=choice_type, df_merged=df_merged)
     # GENERATE THE MEAN PRODUCT RELATED CHARACTERISTIC
     #tempmean = energycons[(energycons.loc[:, 'Product'] != 'NONE') | (energycons.loc[:, 'Product'] != 'MAINTENANCE')].mean()
     #tempmean['Product'] = 'MEAN'
@@ -196,12 +201,12 @@ for choice in choices:
     # continue_obs = ((df.Type == 'DownTime') & (df.ReasonId.isin(reasons_absolute + reasons_not_considered + reasons_availability)))
     # stop_obs = (df.Type == 'Break')
     
-    bool_up = (df.Type == 'RunTime') # List of all RunTimes
-    bool_down = (df.Type.isin(['DownTime', 'Break'])) & (df.ReasonId.isin(reasons_relative)) # List of all DownTimes in calculation
-    bool_ignore = (df.Type.isin(['DownTime', 'Break'])) & (df.ReasonId.isin(reasons_availability + reasons_absolute)) # List of all breaks to ignore
-    bool_break = (df.Type.isin(['DownTime', 'Break'])) & (df.ReasonId.isin(reasons_break)) # List of all breaks to stop observation
+    bool_up = (df['Type'] == 'RunTime') # List of all RunTimes
+    bool_down = (df['Type'].isin(['DownTime', 'Break'])) & (df['ReasonId'].isin(reasons_relative)) # List of all DownTimes in calculation
+    bool_ignore = (df['Type'].isin(['DownTime', 'Break'])) & (df['ReasonId'].isin(reasons_availability + reasons_absolute)) # List of all breaks to ignore
+    bool_break = (df['Type'].isin(['DownTime', 'Break'])) & (df['ReasonId'].isin(reasons_break)) # List of all breaks to stop observation
     
-    uptime, downtime, obs_up, obs_down = duration_run_down(list(df.Duration / 3600), list(bool_up), list(bool_down), 
+    uptime, downtime, obs_up, obs_down = duration_run_down(list(df['Duration'] / 3600), list(bool_up), list(bool_down), 
                                                            list(bool_ignore), list(bool_break), observation=True)
     wf = WeibullFitter()
     try:
@@ -254,7 +259,7 @@ for choice in choices:
         maint_time = ET.SubElement(root, 'maint_time')
         maint_time.text = str(PM)
         repair_time = ET.SubElement(root, 'repair_time')
-        repair_time.text = str(logn.mean_time() * 10)
+        repair_time.text = str(logn.mean_time())
     plt.plot(minimum, total_cost_maintenance(minimum, weib, cp, cu), 'o')
     t_plot = np.linspace(1, float(minimum * 2), 50)
     total, prev, unexp = total_cost_maintenance(t_plot, weib, cp, cu, True)
@@ -293,14 +298,19 @@ for choice in choices:
 
         from probdist import duration_run_down
         bool_up = (df_select.Type == 'RunTime') # List of all RunTimes
-        bool_down = (df_select.Type.isin(['DownTime', 'Break'])) & (df_select.ReasonId.isin(reasons_relative)) # List of all DownTimes in calculation
-        bool_ignore = (df_select.Type.isin(['DownTime', 'Break'])) & (df_select.ReasonId.isin(reasons_availability + reasons_absolute)) # List of all breaks to ignore
-        bool_break = (df_select.Type.isin(['DownTime', 'Break'])) & (df_select.ReasonId.isin(reasons_break)) # List of all breaks to stop observation
-        
+        # List of all DownTimes in calculation
+        bool_down = (df_select.Type.isin(['DownTime', 'Break'])) &\
+                    (df_select.ReasonId.isin(reasons_relative)) 
+        # List of all breaks to ignore
+        bool_ignore = (df_select.Type.isin(['DownTime', 'Break'])) &\
+                      (df_select.ReasonId.isin(reasons_availability + reasons_absolute)) 
+        # List of all breaks to stop observation
+        bool_break = (df_select.Type.isin(['DownTime', 'Break'])) & (df_select.ReasonId.isin(reasons_break)) 
+
         uptime, downtime, obs_up, obs_down = duration_run_down(list(df_select.Duration / 3600), list(bool_up), list(bool_down), 
                                                                list(bool_ignore), list(bool_break), observation=True)
         wf = WeibullFitter()
-        
+
         try:
             wf.fit(uptime, obs_up)
             weib = Weibull(wf.lambda_, wf.rho_)
@@ -319,6 +329,7 @@ for choice in choices:
             plot_hist(uptime, obs_up, 99, weib)
             plt.title(f'Probability of failure in time [{item}], reasons: ' +  ', '.join([str(x) for x in reasons_relative]))
             plt.savefig(f'./{file_used.split(".")[0]}/figures/fail_prob_{file_used.split(".")[0]}_{item}.pdf', dpi=2400, layout='tight')
+            plt.savefig(f'./{file_used.split(".")[0]}/figures/fail_prob_{file_used.split(".")[0]}_{item}.png', dpi=2400, layout='tight')
             plt.close()
         weib_dict[item] = weib
 
@@ -380,8 +391,10 @@ for choice in choices:
         from itertools import product
         for i, j in product(mat.index, mat.columns):
             if (i == j) and np.isnan(mat.loc[i, j]):
+                warnings.warn('There are null values on the diagonal')
                 mat.loc[i, j] = mat.loc[i, 'NONE'] + mat.loc['NONE', j] 
             elif (i!=j) and np.isnan(mat.loc[i, j]):
+                warnings.warn('There are null values on the non-diagonal')
                 mat.loc[i, j] = (mat.loc[i, 'NONE'] + mat.loc['NONE', j]) * 2
         return mat
 

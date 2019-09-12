@@ -116,7 +116,7 @@ def main(config):
             namecolor='Type'
         else:
             namecolor='ArticleName'
-
+           
         # Make the columns be the correct format for plotting
         best = best[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
 
