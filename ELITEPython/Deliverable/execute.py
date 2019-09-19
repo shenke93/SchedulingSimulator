@@ -70,9 +70,9 @@ def main(config):
         if export:
             out_df = list_result_nc
             out_df.to_csv(os.path.join(export_folder, 'iterations_results_noconstraintcost.csv'))
-            plt.savefig(os.path.join(export_folder, r"evolution.png"), dpi=300)
+            plt.savefig(os.path.join(export_folder, r"evolution_noconstraint.png"), dpi=300)
         if export_paper:
-            plt.savefig(os.path.join(export_folder, r"evolution.pdf"))
+            plt.savefig(os.path.join(export_folder, r"evolution_noconstraint.pdf"))
         if interactive:
             plt.show()            
             
@@ -93,8 +93,8 @@ def main(config):
         downtimes = None
         if config['scenario_config']['working_method'] == 'expected' \
             and config['input_config']['failure_info'] is not None:
-            orig_failure = orig_sched.get_failure_prob()
-            best_failure = best_sched.get_failure_prob()
+            orig_failure = orig_sched.get_failure_prob(cumulative=False)
+            best_failure = best_sched.get_failure_prob(cumulative=False)
         else:
             # Or the actual failure times
             orig_failure = None
@@ -132,8 +132,8 @@ def main(config):
         #prod_char = pd.read_csv(config['input_config']['prc_file'])
 
 
-        show_energy_plot(best, energy_price, 
-                         'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()), 
+        show_energy_plot(best, energy_price,
+                         'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()),
                          colors='Type', productions='Product', downtimes=downtimes, failure_rate=best_failure,
                          startdate='Start', enddate='End')
         if export:

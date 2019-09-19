@@ -3,7 +3,7 @@ import os, sys
 import statistics
 
 CHOICE = [40, 50, 100]
-NUM = CHOICE[0]
+NUM = CHOICE[2]
 FILE_SELF = f'wtself{NUM}.txt'
 if NUM <= 50:
     FILE_OPT = f'wtopt{NUM}.txt'

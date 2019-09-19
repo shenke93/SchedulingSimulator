@@ -698,7 +698,8 @@ def read_config_file(path):
             'weight_virtual_failure': ['weight_virtual_failure', float, return_0],
             'weight_flowtime': ['weight_flowtime', float, return_0],
             'weight_conversion': ['weight_conversion', float, return_0],
-            'weight_makespan': ['weight_makespan', float, return_0]
+            'weight_makespan': ['weight_makespan', float, return_0],
+            'weight_tardiness': ['weight_tardiness', float, return_0],
         }
         
         scenario_actions = {

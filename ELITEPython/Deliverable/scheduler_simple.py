@@ -69,14 +69,11 @@ class SimpleGA:
         # mutation for loser, randomly choose two points and do the swap
         if np.random.rand() < self.mutation_rate:
             tmpl = list(range(self.dna_size))
-            try:
-                if prob:
-                    point = int(np.random.choice(tmpl, size=1, replace=False, p=prob))
-                else:
-                    point = int(np.random.choice(tmpl, size=1, replace=False))
-            except:
-                import pdb; pdb.set_trace()
-            #tmpl.pop(point)
+            if prob:
+                point = int(np.random.choice(tmpl, size=1, replace=False, p=prob))
+            else:
+                point = int(np.random.choice(tmpl, size=1, replace=False))
+            tmpl.pop(point)
             # prob.pop(int(point))
             # inverse = list(np.array(prob).max() - np.array(prob))
             # inverse = inverse / sum(inverse)

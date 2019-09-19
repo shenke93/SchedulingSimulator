@@ -10,7 +10,7 @@ class SimpleSchedule:
         self.length_list = length_list
         self.priority_list = priority_list
         self.duedate_list = duedate_list
-        self.timing_list = self.get_time()
+        self.timing_dict = self.get_time()
         
         if weights is None:
             self.weights = dict()
@@ -51,12 +51,19 @@ class SimpleSchedule:
         Get a new timing list, each job is assigned a
         timing acccording to its position in the job_list
         """
-        timing_list = [None]*len(self.job_list)
+        timing_dict = {}
+        
+        #timing_list = [None]*len(self.job_list)
         current_time = 0
         for job in self.job_list:
+            start_time = current_time
             current_time += self.length_list[job]
-            timing_list[job] = current_time             
-        return timing_list                
+            timing_dict[job] = {'start': start_time,
+                                'end': current_time,
+                                'priority': self.priority_list[job],
+                                'duedate': self.duedate_list[job]}
+            #timing_list[job] = current_time             
+        return timing_dict
             
     def get_weighted_tardiness_cost(self, detail=False):
         """
@@ -69,7 +76,7 @@ class SimpleSchedule:
             current_cost = 0
         for job in self.job_list:
             current_duedate = self.duedate_list[job]
-            current_time = self.timing_list[job]
+            current_time = self.timing_dict[job]['end']
             if current_time > current_duedate:
                 current_priority = self.priority_list[job]
                 extra_cost = (current_time - current_duedate)\

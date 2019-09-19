@@ -160,8 +160,12 @@ class Schedule:
                     # if there would be no failure (suppose)
                     #total_duration_nofail += du
                     t_end = t_start + timedelta(hours = float(du))
-                    val2 = (total_duration_nofail + du)
-                    val1 = total_duration_nofail
+                    if product_cat != "NONE":
+                        val2 = (total_duration_nofail + du)
+                        val1 = total_duration_nofail
+                    else:
+                        val2 = total_duration_nofail
+                        val1 = total_duration_nofail
                     # a maintenance should be planned after a fixed time
                     if val2 >= failure_info['maint_time']:
                         # first do maintenance
@@ -248,8 +252,7 @@ class Schedule:
         [(t_start_begin + timedelta(hours = ( l / 3600))) for l in cumulative_failure_prob.index.tolist()]
 
         return cumulative_failure_prob
-            
-    
+
     def get_time(self):
         # Assistant function to visualize the processing of a candidate schedule throughout the time horizon
         detailed_dict = {}
@@ -348,8 +351,12 @@ class Schedule:
                     # if there would be no failure (suppose)
                     #total_duration_nofail += du
                     t_end = t_start + timedelta(hours = float(du))
-                    val2 = (total_duration_nofail + du)
-                    val1 = total_duration_nofail
+                    if product_type != 'NONE':
+                        val2 = (total_duration_nofail + du)
+                        val1 = total_duration_nofail
+                    else:
+                        val2 = total_duration_nofail
+                        val1 = total_duration_nofail
                     if (val2 >= failure_info['maint_time']) and (product_type != 'NONE'):    # a maintenance should be planned after a fixed time
                         t_end_maint = t_start + timedelta(hours=failure_info['repair_time'])
                         while maintenance_int in detailed_dict:
@@ -811,13 +818,14 @@ class Schedule:
                     # check deadline condition
                     beforedate = self.job_dict[item]['duedate']
                     if self.time_dict[item]['end'] > beforedate: # produced after deadline
-                        deadline_cost += (self.time_dict[item]['end'] - beforedate).total_seconds() / 3600
-
+                        deadline_cost += (self.time_dict[item]['end'] - beforedate).total_seconds() / 3600\
+                                         * self.job_dict[item]['weight']
                 if 'releasedate' in self.job_dict[item]: # assume not all jobs have deadlines
                     # check after condition
                     afterdate = self.job_dict[item]['releasedate']
                     if self.time_dict[item]['start'] < afterdate: # produced before release date
-                        deadline_cost += (afterdate - self.time_dict[item]['start']).total_seconds() / 3600
+                        deadline_cost += (afterdate - self.time_dict[item]['start']).total_seconds() / 3600\
+                                       * self.job_dict[item]['weight']
                 #if beforedate < afterdate:
                     #import pdb; pdb.set_trace()
             else:
@@ -856,6 +864,48 @@ class Schedule:
                 elif flowtime > 0:
                     flowtime_cost += flowtime
         return flowtime_cost
+    
+    # def get_weighted_tardiness_cost(self, detail=False):
+    #     """
+    #     Get the weighted tardiness cost for a certain
+    #     job_list order
+    #     """
+    #     #import pdb; pdb.set_trace()
+    #     if detail:
+    #         current_cost = []
+    #     else:
+    #         current_cost = 0
+    #     for item in self.time_dict:
+    #         if item in self.job_dict:
+    #             current_duedate = self.job_dict[item]['duedate']
+    #             current_releasedate = self.job_dict[item]['releasedate']
+    #             current_time = self.time_dict[item]['end']
+    #             # print(current_releasedate)
+    #             # print(current_time)
+    #             # print(current_duedate)
+    #             # import pdb; pdb.set_trace()
+    #             if current_time > current_duedate:
+    #                 #import pdb; pdb.set_trace()
+    #                 current_priority = self.job_dict[item]['weight']
+    #                 extra_cost = (current_time - current_duedate).total_seconds() / 60\
+    #                             * current_priority
+    #                 if detail:
+    #                     current_cost.append(extra_cost)
+    #                 else:
+    #                     current_cost += extra_cost
+    #             elif current_time < current_releasedate:
+    #                 #import pdb; pdb.set_trace()
+    #                 current_priority = self.job_dict[item]['weight']
+    #                 extra_cost = (current_releasedate - current_time).total_seconds() / 60\
+    #                        * current_priority
+    #                 if detail:
+    #                     current_cost.append(extra_cost)
+    #                 else:
+    #                     current_cost += extra_cost
+    #             else:
+    #                 if detail:
+    #                     current_cost.append(0)
+    #     return current_cost
 
     def validate(self):
         # validate time
@@ -915,12 +965,12 @@ class Schedule:
             wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
             we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
             wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
-            factors = (wf, wvf, we, wc, wb, wft)
+           
         else:
-            factors = (weights['weight_failure'], weights['weight_virtual_failure'], weights['weight_energy'],
-                       weights['weight_conversion'], weights['weight_constraint'], weights['weight_flowtime'])
-            wf = weights['weight_failure']; wvf = weights['weight_virtual_failure']; we = weights['weight_energy']
-            wc = weights['weight_conversion']; wb = weights['weight_constraint']; wft = weights['weight_flowtime']
+            wf = weights.get('weight_failure', 0); wvf = weights.get('weight_virtual_failure', 0)
+            we = weights.get('weight_energy', 0); wc = weights.get('weight_conversion', 0)
+            wb = weights.get('weight_constraint', 0); wft = weights.get('weight_flowtime', 0)
+        factors = (wf, wvf, we, wc, wb, wft)
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             #for i in sub_pop:
@@ -966,8 +1016,8 @@ class Schedule:
 
     def print_fitness(self, inputstr="Total"):
         f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, factors = self.get_fitness(split_types=True)
-        total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3] + d_cost * factors[4] + ft_cost * factors[5]
-        #total_cost = list(itertools.chain(*total_cost))
+        total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3]\
+                   + d_cost * factors[4] + ft_cost * factors[5]
         #import pdb; pdb.set_trace()
 
         logging.info(inputstr + " failure cost: " + str(f_cost))

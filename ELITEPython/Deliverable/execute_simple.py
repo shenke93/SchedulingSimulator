@@ -1,9 +1,13 @@
 import re
 import os, sys
 import time
+import matplotlib.pyplot as plt
+import pandas as pd
 from population_simple import SimpleSchedule
 from helperfunctions import GA_settings
 from scheduler_simple import run_opt
+from visualize_lib import plot_gantt
+
 
 curdir = os.path.abspath(sys.path[0])
 os.chdir(curdir)
@@ -11,10 +15,10 @@ os.chdir(curdir)
 #from SchedulerV000 import run_opt
 #from visualise_lib import show_ga_results, plot_gantt, show_energy_plot
 
-NUM = 40
-FILENAME = r'OR dataset\wt{}.txt'.format(NUM)
-OUTPUT_FILENAME = r'OR dataset\wtself{}.txt'.format(NUM)
-TIMING_FILENAME = r'OR dataset\timing{}.txt'.format(NUM)
+NUM = 100
+FILENAME = fr'OR dataset\wt{NUM}.txt'
+OUTPUT_FILENAME = fr'OR dataset\wtself{NUM}.txt'
+TIMING_FILENAME = fr'OR dataset\timing{NUM}.txt'
 
 def read_file_num(filename, num_jobs):
     with open(filename) as f:
@@ -58,7 +62,7 @@ if __name__ == "__main__":
     time_count = len(job_list)
     
     time_start = time.time()
-    for (job, priority, duedate) in zip(job_list, priority_list, duedate_list):
+    for (job, priority, duedate, r) in zip(job_list, priority_list, duedate_list, range(len(job_list))):
         
         # Convert the input file to a SimpleSchedule object
         simplesched = SimpleSchedule(list(range(len(job))), 
@@ -76,6 +80,21 @@ if __name__ == "__main__":
         total_cost, original_cost, candidate_schedule,\
         original_schedule, lists_result =\
         run_opt(simplesched, settings)
+        
+        candidate_schedule =  pd.DataFrame.from_dict(candidate_schedule.timing_dict, orient='index')\
+                                .reindex(candidate_schedule.job_list)
+        candidate_schedule.index.name = 'jobindex'
+        candidate_schedule["type"] = "NONE"
+        
+        import seaborn as sns
+        sns.set()
+        plt.figure(figsize=(15, 10))
+        plot_gantt(candidate_schedule, "priority", 'jobindex', startdate='start', enddate='end', duedate='duedate')
+        
+        if not os.path.isdir(r"OR dataset\output_{}".format(NUM)):
+            os.mkdir(r"OR dataset\output_{}".format(NUM))
+        plt.savefig(os.path.join(r"OR dataset\output_{}".format(NUM), r"gantt_plot_{}.pdf".format(r)))
+        plt.clf()
         
         list_optimal.append(total_cost)
         

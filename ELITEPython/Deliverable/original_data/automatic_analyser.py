@@ -222,6 +222,12 @@ for choice in choices:
         general_dist.text = 'weibull'
         general_dist.set("lambda", str(wf.lambda_))
         general_dist.set("rho", str(wf.rho_))
+        general_dist.set("mean", str(weib.mean_time()))
+        plot_hist(uptime, obs_up, 99, weib)
+        plt.title(f'Probability of failure in time [general], reasons: ' +  ', '.join([str(x) for x in reasons_relative]))
+        plt.savefig(rf'./{file_used.split(".")[0]}/figures/fail_prob_{file_used.split(".")[0]}_general.pdf', dpi=2400, layout='tight')
+        plt.savefig(rf'./{file_used.split(".")[0]}/figures/fail_prob_{file_used.split(".")[0]}_general.png', dpi=2400, layout='tight')
+        plt.close()
 
 
     # GENERATE REPAIR TIME DEFINITION
@@ -254,7 +260,7 @@ for choice in choices:
     minimum = pm_recommend(weib, cp, cu)
     PM = int(minimum)
     if print_all:
-        print('Time between planned maintenance:', PM, 'hours = less then', int(np.ceil(PM / 24)), 'days')
+        print('Time between planned maintenance:', PM, 'hours = less then ', int(np.ceil(PM / 24)), 'days')
     if export_all:
         maint_time = ET.SubElement(root, 'maint_time')
         maint_time.text = str(PM)
@@ -420,12 +426,12 @@ for choice in choices:
     sns.heatmap(new_mc, annot=True, fmt=".0f")
     plt.tight_layout()
     plt.savefig(splitext(output_used)[0] + '_conversions.png', dpi=2400, figsize=(6, 8))
-    plt.show()
+    plt.close()
     
     sns.heatmap(num_conversions, annot=True, fmt=".0f")
     plt.tight_layout()
     plt.savefig(splitext(output_used)[0] + '_num_conversions.png', dpi=2400, figsize=(6, 8))
-    plt.show()
+    plt.close()
     
 
 

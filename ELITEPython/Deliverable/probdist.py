@@ -78,12 +78,12 @@ def make_hist_frame(duration, observed=None, numbins=None, range=None, return_bi
     #print(np.power(reliability, 2))
     #print(np.array((np.cumsum(1-prob_survive) / (remaining_adj * prob_survive))))
 
-    #variance = reliability ** 2 * np.cumsum((1-prob_survive) / (remaining_adj * prob_survive))
-    #std = variance ** (1/2)
+    variance = reliability ** 2 * np.cumsum((1-prob_survive) / (remaining_adj * prob_survive))
+    std = variance ** (1/2)
 
     df_temp = pd.DataFrame({'Remaining': remaining, 'Failures': failures,
                             'Reliability': reliability, 'FailCDF': failure_func,
-                            'FailPDF': inst_fail, 'Hazard': hazard, #'Std': variance
+                            'FailPDF': inst_fail, 'Hazard': hazard, 'Std': std
                             }, index=new_index)
     df_temp = df_temp[['Remaining', 'Failures', 'Reliability', 'FailCDF', 'FailPDF', 'Hazard']]#, 'Std']]
     if not return_bins:

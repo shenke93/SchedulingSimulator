@@ -22,7 +22,7 @@ def show_ga_results(result):
     ax.legend()
     #return plt.gcf()
 
-def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', enddate='EndDateUTC', order=False, downtimes=None):
+def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', enddate='EndDateUTC', order=False, downtimes=None, duedate=None):
     ''' 
     Make a gantt plot of the production file
     - df_task is the pandas DataFrame
@@ -33,13 +33,17 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     - Order can give a custom order to the productions
     - Downtimes is an optional dataframe indicating downtimes of the production line
     '''
-    df_task = df_task.reset_index(drop=True) # make index unique (necessary)
+    df_task = df_task.reset_index(drop=False) # make index unique (necessary)
 
     first_index = df_task.index[0]
     #print(first_index)
-    firstdate = df_task.loc[first_index, startdate].floor('D')
-    df_task.loc[:, 'Vis_Start'] = (df_task.loc[:, startdate] - firstdate).dt.total_seconds()/3600
-    df_task.loc[:, 'Vis_End'] = (df_task.loc[:, enddate] - firstdate).dt.total_seconds()/3600
+    try:
+        firstdate = df_task.loc[first_index, startdate].floor('D')
+        df_task.loc[:, 'Vis_Start'] = (df_task.loc[:, startdate] - firstdate).dt.total_seconds()/3600
+        df_task.loc[:, 'Vis_End'] = (df_task.loc[:, enddate] - firstdate).dt.total_seconds()/3600
+    except:
+        df_task.loc[:, 'Vis_Start'] = df_task.loc[:, startdate]
+        df_task.loc[:, 'Vis_End'] = df_task.loc[:, enddate]
     if isinstance(downtimes, pd.DataFrame): # if downtimes included in the correct format
         #print(downtimes)
         downtimes.loc[:, 'Vis_Start'] = (downtimes.loc[:, 'StartDateUTC'] - firstdate).dt.total_seconds()/3600
@@ -57,7 +61,8 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     else:
         reasons = list(df_task[reason_str].unique())
         reasons.sort()
-    color = cm.rainbow(np.linspace(0, 1, len(reasons)))
+    #color = plt.cm.get_cmap('gist_rainbow', len(reasons))
+    color = cm.gist_rainbow(np.linspace(0, 1, len(reasons)))
     color_dict = dict(zip(reasons, color))
     
     articles = np.sort(df_task[articlename].unique()).tolist()
@@ -74,6 +79,9 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
             entry = df_temp.loc[item]
             plt.hlines(i, entry['Vis_Start'], entry['Vis_End'], lw=11,
                        colors=color_dict[entry[reason_str]])
+            if duedate != None:
+                #import pdb; pdb.set_trace()
+                plt.hlines(i, entry[duedate], entry[duedate] + 3, lw=11, colors='k')
         i += 1
     # plot the downtimes as grey zones
     if isinstance(downtimes, pd.DataFrame):
@@ -92,13 +100,19 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         lines.append(line)
     plt.legend(bbox_to_anchor=(0, 1.05, 1, 1.05), loc='lower left', borderaxespad=0., handles=lines, mode='expand', ncol=len(color_dict))
 
-    plt.xlabel('Time[h]')
     plt.ylabel('Job')
-    timerange = np.arange(0, np.max(df_task['Vis_End'])+24, 24)
-    label = pd.date_range(df_task[startdate].iloc[0].floor('D'), periods = len(timerange))
-    plt.xticks(timerange, label, rotation=90)
-    plt.xlim(timerange.min(), timerange.max())
-    return label
+    try:
+        timerange = np.arange(0, np.max(df_task['Vis_End'])+24, 24)
+        label = pd.date_range(df_task[startdate].iloc[0].floor('D'), periods = len(timerange))
+        plt.xticks(timerange, label, rotation=90)
+        plt.xlim(timerange.min(), timerange.max())
+        plt.xlabel('Time[h]')
+        return label
+    except:
+        #plt.xticks(np.linspace(df_task[startdate].min(), df_task[enddate].max(), 10), rotation=90)
+        plt.yticks(fontsize='xx-small')
+    
+    
 
 def calculate_energy_table(df_tasks, df_cost):
     lastenddate = df_tasks.iloc[-1]['EndDateUTC']
