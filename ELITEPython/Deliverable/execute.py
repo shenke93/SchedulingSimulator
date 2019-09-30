@@ -65,6 +65,8 @@ def main(config):
             plt.savefig(os.path.join(export_folder, r"evolution.pdf"))
         if interactive:
             plt.show()
+        else:
+            plt.close()
             
         show_ga_results(list_result_nc)
         if export:
@@ -74,7 +76,9 @@ def main(config):
         if export_paper:
             plt.savefig(os.path.join(export_folder, r"evolution_noconstraint.pdf"))
         if interactive:
-            plt.show()            
+            plt.show()
+        else:
+            plt.close()            
             
         # Show in Gantt plot 
         # -----------------
@@ -93,8 +97,8 @@ def main(config):
         downtimes = None
         if config['scenario_config']['working_method'] == 'expected' \
             and config['input_config']['failure_info'] is not None:
-            orig_failure = orig_sched.get_failure_prob(cumulative=False)
-            best_failure = best_sched.get_failure_prob(cumulative=False)
+            orig_failure = orig_sched.get_failure_prob(cumulative=True)
+            best_failure = best_sched.get_failure_prob(cumulative=True)
         else:
             # Or the actual failure times
             orig_failure = None
@@ -144,6 +148,8 @@ def main(config):
             plt.savefig(os.path.join(export_folder, r"best_sched.pdf"))
         if interactive:
             plt.show()
+        else:
+            plt.close()
 
         orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
 
@@ -157,6 +163,8 @@ def main(config):
             plt.savefig(os.path.join(export_folder, r"orig_sched.pdf"))
         if interactive:
             plt.show()
+        else:
+            plt.close()
         
         plt.clf()
 

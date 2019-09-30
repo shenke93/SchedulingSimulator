@@ -78,12 +78,12 @@ def make_hist_frame(duration, observed=None, numbins=None, range=None, return_bi
     #print(np.power(reliability, 2))
     #print(np.array((np.cumsum(1-prob_survive) / (remaining_adj * prob_survive))))
 
-    variance = reliability ** 2 * np.cumsum((1-prob_survive) / (remaining_adj * prob_survive))
-    std = variance ** (1/2)
+    #variance = reliability ** 2 * np.cumsum((1-prob_survive) / (remaining_adj * prob_survive))
+    #std = variance ** (1/2)
 
     df_temp = pd.DataFrame({'Remaining': remaining, 'Failures': failures,
                             'Reliability': reliability, 'FailCDF': failure_func,
-                            'FailPDF': inst_fail, 'Hazard': hazard, 'Std': std
+                            'FailPDF': inst_fail, 'Hazard': hazard, #'Std': std
                             }, index=new_index)
     df_temp = df_temp[['Remaining', 'Failures', 'Reliability', 'FailCDF', 'FailPDF', 'Hazard']]#, 'Std']]
     if not return_bins:
@@ -314,10 +314,19 @@ def total_cost_maintenance(timearray, model, cp=100, cu=250, return_separate=Fal
     Cp = cp
     Cu = cu
     # calculate expected time if there is unexpected breakdown
-    expectedvalue = np.array([scipy.integrate.quad(model.reliability_cdf, 0, t)[0] for t in timearray])
+    
     # summate the expectation of preventive maintenance * time of maintenance +
     # the expectation of unexpected maintenance * expected value of unexpected breakdown
-    denum = model.reliability_cdf(timearray) * timearray + expectedvalue * (1 - model.reliability_cdf(timearray))
+    
+    #expectedvalue = np.array([scipy.integrate.quad(model.reliability_cdf, 0, t)[0] for t in timearray])
+    #denum = expectedvalue * (1 - model.reliability_cdf(timearray)) + model.reliability_cdf(timearray) * timearray
+    
+    # expectedvalue = np.array([scipy.integrate.quad(model.failure_pdf, 0, t)[0]*t for t in timearray])
+    # denum = expectedvalue + timearray * model.reliability_cdf(timearray)
+    
+    expectedvalue = np.array([scipy.integrate.quad(model.reliability_cdf, 0, t)[0] for t in timearray])
+    denum = expectedvalue
+    
     cput = (Cp * model.reliability_cdf(timearray) + 
             Cu * (1 - model.reliability_cdf(timearray))) / denum
     if return_separate:

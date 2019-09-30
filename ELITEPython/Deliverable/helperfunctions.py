@@ -525,7 +525,7 @@ def read_failure_info(file):
     else:
         print('Faulty distribution detected!')
         raise NameError("Error")
-    maint_time = int(root.find('maint_time').text)
+    maint_time = float(root.find('maint_time').text)
     repair_time = float(root.find('repair_time').text)
 
     conversion_file = root.find('files').find('conversion_times').text
@@ -619,7 +619,7 @@ def read_config_file(path):
             'job_info_file': ['ji_file', join_path, raise_failure],
             'urgent_job_info_file': ['urgent_ji_file', join_path, raise_no_failure],
             'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
-            'failure_info_path': ['failure_info', read_xml_file, raise_no_failure],
+            'failure_info_path': ['failure_info', read_xml_file, raise_failure],
             'failure_rate': ['fr_file', join_path, raise_no_failure]
         } 
         return_sections['input_config'] = my_config_parser(input_actions, this_section)

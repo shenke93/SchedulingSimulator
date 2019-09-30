@@ -604,18 +604,18 @@ class Schedule:
                         raise
                 
                 if detail:
-                    if product_type == 'MAINTENANCE':
-                        if split_costs:
-                           virtual_failure_cost[-1] += virtual_loss
-                           failure_cost[-1] += loss
-                        else:
-                            failure_cost[-1] += loss + virtual_loss
+                    #if product_type == 'MAINTENANCE':
+                     #   if split_costs:
+                     #      virtual_failure_cost[-1] += virtual_loss
+                     #      failure_cost[-1] += loss
+                     #   else:
+                     #       failure_cost[-1] += loss + virtual_loss
+                    #else:
+                    if split_costs:
+                        virtual_failure_cost.append(virtual_loss)
+                        failure_cost.append(loss)
                     else:
-                        if split_costs:
-                            virtual_failure_cost.append(virtual_loss)
-                            failure_cost.append(loss)
-                        else:
-                            failure_cost.append(loss + virtual_loss)
+                        failure_cost.append(loss + virtual_loss)
                 else:
                     if split_costs:
                         virtual_failure_cost += virtual_loss
@@ -667,6 +667,8 @@ class Schedule:
 
             unit1 = self.time_dict[item]
             product_type = unit1['product'] # get job product type
+            #if product_type == "MAINTENANCE":
+                #import pdb; pdb.set_trace()
             #if product_type == 'MAINTENANCE': product_type = 'NONE'
             #unit2 = prc_dict.get(str(item))
             try:
@@ -702,14 +704,14 @@ class Schedule:
             
             t_now = t_end
             if detail:
-                if product_type == 'MAINTENANCE':
-                    try:
-                        energy_cost[-1] += job_en_cost # don't add the cost if the list if still empty
-                    except:
-                        #import pdb; pdb.set_trace()
-                        pass
-                else:
-                    energy_cost.append(job_en_cost)
+                #if product_type == 'MAINTENANCE':
+                #    try:
+                #        energy_cost[-1] += job_en_cost # don't add the cost if the list if still empty
+                #    except:
+                #        #import pdb; pdb.set_trace()
+                #        pass
+                #else:
+                energy_cost.append(job_en_cost)
             else:
                 energy_cost += job_en_cost
         return energy_cost
@@ -755,13 +757,15 @@ class Schedule:
                 try:
                     first_product_type = self.job_dict[item1]['type']
                 except:
-                    if detail:
-                        conversion_cost.append(0)
-                    continue
+                    first_product_type = "NONE"
+                    #if detail:
+                    #    conversion_cost.append(0)
+                    #continue
                 try:
                     second_product_type = self.job_dict[item2]['type']
                 except:
-                    continue
+                    second_product_type = "NONE"
+                    #continue
                 if self.failure_info is not None:
                     fi = self.failure_info['conversion_times']
                     conversion_time = int(fi.loc[first_product_type, second_product_type]) / 3600 # get the conversion time and convert to hours
@@ -829,7 +833,7 @@ class Schedule:
                 #if beforedate < afterdate:
                     #import pdb; pdb.set_trace()
             else:
-                continue
+                deadline_cost += 0
             if detail:
                 constraint_cost.append(deadline_cost)
             elif deadline_cost > 0:
@@ -1003,15 +1007,31 @@ class Schedule:
                           np.array(flowtime_cost), factors)
         else:
             try:
+                # if (type(conversion_cost) is list) and (type(energy_cost) is list):
+                #     conversion_cost = np.array(conversion_cost[:len(energy_cost)])
+                # if (type(conversion_cost) is list) and (type(constraint_cost) is list):
+                #     conversion_cost = np.array(conversion_cost[:len(constraint_cost)])
+                # if (type(conversion_cost) is list) and (type(failure_cost) is list):
+                #     conversion_cost = np.array(conversion_cost[:len(failure_cost)])
+                # if (type(conversion_cost) is list) and (type(virtual_failure_cost) is list):
+                #     conversion_cost = np.array(conversion_cost[:len(virtual_failure_cost)])
+                # if (type(conversion_cost) is list) and (type(flowtime_cost) is list):
+                #     conversion_cost = np.array(conversion_cost[:len(flowtime_cost)])
+                # conversion_cost has sometimes a length which is too long, solve it here temporarily
                 total_cost = wf * np.array(failure_cost) + wvf * np.array(virtual_failure_cost) +\
                              we * np.array(energy_cost) + wc * np.array(conversion_cost) + wb * np.array(constraint_cost) +\
                              wft * np.array(flowtime_cost)
             except:
+                print()
                 print(np.array(failure_cost).shape, np.array(virtual_failure_cost).shape, np.array(energy_cost).shape,
                       np.array(conversion_cost).shape, np.array(constraint_cost).shape, np.array(flowtime_cost).shape)
                 print(detail)
+                print(energy_cost)
+                print(conversion_cost)
                 print(constraint_cost)
+                import pdb; pdb.set_trace()
                 raise
+            
         return total_cost
 
     def print_fitness(self, inputstr="Total"):

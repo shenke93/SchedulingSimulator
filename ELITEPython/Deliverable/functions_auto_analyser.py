@@ -55,26 +55,34 @@ def add_breaks(production, maxtime=7200):
         while diff > 0:
             #print(diff)
             if (maxtime is not None) and (diff > maxtime):
-                new_row = pd.Series({'ProductionRequestId': int(prid),
+                filldict = {'ProductionRequestId': int(prid),
                                      'StartDateUTC': oldenddate,
                                      'EndDateUTC': oldenddate + pd.Timedelta(maxtime, 's'),
                                      'Duration': maxtime,
                                      'ReasonId': 0,
                                      'ArticleName': 'NONE',
-                                     'Quantity': int(maxtime/3600)})
+                                     'ArticleCode': '000000EU',
+                                     'Quantity': int(maxtime/3600),
+                                     'Type': 'Break'}
+                filldict = {k: v for k, v in filldict.items() if k in list(production.columns)}
+                new_row = pd.Series(filldict)
                 #print(maxtime)
                 #print(maxtime/3600)
                 diff -= maxtime
                 oldenddate = oldenddate + pd.Timedelta(maxtime, 's')
             else: # diff <= maxtime
                 # overwrite the break time
-                new_row = pd.Series({'ProductionRequestId': int(prid),
+                filldict = {'ProductionRequestId': int(prid),
                      'StartDateUTC': oldenddate,
                      'EndDateUTC': newstartdate,
                      'Duration': diff,
                      'ReasonId': 0,
                      'ArticleName': 'NONE',
-                     'Quantity': int(diff/3600)})
+                     'ArticleCode': '000000EU',
+                     'Quantity': int(diff/3600),
+                     'Type': 'Break'}
+                filldict = {k: v for k, v in filldict.items() if k in list(production.columns)}
+                new_row = pd.Series(filldict)
                 diff -= diff
 
             prid -= 1
@@ -146,7 +154,10 @@ def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None
     out = group[['Uptime', 'Totaltime', 'Quantity', 'StartDateUTC', 'EndDateUTC', 'ArticleName']].copy()
     out.columns = ['Uptime', 'Totaltime', 'Quantity', 'Start', 'End', 'Product']
     out[['Uptime', 'Totaltime']] = out[['Uptime', 'Totaltime']] / 3600
-    out = add_column_type(out , 'Product', choice)
+    if choice in ['BigPack', 'Marque', 'PastaType', 'BigPack-simple']:
+        out = add_column_type(out , 'Product', choice)
+    else:
+        pass
     out.columns.values[-1] = 'Type'
     to_convert_dates = ['Start', 'End']
 
@@ -157,7 +168,7 @@ def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None
             addedtime += np.random.randint(randomfactor + 1, size=addedtime.shape)
         out['Releasedate'] = pd.to_datetime(out['End']) - pd.to_timedelta(addedtime, unit="D")
         if ignore_break:
-            out.loc[out['Product'] == 'NONE', 'Releasedate']= pd.Timestamp.min
+            out.loc[out['Type'] == 'NONE', 'Releasedate']= pd.Timestamp.min
         to_convert_dates.append('Releasedate')
     
     # add due date
@@ -167,7 +178,7 @@ def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None
             beforetime += np.random.randint(randomfactor + 1, size=beforetime.shape)
         out['Duedate'] = pd.to_datetime(out['End']) + pd.to_timedelta(beforetime, unit="D")
         if ignore_break:
-            out.loc[out['Product'] == 'NONE', 'Duedate'] = pd.Timestamp.max
+            out.loc[out['Type'] == 'NONE', 'Duedate'] = pd.Timestamp.max
         to_convert_dates.append('Duedate')
     
     for col in to_convert_dates:
@@ -194,11 +205,11 @@ def generate_energy_per_production(group, choice=None, df_merged=None):
                             rand2,
                             rand3], axis=1)
     
-    energycons.loc[energycons['Product']=='NONE', 'UnitPrice'] = 0.0
-    energycons.loc[energycons['Product']=='NONE', 'Power'] = 0.0
-    energycons.loc[energycons['Product']=='NONE', 'Weight'] = 0
-    energycons.loc[energycons['Product']=='NONE', 'Quantity'] = \
-        energycons.loc[energycons['Product']=='NONE', 'Totaltime']
+    energycons.loc[energycons['Type']=='NONE', 'UnitPrice'] = 0.0
+    energycons.loc[energycons['Type']=='NONE', 'Power'] = 0.0
+    energycons.loc[energycons['Type']=='NONE', 'Weight'] = 0
+    energycons.loc[energycons['Type']=='NONE', 'Quantity'] = \
+        energycons.loc[energycons['Type']=='NONE', 'Totaltime']
     
     # if choice:
     #     raise NameError('Not defined any more (please fix).')

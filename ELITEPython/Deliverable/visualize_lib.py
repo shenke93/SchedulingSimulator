@@ -1,4 +1,4 @@
-''' 
+'''
 Joachim David and Ke Shen - 2019
 Ghent University
 ----------------
@@ -72,6 +72,12 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         articles.pop(i)
         articles.insert(0, exception)
     i = 0
+    # plot the downtimes as grey zones
+    if isinstance(downtimes, pd.DataFrame):
+        for item in downtimes.T:
+            entry = downtimes.loc[item]
+            plt.axvspan(entry['Vis_Start'], entry['Vis_End'], alpha=0.3, facecolor='k')
+    
     # plot the jobs in the Gantt chart
     for article in articles:
         df_temp = df_task[df_task[articlename] == article]
@@ -83,11 +89,6 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
                 #import pdb; pdb.set_trace()
                 plt.hlines(i, entry[duedate], entry[duedate] + 3, lw=11, colors='k')
         i += 1
-    # plot the downtimes as grey zones
-    if isinstance(downtimes, pd.DataFrame):
-        for item in downtimes.T:
-            entry = downtimes.loc[item]
-            plt.axvspan(entry['Vis_Start'], entry['Vis_End'], alpha=0.3, facecolor='k')
     plt.yticks(range(0, i), articles, fontsize='x-small')
     plt.margins(0.1)
 
@@ -210,12 +211,12 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', prod
 
     fig = plt.figure(dpi=50, figsize=(20, 15))
     # first plot the gantt chart and its title
-    ax1 = fig.add_subplot(5, 1, (4,5))
+    fig.add_subplot(5, 1, (4,5))
     timerange = plot_gantt(tasks, colors, productions, downtimes=downtimes, startdate=startdate, enddate=enddate)
     plt.title(title, y=1.15)
 
     # now plot the energy prices
-    ax2 = fig.add_subplot(5, 1, 1)
+    fig.add_subplot(5, 1, 1)
     plt.title('Energy price')
     plt.plot(prices['Euro'], drawstyle='steps-post')
     plt.ylim(bottom=-prices['Euro'].max()*0.05, top=prices['Euro'].max()*1.05)

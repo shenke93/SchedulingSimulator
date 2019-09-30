@@ -387,17 +387,17 @@ class GA(Scheduler):
         if np.random.rand() < self.mutation_rate:
             tmpl = list(range(self.dna_size))
             try:
-                if prob:
-                    point = np.random.choice(tmpl, size=1, replace=False, p=prob)
-                else:
-                    point = np.random.choice(tmpl, size=1, replace=False)
+                #if prob:
+                #    point = np.random.choice(tmpl, size=1, replace=False, p=prob)
+                #else:
+                point = np.random.choice(tmpl, size=1, replace=False)
             except:
                 import pdb; pdb.set_trace()
             # tmpl.pop(int(point))
             # prob.pop(int(point))
             # inverse = list(np.array(prob).max() - np.array(prob))
             # inverse = inverse / sum(inverse)
-            perimeter = 3
+            perimeter = 10
             random_number = np.random.choice(list(range(-perimeter, perimeter+1)), size=1)
             swap_point = int(point) + int(random_number)
             if swap_point >= len(loser):
