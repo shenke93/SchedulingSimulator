@@ -102,6 +102,7 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     plt.legend(bbox_to_anchor=(0, 1.05, 1, 1.05), loc='lower left', borderaxespad=0., handles=lines, mode='expand', ncol=len(color_dict))
 
     plt.ylabel('Job')
+    plt.yticks(fontsize='xx-small')
     try:
         timerange = np.arange(0, np.max(df_task['Vis_End'])+24, 24)
         label = pd.date_range(df_task[startdate].iloc[0].floor('D'), periods = len(timerange))
@@ -111,7 +112,9 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
         return label
     except:
         #plt.xticks(np.linspace(df_task[startdate].min(), df_task[enddate].max(), 10), rotation=90)
-        plt.yticks(fontsize='xx-small')
+        pass
+    
+    
     
     
 

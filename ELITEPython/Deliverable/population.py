@@ -848,25 +848,25 @@ class Schedule:
         t_now = self.start_time
 
         for item in self.time_dict:
-            count = True
-            if item in self.job_dict: # this function eliminates all maintenance jobs
-                product = self.time_dict[item]['product']
-                try:
-                    weight = self.job_dict[item]['weight']
-                except:
-                    weight = 0
-                flowtime = weight * (self.time_dict[item]['end'] - t_now).total_seconds() / 3600
-                #if (product != 'NONE') and (product != 'MAINTENANCE'):
-                #    enddate = self.time_dict[item]['end']
-                #    flowtime = (enddate - t_now).total_seconds() / 3600
-                #elif product == 'NONE':
-                #    flowtime = 0
-                #else:
-                #    print('Error')
-                if detail:
-                    flowtime_cost.append(flowtime)
-                elif flowtime > 0:
-                    flowtime_cost += flowtime
+            #count = True
+            #if item in self.job_dict: # this function eliminates all maintenance jobs
+            product = self.time_dict[item]['product']
+            try:
+                weight = self.job_dict[item]['weight']
+            except:
+                weight = 0
+            flowtime = weight * (self.time_dict[item]['end'] - t_now).total_seconds() / 3600
+            #if (product != 'NONE') and (product != 'MAINTENANCE'):
+            #    enddate = self.time_dict[item]['end']
+            #    flowtime = (enddate - t_now).total_seconds() / 3600
+            #elif product == 'NONE':
+            #    flowtime = 0
+            #else:
+            #    print('Error')
+            if detail:
+                flowtime_cost.append(flowtime)
+            elif flowtime > 0:
+                flowtime_cost += flowtime
         return flowtime_cost
     
     # def get_weighted_tardiness_cost(self, detail=False):
@@ -1050,3 +1050,18 @@ class Schedule:
         logging.info("Total cost: " + str(total_cost))
 
         logging.info("Number of changeovers: " + str(self.get_num_conversions()))
+    
+    def fitness_csv(self):
+        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, factors = self.get_fitness(split_types=True)
+        unweighted_total_cost = f_cost + vf_cost + e_cost + d_cost + ft_cost
+        weighted_total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3]\
+                              + d_cost * factors[4] + ft_cost * factors[5]
+        indexcol = ['failure', 'virtual_failure', 'energy', 'conversion', 'due', 'flowtime', 'total']
+        series1 = pd.Series(data=[f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, unweighted_total_cost], index=indexcol, name='Unweighted costs')
+        series2 = pd.Series(data=factors, index=indexcol[:-1], name='Multiply factors')
+        series3 = pd.Series(data=[f_cost * factors[0], vf_cost * factors[1], 
+                                  e_cost * factors[2], c_cost * factors[3],
+                                  d_cost * factors[4], ft_cost * factors[5], weighted_total_cost], index=indexcol, name='Weighted costs')
+        output_frame = pd.DataFrame([series1, series2, series3]).T
+        return output_frame
+        

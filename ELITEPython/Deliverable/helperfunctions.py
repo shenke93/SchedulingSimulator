@@ -256,6 +256,7 @@ class JobInfo(object):
                         # insert product name
                         #job_entry = dict({'product': row['Product']})
                         job_entry = {}
+                        
                         for key, value in operations.items():
                             try:
                                 job_entry[value[0]] = value[1](row[key])
@@ -561,6 +562,38 @@ def my_config_parser(in_dict, config_section, out_dict={}):
             out_dict[value[0]] = value[2](key)
     return out_dict
       
+class Config(object):
+    """ A configuration object to store all configuration data about the scheduler """
+    def __init__(self, path):
+        """ Initialise the configuration file using the path """
+        config = configparser.ConfigParser()
+        config.read(path)
+        
+        pathname = os.path.dirname(path)
+        
+        self.inputfolder = configfolder = os.path.join(pathname, config['input-config']['original_folder'])
+        self.product_related_characteristics_file = os.path.join(pathname, config['input-config']['product_related_characteristics_file'])
+        self.job_info_file = os.path.join(pathname, config['input-config']['job_info_file'])
+        self.energy_price_file = os.path.join(pathname, config['input-config']['energy_price_file'])
+        
+        
+        self.historical_down_periods_file = os.path.join(pathname, config['input-config']['historical_down_periods_file'])
+        self.productrelatedcharacteristics_file = os.path.join(pathname, config['input-config']['product_related_characteristics_file'])
+
+            # # These files should be read in, otherwise throw error
+            # 'original_folder': ['original', config_folder, raise_failure],
+            # 'product_related_characteristics_file': ['prc_file', join_path, raise_failure],
+            # 'energy_price_file': ['ep_file', join_path, raise_failure],
+            # 'job_info_file': ['ji_file', join_path, raise_failure],
+            # 'failure_info_path': ['failure_info', read_xml_file, raise_failure],
+            # # These files are facultative, throw no error
+            # 'precedence_file': ['prec_file', join_path, raise_no_failure],
+            # 'historical_down_periods_file': ['hdp_file', join_path, raise_no_failure],
+            # 'urgent_job_info_file': ['urgent_ji_file', join_path, raise_no_failure],
+            # 'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
+            # 'failure_rate': ['fr_file', join_path, raise_no_failure]
+        
+        
         
 
 def read_config_file(path):
@@ -611,17 +644,19 @@ def read_config_file(path):
             return read_failure_info(os.path.join(configfolder, x, 'outputfile.xml'))
 
         input_actions = {
+            # These files should be read in, otherwise throw error
             'original_folder': ['original', config_folder, raise_failure],
             'product_related_characteristics_file': ['prc_file', join_path, raise_failure],
-            'precedence_file': ['prec_file', join_path, raise_no_failure],
             'energy_price_file': ['ep_file', join_path, raise_failure],
-            'historical_down_periods_file': ['hdp_file', join_path, raise_no_failure],
             'job_info_file': ['ji_file', join_path, raise_failure],
+            'failure_info_path': ['failure_info', read_xml_file, raise_failure],
+            # These files are facultative, throw no error
+            'precedence_file': ['prec_file', join_path, raise_no_failure],
+            'historical_down_periods_file': ['hdp_file', join_path, raise_no_failure],
             'urgent_job_info_file': ['urgent_ji_file', join_path, raise_no_failure],
             'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
-            'failure_info_path': ['failure_info', read_xml_file, raise_failure],
             'failure_rate': ['fr_file', join_path, raise_no_failure]
-        } 
+        }
         return_sections['input_config'] = my_config_parser(input_actions, this_section)
     else:
         raise NameError("No input section 'input-config' found!")
@@ -656,10 +691,13 @@ def read_config_file(path):
         output_actions = {
             'export_folder': ['export_folder', join_path_curdate, raise_failure],
             'output_init': ['output_init', str, raise_failure],
+            'output_init_small': ['output_init_small', str, raise_failure],
             'output_final': ['output_final', str, raise_failure],
+            'output_final_small': ['output_final_small', str, raise_failure],
             'interactive': ['interactive', read_bool, raise_failure],
             'export': ['export', read_bool, raise_failure],
-            'export_paper': ['export_paper', read_bool, return_false]
+            'export_paper': ['export_paper', read_bool, return_false],
+            'export_indeff': ['export_indeff', read_bool, return_false]
         }
         
         return_sections['output_config'] = my_config_parser(output_actions, this_section)
@@ -707,17 +745,17 @@ def read_config_file(path):
             'scenario': ['scenario', int, raise_failure],
             'validation': ['validation', read_bool, raise_failure],
             'pre_selection': ['pre_selection', read_bool, raise_failure],
-            'pop_size': ['pop_size', int, raise_failure],
-            'crossover_rate': ['crossover_rate', float, raise_failure],
-            'mutation_rate': ['mutation_rate', float, raise_failure],
-            'num_mutations': ['num_mutations', int, raise_failure],
-            'iterations': ['iterations', int, raise_failure],
-            'stop_condition': ['stop_condition', str, raise_failure],
-            'stop_value': ['stop_value', int, raise_failure],
-            'duration_str': ['duration_str', str, raise_failure],
-            'evolution_method': ['evolution_method', str, raise_failure],
-            'working_method': ['working_method', str, raise_failure],
-            'adapt_ifin': ['adapt_ifin', read_intlist, raise_failure],
+            'pop_size': ['pop_size', int, raise_no_failure],
+            'crossover_rate': ['crossover_rate', float, raise_no_failure],
+            'mutation_rate': ['mutation_rate', float, raise_no_failure],
+            'num_mutations': ['num_mutations', int, raise_no_failure],
+            'iterations': ['iterations', int, raise_no_failure],
+            'stop_condition': ['stop_condition', str, raise_no_failure],
+            'stop_value': ['stop_value', int, raise_no_failure],
+            'duration_str': ['duration_str', str, raise_no_failure],
+            'evolution_method': ['evolution_method', str, raise_no_failure],
+            'working_method': ['working_method', str, raise_no_failure],
+            'adapt_ifin': ['adapt_ifin', read_intlist, raise_no_failure],
             'remove_breaks': ['remove_breaks', read_bool, return_0],
             'ntimes': ['ntimes', int, return_1]
         }
@@ -872,20 +910,32 @@ def config_to_sched_objects(sections):
     # first_schedule = Schedule(ji.job_order, ji.job_dict, start_time, product_related_characteristics_dict, down_duration_dict,
     #                         price_dict, precedence_dict, failure_info, scenario, duration_str, working_method, weights)
     
-    pop_size = sections['scenario_config']['pop_size']
-    cross_rate = sections['scenario_config']['crossover_rate']
-    mut_rate = sections['scenario_config']['mutation_rate']
-    num_mutations = sections['scenario_config']['num_mutations']
-    evolution_method = sections['scenario_config']['evolution_method']
-    validation = sections['scenario_config']['validation']
-    pre_selection = sections['scenario_config']['pre_selection']
-    iterations = sections['scenario_config']['iterations']
-    stop_condition = sections['scenario_config']['stop_condition']
-    stop_value = sections['scenario_config']['stop_value']
-    adapt_ifin = sections['scenario_config']['adapt_ifin']
+    init_dict = {}
     
-    ga_set = GA_settings(pop_size, cross_rate, mut_rate, num_mutations, evolution_method, validation, pre_selection,
-                         iterations, stop_condition, stop_value, adapt_ifin)
+    if sections['scenario_config']['pop_size']:
+        init_dict['pop_size'] = sections['scenario_config']['pop_size']
+    if sections['scenario_config']['crossover_rate']:
+        init_dict['cross_rate'] = sections['scenario_config']['crossover_rate']
+    if sections['scenario_config']['mutation_rate']:
+        init_dict['mutation_rate'] = sections['scenario_config']['mutation_rate']
+    if sections['scenario_config']['num_mutations']:
+        init_dict['num_mutations'] = sections['scenario_config']['num_mutations']
+    if sections['scenario_config']['evolution_method']:
+        init_dict['evolution_method'] = sections['scenario_config']['evolution_method']
+    if sections['scenario_config']['validation']:
+        init_dict['validation'] = sections['scenario_config']['validation']
+    if sections['scenario_config']['pre_selection']:
+        init_dict['pre_selection'] = sections['scenario_config']['pre_selection']
+    if sections['scenario_config']['iterations']:
+        init_dict['iterations'] = sections['scenario_config']['iterations']
+    if sections['scenario_config']['stop_condition']:
+        init_dict['stop_condition'] = sections['scenario_config']['stop_condition']
+    if sections['scenario_config']['stop_value']:
+        init_dict['stop_value'] = sections['scenario_config']['stop_value']
+    if sections['scenario_config']['adapt_ifin']:
+        init_dict['adapt_ifin'] = sections['scenario_config']['adapt_ifin']
+    
+    ga_set = GA_settings(**init_dict)
 
     return first_schedule_list, ga_set
         

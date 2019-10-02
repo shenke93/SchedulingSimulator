@@ -729,8 +729,8 @@ def run_opt(original_schedule, settings, start_time=None):
     stop = False
     timer0 = time.monotonic()
     
-    no_constraint = original_schedule.weights.copy()
-    no_constraint['weight_constraint'] = 0
+    #no_constraint = original_schedule.weights.copy()
+    #no_constraint['weight_constraint'] = 0
     while not stop:
         if generation in adaptive:
             print()
@@ -754,15 +754,15 @@ def run_opt(original_schedule, settings, start_time=None):
         worst_result_list.append(res[worst_index])
         mean_result_list.append(mean)
         
-        best_result_list_no_constraint.append(pop[best_index].get_fitness(weights=no_constraint))
-        worst_result_list_no_constraint.append(pop[worst_index].get_fitness(weights=no_constraint))
+        #best_result_list_no_constraint.append(pop[best_index].get_fitness(weights=no_constraint))
+        #worst_result_list_no_constraint.append(pop[worst_index].get_fitness(weights=no_constraint))
 
-        if (stop_condition == 'num_iterations') and (generation >= iterations):
+        if generation >= iterations:
             stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
                 stop = True
-        if stop_condition == 'abs_time':
+        elif stop_condition == 'abs_time':
             timer1 = time.monotonic()  # returns time in seconds
             elapsed_time = timer1-timer0
             if elapsed_time >= stop_value:
@@ -774,7 +774,7 @@ def run_opt(original_schedule, settings, start_time=None):
                 stop = True
     
     lists_result = pd.DataFrame({'best': best_result_list, 'mean': mean_result_list, 'worst': worst_result_list})
-    lists_result_no_constraint = pd.DataFrame({'best': best_result_list_no_constraint, 'worst': worst_result_list_no_constraint})
+    #lists_result_no_constraint = pd.DataFrame({'best': best_result_list_no_constraint, 'worst': worst_result_list_no_constraint})
     
     timer1 = time.monotonic()
     elapsed_time = timer1-timer0
@@ -826,7 +826,7 @@ def run_opt(original_schedule, settings, start_time=None):
     #     for key, value in original_schedule.downdur_dict.items():
     #         writer.writerow([key, value[0], value[1]])       
     
-    return total_cost, original_cost, candidate_schedule, original_schedule, lists_result, lists_result_no_constraint
+    return total_cost, original_cost, candidate_schedule, original_schedule, lists_result#, lists_result_no_constraint
 
 
 if __name__ == '__main__':

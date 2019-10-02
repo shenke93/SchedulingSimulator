@@ -17,11 +17,6 @@ import logging
 
 from helperfunctions import *
 
-#pathname = os.path.dirname(sys.argv[0])
-os.chdir(os.path.dirname(sys.argv[0]))
-
-CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config.ini')
-
 def main(config):
     '''
     Main loop of the executable file
@@ -38,6 +33,7 @@ def main(config):
 
     export = config['output_config']['export']
     export_paper = config['output_config']['export_paper']
+    export_indeff = config['output_config']['export_indeff']
     interactive = config['output_config']['interactive']
     # export_folder = config['output_config']['export_folder']
 
@@ -51,7 +47,7 @@ def main(config):
     if test == 'GA':
         schedule = schedule_list[0]
         best_result, orig_result, best_sched, \
-        orig_sched, lists_result, list_result_nc = run_opt(schedule, settings)
+        orig_sched, lists_result = run_opt(schedule, settings)
 
         logging.info('Execution finished.')
         
@@ -68,17 +64,17 @@ def main(config):
         else:
             plt.close()
             
-        show_ga_results(list_result_nc)
-        if export:
-            out_df = list_result_nc
-            out_df.to_csv(os.path.join(export_folder, 'iterations_results_noconstraintcost.csv'))
-            plt.savefig(os.path.join(export_folder, r"evolution_noconstraint.png"), dpi=300)
-        if export_paper:
-            plt.savefig(os.path.join(export_folder, r"evolution_noconstraint.pdf"))
-        if interactive:
-            plt.show()
-        else:
-            plt.close()            
+        # show_ga_results(list_result_nc)
+        # if export:
+        #     out_df = list_result_nc
+        #     out_df.to_csv(os.path.join(export_folder, 'iterations_results_noconstraintcost.csv'))
+        #     plt.savefig(os.path.join(export_folder, r"evolution_noconstraint.png"), dpi=300)
+        # if export_paper:
+        #     plt.savefig(os.path.join(export_folder, r"evolution_noconstraint.pdf"))
+        # if interactive:
+        #     plt.show()
+        # else:
+        #     plt.close()            
             
         # Show in Gantt plot 
         # -----------------
@@ -89,10 +85,20 @@ def main(config):
         best = make_df(result_dict)
         orig = make_df(result_dict_origin)
         
-        # output files to csv's
-        orig.to_csv(os.path.join(export_folder, config['output_config']['output_init']))
-        best.to_csv(os.path.join(export_folder, config['output_config']['output_final']))
-
+        if export:
+            # output files to csv's
+            orig.to_csv(os.path.join(export_folder, config['output_config']['output_init']))
+            best.to_csv(os.path.join(export_folder, config['output_config']['output_final']))
+        
+        if export_indeff:
+            # output partial files to csvs
+            orig[['Type', 'Start', 'End']].to_csv(os.path.join(export_folder, config['output_config']['output_init_small']))
+            best[['Type', 'Start', 'End']].to_csv(os.path.join(export_folder, config['output_config']['output_final_small']))
+            best_csv = best_sched.fitness_csv()
+            best_csv.to_csv(os.path.join(export_folder, 'test_best.csv'))
+            orig_csv = orig_sched.fitness_csv()
+            orig_csv.to_csv(os.path.join(export_folder, 'test_orig.csv'))           
+        
         # get the failure probabilities
         downtimes = None
         if config['scenario_config']['working_method'] == 'expected' \
@@ -176,9 +182,9 @@ def main(config):
         i = 0
         for schedule in schedule_list:
             best_result, orig_result, best_sched, \
-            orig_sched, lists_result, list_result_nc = run_opt(schedule, settings)
+            orig_sched, lists_result = run_opt(schedule, settings)
 
-            logging.info('Execution finished.')
+            logging.info("Execution finished.")
             #logging.info('Number of generations was {:}'.format(gen))
             
             time = config['scenario_config']['add_time_list'][i]
@@ -190,7 +196,7 @@ def main(config):
             list_added.append(time)
             list_result.append(fitn)
 
-        logging.info('Final result')
+        logging.info("Final result")
         logging.info(list_added)
         logging.info(list_result)
 
@@ -200,8 +206,8 @@ def main(config):
         plt.plot(list_added, list_result, 'ro')
         plt.xlim(0, max(list_added)+1)
         plt.ylim(min(list_result) * 0.95, max(list_result) * 1.05)
-        plt.xlabel('Added breaks (hours)')
-        plt.ylabel('Total cost (Euros)')
+        plt.xlabel("Added breaks (hours)")
+        plt.ylabel("Total cost (Euros)")
         plt.savefig(os.path.join(export_folder, 'output.pdf'))
         plt.savefig(os.path.join(export_folder, 'output.png'), dpi=300)
         plt.show()
@@ -210,14 +216,18 @@ def main(config):
     
 if __name__ == "__main__":
     
-    curdir = os.path.dirname(sys.argv[0])
-    os.chdir(curdir)
+    pathname = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(pathname)
+    CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config.ini')
     
     # Read the config file
     if os.path.exists(CONFIGFILE):
         config = read_config_file(CONFIGFILE)
+        #from helperfunctions import Config
+        #config2 =  Config(CONFIGFILE)
+        #import pdb; pdb.set_trace()
     else:
-        raise ValueError("'{}' not found!".format(CONFIGFILE))
+        raise ValueError(f"'{CONFIGFILE}' not found!")
 
     # Make the export folder and start logging in the logging file
     export_folder = config['output_config']['export_folder']
@@ -225,6 +235,6 @@ if __name__ == "__main__":
     if not os.path.exists(export_folder):
         os.makedirs(export_folder)
     start_logging(os.path.join(export_folder, 'out.log'))
-    logging.info('Starting logging')
+    logging.info("Starting logging")
 
     main(config)
