@@ -215,12 +215,12 @@ for choice in choices:
     # bool_down = ((df.Type == 'DownTime') & (df.ReasonId.isin(reasons_relative)))
     # continue_obs = ((df.Type == 'DownTime') & (df.ReasonId.isin(reasons_absolute + reasons_not_considered + reasons_availability)))
     # stop_obs = (df.Type == 'Break')
-    
+
     bool_up = (df_task['Type'] == 'RunTime') # List of all RunTimes
     bool_down = (df_task['Type'].isin(['DownTime', 'Break'])) & (df_task['ReasonId'].isin(reasons_relative)) # List of all DownTimes in calculation
     bool_ignore = (df_task['Type'].isin(['DownTime', 'Break'])) & (df_task['ReasonId'].isin(reasons_availability + reasons_absolute)) # List of all breaks to ignore
     bool_break = (df_task['Type'].isin(['DownTime', 'Break'])) & (df_task['ReasonId'].isin(reasons_break)) # List of all breaks to stop observation
-    
+
     uptime, downtime, obs_up, obs_down = duration_run_down(list(df_task['Duration'] / 3600), list(bool_up), list(bool_down), 
                                                            list(bool_ignore), list(bool_break), observation=True)
     wf = WeibullFitter()

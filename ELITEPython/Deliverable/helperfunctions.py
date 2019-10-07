@@ -593,8 +593,6 @@ class Config(object):
             # 'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
             # 'failure_rate': ['fr_file', join_path, raise_no_failure]
         
-        
-        
 
 def read_config_file(path):
     '''
@@ -607,57 +605,81 @@ def read_config_file(path):
     pathname = os.path.dirname(path)
     #configfolder = pathname
     
-    def join_path(x):
-        return os.path.join(configfolder, x)
+    # def join_path(x):
+    #     return os.path.join(configfolder, x)
     
     def raise_failure(section):
         raise NameError(f'{section} not found in the config file')
     def raise_no_failure(section):
         return None
     def read_bool(x):
-        if (x == 'False') or (x == 'F') or (x == ''):
+        if (x.lower() == 'false') or (x.lower() == 'f') or (x == '0'):
             return False
-        else:
+        elif(x.lower() == 'true') or (x.lower() == 't') or (x == '1'):
             return True
+        else:
+            raise ValueError('No boolean value found')
     
     if 'input-config' in sections:
         #input_config = {}
         this_section = config['input-config']
         
-        configfolder = None
-        def config_folder(x):
-            nonlocal configfolder
-            configfolder = os.path.join(pathname, x)
-            return configfolder
+        # configfolder = None
+        # def config_folder(x):
+        #     nonlocal configfolder
+        #     configfolder = os.path.join(pathname, x)
+        #     return configfolder
         
-        def read_prc(x):
-            return read_product_related_characteristics(join_path(x))
-        def read_prec(x):
-            return read_precedence(join_path(x))
-        def read_energy(x):
-            return read_price(join_path(x))
-        def read_downtimes(x):
-            return read_down_durations(join_path(x))
-        def read_failures(x):
-            return read_failure_data(join_path(x))
-        def read_xml_file(x):
-            return read_failure_info(os.path.join(configfolder, x, 'outputfile.xml'))
+        # def read_prc(x):
+        #     return read_product_related_characteristics(join_path(x))
+        # def read_prec(x):
+        #     return read_precedence(join_path(x))
+        # def read_energy(x):
+        #     return read_price(join_path(x))
+        # def read_downtimes(x):
+        #     return read_down_durations(join_path(x))
+        # def read_failures(x):
+        #     return read_failure_data(join_path(x))
+        # def read_xml_file(x):
+        #     return read_failure_info(os.path.join(configfolder, x, 'outputfile.xml'))
 
-        input_actions = {
-            # These files should be read in, otherwise throw error
-            'original_folder': ['original', config_folder, raise_failure],
-            'product_related_characteristics_file': ['prc_file', join_path, raise_failure],
-            'energy_price_file': ['ep_file', join_path, raise_failure],
-            'job_info_file': ['ji_file', join_path, raise_failure],
-            'failure_info_path': ['failure_info', read_xml_file, raise_failure],
-            # These files are facultative, throw no error
-            'precedence_file': ['prec_file', join_path, raise_no_failure],
-            'historical_down_periods_file': ['hdp_file', join_path, raise_no_failure],
-            'urgent_job_info_file': ['urgent_ji_file', join_path, raise_no_failure],
-            'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
-            'failure_rate': ['fr_file', join_path, raise_no_failure]
-        }
-        return_sections['input_config'] = my_config_parser(input_actions, this_section)
+        # input_actions = {
+        #     # These files should be read in, otherwise throw error
+        #     'original_folder': ['original', config_folder, raise_failure],
+        #     'product_related_characteristics_file': ['prc_file', join_path, raise_failure],
+        #     'energy_price_file': ['ep_file', join_path, raise_failure],
+        #     'job_info_file': ['ji_file', join_path, raise_failure],
+        #     'failure_info_path': ['failure_info', read_xml_file, raise_failure],
+        #     # These files are facultative, throw no error
+        #     'precedence_file': ['prec_file', join_path, raise_no_failure],
+        #     'historical_down_periods_file': ['hdp_file', join_path, raise_no_failure],
+        #     'urgent_job_info_file': ['urgent_ji_file', join_path, raise_no_failure],
+        #     'breakdown_record_file': ['bd_rec_file', join_path, raise_no_failure],
+        #     'failure_rate': ['fr_file', join_path, raise_no_failure]
+        # }
+        #return_sections['input_config'] = my_config_parser(input_actions, this_section)
+        return_sections['input_config'] = {}
+        configfolder = return_sections['input_config']['original'] = this_section['original_folder']
+        return_sections['input_config']['prc_file'] = os.path.join(configfolder, this_section['product_related_characteristics_file'])
+        return_sections['input_config']['ep_file'] = os.path.join(configfolder, this_section['energy_price_file'])
+        return_sections['input_config']['ji_file'] = os.path.join(configfolder, this_section['job_info_file'])
+        return_sections['input_config']['failure_info'] \
+            = read_failure_info(os.path.join(configfolder, this_section['failure_info_path'], 'outputfile.xml'))
+        return_sections['input_config']['prec_file'] = None
+        if 'precedence_file' in this_section:
+            return_sections['input_config']['prec_file'] = os.path.join(configfolder, this_section['precedence_file'])
+        return_sections['input_config']['hdp_file'] = None
+        if 'historical_down_periods_file' in this_section:
+            return_sections['input_config']['hdp_file'] = os.path.join(configfolder, this_section['historical_down_periods_file'])
+        return_sections['input_config']['urgent_ji_file'] = None
+        if 'urgent_job_info_file' in this_section:
+            return_sections['input_config']['urgent_ji_file'] = os.path.join(configfolder, this_section['urgent_job_info_file'])
+        return_sections['input_config']['bd_rec_file'] = None
+        if 'breakdown_record_file' in this_section:
+            return_sections['input_config']['bd_rec_file'] = os.path.join(configfolder, this_section['breakdown_record_file'])
+        return_sections['input_config']['fr_file'] = None
+        if 'failure_rate' in this_section:
+            return_sections['input_config']['fr_file'] = os.path.join(configfolder, this_section['failure_rate'])
     else:
         raise NameError("No input section 'input-config' found!")
 
@@ -683,24 +705,46 @@ def read_config_file(path):
         #output_config = {}
         this_section = config['output-config']
         
-        def join_path_curdate(x):
-            return os.path.join(pathname, str(x) + '_' + strftime("%Y%m%d_%H%M", localtime()))
-        def return_false(x):
-            return False
+        # def join_path_curdate(x):
+        #     return os.path.join(pathname, str(x) + '_' + strftime("%Y%m%d_%H%M", localtime()))
+        # def return_false(x):
+        #     return False
         
-        output_actions = {
-            'export_folder': ['export_folder', join_path_curdate, raise_failure],
-            'output_init': ['output_init', str, raise_failure],
-            'output_init_small': ['output_init_small', str, raise_failure],
-            'output_final': ['output_final', str, raise_failure],
-            'output_final_small': ['output_final_small', str, raise_failure],
-            'interactive': ['interactive', read_bool, raise_failure],
-            'export': ['export', read_bool, raise_failure],
-            'export_paper': ['export_paper', read_bool, return_false],
-            'export_indeff': ['export_indeff', read_bool, return_false]
-        }
+        # output_actions = {
+        #     'export_folder': ['export_folder', join_path_curdate, raise_failure],
+        #     'output_init': ['output_init', str, raise_failure],
+        #     'output_init_small': ['output_init_small', str, raise_failure],
+        #     'output_final': ['output_final', str, raise_failure],
+        #     'output_final_small': ['output_final_small', str, raise_failure],
+        #     'interactive': ['interactive', read_bool, raise_failure],
+        #     'export': ['export', read_bool, raise_failure],
+        #     'export_paper': ['export_paper', read_bool, return_false],
+        #     'export_indeff': ['export_indeff', read_bool, return_false]
+        # }
         
-        return_sections['output_config'] = my_config_parser(output_actions, this_section)
+        #return_sections['output_config'] = my_config_parser(output_actions, this_section)
+        return_sections['output_config'] = {}
+        return_sections['output_config']['export_folder'] =\
+            os.path.join(pathname, this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M", localtime()))
+
+        return_sections['output_config']['interactive'] = False
+        if 'interactive' in this_section:
+            return_sections['output_config']['interactive'] = this_section.getboolean('interactive')
+        return_sections['output_config']['export'] = False
+        if 'export' in this_section:
+            return_sections['output_config']['export'] = this_section.getboolean('export')
+        if return_sections['output_config']['export']:
+            return_sections['output_config']['output_init'] = this_section['output_init']
+            return_sections['output_config']['output_final'] = this_section['output_final']
+        return_sections['output_config']['export_paper'] = False
+        if 'export_paper' in this_section:
+            return_sections['output_config']['export_paper'] = this_section.getboolean('export_paper')
+        return_sections['output_config']['export_indeff'] = False
+        if 'export_indeff' in this_section:
+            return_sections['output_config']['export_indeff'] = this_section.getboolean('export_indeff')
+        if return_sections['output_config']['export_indeff']:
+            return_sections['output_config']['output_init_small'] = this_section['output_init_small']
+            return_sections['output_config']['output_final_small'] = this_section['output_final_small']
     else:
         raise NameError("No output section 'output-config' found!")
 

@@ -100,11 +100,11 @@ def main(config):
             orig_csv.to_csv(os.path.join(export_folder, 'test_orig.csv'))           
         
         # get the failure probabilities
-        downtimes = None
         if config['scenario_config']['working_method'] == 'expected' \
             and config['input_config']['failure_info'] is not None:
             orig_failure = orig_sched.get_failure_prob(cumulative=True)
             best_failure = best_sched.get_failure_prob(cumulative=True)
+            downtimes = None
         else:
             # Or the actual failure times
             orig_failure = None

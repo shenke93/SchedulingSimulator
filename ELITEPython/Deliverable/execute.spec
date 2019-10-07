@@ -1,9 +1,11 @@
 # -*- mode: python -*-
+import sys
+sys.setrecursionlimit(5000)
 
 block_cipher = None
 
 
-a = Analysis(['execute.dist'],
+a = Analysis(['execute.py'],
              pathex=['D:\\users\\jdavid\\Programming\\GitHub\\SchedulingSimulator\\ELITEPython\\Deliverable'],
              binaries=[],
              datas=[],
