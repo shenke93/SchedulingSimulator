@@ -4,6 +4,7 @@ from time import localtime, strftime
 from visualize_lib import show_ga_results, plot_gantt, show_energy_plot
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.backends.backend_qt5agg
 import math
 #from CONFIGFILE import adapt_ifin
 
@@ -89,15 +90,16 @@ def main(config):
             # output files to csv's
             orig.to_csv(os.path.join(export_folder, config['output_config']['output_init']))
             best.to_csv(os.path.join(export_folder, config['output_config']['output_final']))
+            best_csv = best_sched.fitness_csv()
+            best_csv.to_csv(os.path.join(export_folder, config['output_config']['output_results_final']))
+            orig_csv = orig_sched.fitness_csv()
+            orig_csv.to_csv(os.path.join(export_folder, config['output_config']['output_results_init'])) 
         
         if export_indeff:
             # output partial files to csvs
             orig[['Type', 'Start', 'End']].to_csv(os.path.join(export_folder, config['output_config']['output_init_small']))
             best[['Type', 'Start', 'End']].to_csv(os.path.join(export_folder, config['output_config']['output_final_small']))
-            best_csv = best_sched.fitness_csv()
-            best_csv.to_csv(os.path.join(export_folder, 'test_best.csv'))
-            orig_csv = orig_sched.fitness_csv()
-            orig_csv.to_csv(os.path.join(export_folder, 'test_orig.csv'))           
+          
         
         # get the failure probabilities
         if config['scenario_config']['working_method'] == 'expected' \
@@ -215,8 +217,13 @@ def main(config):
     logging.shutdown()
     
 if __name__ == "__main__":
-    
-    pathname = os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        # frozen
+        pathname = os.path.dirname(sys.executable)
+    else:
+        # unfrozen
+        pathname = os.path.dirname(os.path.realpath(__file__))
+    #pathname = os.path.dirname(os.path.abspath(__file__))
     os.chdir(pathname)
     CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config.ini')
     

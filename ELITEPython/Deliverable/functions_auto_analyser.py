@@ -97,12 +97,13 @@ def group_productions(df_task, considered_reasons):
             .sort_values(by='StartDateUTC')
     #print(len(group))
     # all of the uptime is counted here
-    group_uptime = df_task[df_task.ReasonId.isin([100])].groupby('ProductionRequestId')\
+    group_uptime = df_task[df_task['Type'] == 'RunTime'].groupby('ProductionRequestId')\
                    .agg({'Duration':'sum'})
     group_uptime.columns = ['Uptime']
     group_alltime = df_task.groupby('ProductionRequestId').agg({'Duration':'sum'})
     group_alltime.columns = ['Totaltime']
-    group_downtime = df_task[df_task.ReasonId.isin(considered_reasons)].groupby('ProductionRequestId')\
+    group_downtime = df_task[(df_task['Type'] == 'DownTime') 
+                             & df_task['ReasonId'].isin(considered_reasons)].groupby('ProductionRequestId')\
                      .agg({'Duration':'sum'})
     group_downtime.columns = ['Downtime']
     group = pd.concat([group_uptime, group_downtime, group_alltime, group], axis=1)

@@ -1,0 +1,1 @@
+python "C:\Users\jdavid\Anaconda3\Scripts\cxfreeze" execute.py --target-dir dist

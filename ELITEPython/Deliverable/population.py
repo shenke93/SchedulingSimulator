@@ -138,7 +138,6 @@ class Schedule:
                 try:
                     du = quantity / unit1['targetproductionrate'] # get job duration
                 except:
-                    #du = quantity
                     print(quantity, unit1['targetproductionrate'])
                     raise
             else:
@@ -361,17 +360,14 @@ class Schedule:
                         t_end_maint = t_start + timedelta(hours=failure_info['repair_time'])
                         while maintenance_int in detailed_dict:
                             maintenance_int -= 1
-                        detailed_dict.update({maintenance_int : dict(zip(['start', 'end', 'totaltime', 'uptime', 
-                                                                          'product', 'type', 'down_duration', 
-                                                                          'changeover_duration', 'cleaning_time', 'quantity',
-                                                                          'unitprice', 'power',
-                                                                          'weight', 'targetproductionrate'],
-                                                                         [t_start, t_end_maint, failure_info['repair_time'], 0, 
-                                                                          'MAINTENANCE', 'NONE', failure_info['repair_time'], 
-                                                                          0, 0, failure_info['repair_time'],
-                                                                          0, 0, 
-                                                                          0, 1]))
-                                             })
+                        detailed_dict.update({maintenance_int : dict(zip(
+                            ['start', 'end', 'totaltime', 'uptime', 'product', 'type', 'down_duration', 
+                             'changeover_duration', 'cleaning_time', 'quantity', 'unitprice', 'power',
+                             'weight', 'targetproductionrate', 'releasedate', 'duedate',],
+                            [t_start, t_end_maint, failure_info['repair_time'], 0, 'MAINTENANCE', 'NONE', failure_info['repair_time'], 
+                             0, 0, failure_info['repair_time'], 0, 0, 
+                             0, 1, pd.Timestamp.min, pd.Timestamp.max]))
+                                              })
                         #import pdb; pdb.set_trace()
                         t_start = t_end_maint
                         t_end = t_end + timedelta(hours=failure_info['repair_time'])
@@ -435,8 +431,6 @@ class Schedule:
                     t_end = t_start + timedelta(hours = du + t_down + t_changeover + t_clean)
                     total_duration_nofail += du
             try:
-                releasedate = unit1['releasedate']
-                duedate = unit1['duedate']
                 # get all other info used by the input parser
                 #import pdb; pdb.set_trace()
                 detailed_dict.update({item : dict(zip(['start', 'end', 'totaltime', 'uptime', 
@@ -448,7 +442,7 @@ class Schedule:
                                                       [t_start, t_end, du + t_down + t_changeover + t_clean, 
                                                        du, unit1['product'], unit1['type'],
                                                        t_down, t_changeover, 
-                                                       t_clean, releasedate, duedate, quantity,
+                                                       t_clean,  unit1['releasedate'], unit1['duedate'], quantity,
                                                        unit1['unitprice'], unit1['power'],
                                                        unit1['weight'], unit1['targetproductionrate']]))
                                       })
@@ -910,12 +904,10 @@ class Schedule:
     #                 if detail:
     #                     current_cost.append(0)
     #     return current_cost
-
-    def validate(self):
-        # validate time
+    
+    def validate_duedate(self):
+        """Validate due date """
         time_dict = self.get_time()
-    #     print(time_dict)
-        flag = True
         # validate due date
         for key, value in time_dict.items():
             if key in self.job_dict.keys():
@@ -923,13 +915,16 @@ class Schedule:
                 if value['end'] > due:
                     print("For candidate schedule:", self.order)
                     print(f"Job {key} will finish at {value['end']} over the due date {due}")
-                    flag = False
+                    return False
                 release= self.job_dict[key]['releasedate']
                 if value['start'] < release:
                     print("For candidate schedule:", self.order)
                     print(f"Job {key} will finish at {value['start']} below the release date {release}")
-                    flag = False
-        # validate precedence
+                    return False
+        return True
+
+    def validate_precedence(self):
+        """ validate precedence """
         #jobs = list(self.order.copy())
         order = list(self.order)
         if self.precedence_dict is not None:
@@ -944,8 +939,16 @@ class Schedule:
                     # print("Prec:", prec)
                     # print("afters:", jobs)
                     if not prec.isdisjoint(jobs_temp): # prec set and the executed jobs have intersections
-                        flag = False
-                        break
+                        return False
+        return True
+
+    def validate(self):
+        # validate due date
+        flag = self.validate_duedate()
+        if not flag:
+            return flag
+        else:
+            self.validate_precedence()
         return flag
     
     # def fix_validation(self):

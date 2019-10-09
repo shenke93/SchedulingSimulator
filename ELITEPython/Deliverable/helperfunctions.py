@@ -660,11 +660,11 @@ def read_config_file(path):
         #return_sections['input_config'] = my_config_parser(input_actions, this_section)
         return_sections['input_config'] = {}
         configfolder = return_sections['input_config']['original'] = this_section['original_folder']
-        return_sections['input_config']['prc_file'] = os.path.join(configfolder, this_section['product_related_characteristics_file'])
+        return_sections['input_config']['prc_file'] = None
         return_sections['input_config']['ep_file'] = os.path.join(configfolder, this_section['energy_price_file'])
         return_sections['input_config']['ji_file'] = os.path.join(configfolder, this_section['job_info_file'])
         return_sections['input_config']['failure_info'] \
-            = read_failure_info(os.path.join(configfolder, this_section['failure_info_path'], 'outputfile.xml'))
+            = read_failure_info(os.path.join(configfolder, this_section['failure_xml_file']))
         return_sections['input_config']['prec_file'] = None
         if 'precedence_file' in this_section:
             return_sections['input_config']['prec_file'] = os.path.join(configfolder, this_section['precedence_file'])
@@ -725,7 +725,7 @@ def read_config_file(path):
         #return_sections['output_config'] = my_config_parser(output_actions, this_section)
         return_sections['output_config'] = {}
         return_sections['output_config']['export_folder'] =\
-            os.path.join(pathname, this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M", localtime()))
+            os.path.join(pathname, this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M%S", localtime()))
 
         return_sections['output_config']['interactive'] = False
         if 'interactive' in this_section:
@@ -736,6 +736,8 @@ def read_config_file(path):
         if return_sections['output_config']['export']:
             return_sections['output_config']['output_init'] = this_section['output_init']
             return_sections['output_config']['output_final'] = this_section['output_final']
+            return_sections['output_config']['output_results_init'] = this_section['output_results_init']
+            return_sections['output_config']['output_results_final'] = this_section['output_results_final']
         return_sections['output_config']['export_paper'] = False
         if 'export_paper' in this_section:
             return_sections['output_config']['export_paper'] = this_section.getboolean('export_paper')
@@ -849,7 +851,6 @@ def config_to_sched_objects(sections):
     test = sections['scenario_config']['test']
     down_duration_file = sections['input_config']['hdp_file']
     failure_file = sections['input_config']['fr_file']
-    prod_rel_file = sections['input_config']['prc_file']
     precedence_file = sections['input_config']['prec_file']
     energy_file = sections['input_config']['ep_file']
     job_file = sections['input_config']['ji_file']

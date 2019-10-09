@@ -1,0 +1,1 @@
+pyinstaller execute_edit.spec

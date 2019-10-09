@@ -539,9 +539,9 @@ class GA(Scheduler):
                 
                 #print('validation step')
                 flag = 0
-                if self.validation:
-                    if not loser.validate():
-                        pass
+                #if self.validation:
+                #    if not loser.validate():
+                #        pass
                         #self.pop[sub_pop_idx] = winner_loser
                         #i = i + 1 # End of an evolution procedure
                         #flag = 1
@@ -745,9 +745,9 @@ def run_opt(original_schedule, settings, start_time=None):
         best_index = np.argmin(res)
         worst_index = np.argmax(res)
         mean = np.mean(res)
-        print(f'{generation}/{iterations}:\t{res[best_index]:15.3f}', end='')
+        sys.stdout.write(f'\r{generation}/{iterations}:\t{res[best_index]:15.3f}')
         #print(str(generation) + '/' + str(iterations) + ':\t' +  str(res[best_index]), end=''); 
-        print('\r', end='') # overwrite this line continually
+        sys.stdout.flush() # overwrite this line continually
         generation += 1
 
         best_result_list.append(res[best_index])
@@ -761,16 +761,18 @@ def run_opt(original_schedule, settings, start_time=None):
             stop = True
         if stop_condition == 'end_value':
             if res[best_index] < stop_value:
+                print('\n')
                 stop = True
         elif stop_condition == 'abs_time':
             timer1 = time.monotonic()  # returns time in seconds
             elapsed_time = timer1-timer0
             if elapsed_time >= stop_value:
+                print('\n')
                 stop = True
-        if msvcrt.kbhit() == True: # Only works on Windows
+        if sys.platform == "win32" and msvcrt.kbhit() == True: # Only works on Windows
             char = msvcrt.getche()
             if char in [b'c', b'q']:
-                print('User hit c or q button, exiting...')
+                print('\nUser hit c or q button, exiting...')
                 stop = True
     
     lists_result = pd.DataFrame({'best': best_result_list, 'mean': mean_result_list, 'worst': worst_result_list})
@@ -780,10 +782,18 @@ def run_opt(original_schedule, settings, start_time=None):
     elapsed_time = timer1-timer0
     
     logging.info('Stopping after ' + str(generation) + ' iterations. Elapsed time: ' + str(round(elapsed_time, 2)))
+        
 
     print()
     logging.info("Candidate schedule " + str(pop[best_index].order))
     candidate_schedule = pop[best_index]
+    
+    if settings.validation == True:
+        valid = candidate_schedule.validate_duedate()
+        if valid:
+            logging.info('Valid schedule found')
+        else:
+            logging.info('Invalid schedule found!')
 
     candidate_schedule.print_fitness()
 

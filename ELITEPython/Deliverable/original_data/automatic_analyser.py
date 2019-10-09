@@ -86,7 +86,7 @@ from functions_auto_analyser import add_column_type, add_breaks, group_productio
 
 print(__doc__)
 
-curdir = os.path.dirname(sys.argv[0])
+curdir = os.path.split(os.path.abspath(sys.argv[0]))[0]
 os.chdir(curdir)
 
 # per choice: (inputfile, target production rate per type, type name)
@@ -96,7 +96,7 @@ choices = {'production': ('productionfile.csv', 'prod_speed.csv', 'PastaType', '
            #'production_pertype': ('productionfile.csv', 'prod_speed.csv', 'ArticleCode', 'productionfile_pertype', 7*24),
            }
 for choice in choices:
-    print(f'Executing for: {choice}')
+    print(f"Executing for: {choice}")
     file_used, file_speed, choice_type, outfolder, maint_t = choices[choice]
     try:
         df = pd.read_csv(file_used, parse_dates=['StartDateUTC', 'EndDateUTC'])
@@ -175,6 +175,7 @@ for choice in choices:
     print('Saving downtimes')
     group = group_productions(df_task, considered_reasons)
     print(group.head())
+    #import pdb; pdb.set_trace()
     
     #print(len(group))
     if turn_off_if:
