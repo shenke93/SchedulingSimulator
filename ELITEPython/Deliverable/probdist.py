@@ -318,14 +318,11 @@ def total_cost_maintenance(timearray, model, cp=100, cu=250, return_separate=Fal
     # summate the expectation of preventive maintenance * time of maintenance +
     # the expectation of unexpected maintenance * expected value of unexpected breakdown
     
-    #expectedvalue = np.array([scipy.integrate.quad(model.reliability_cdf, 0, t)[0] for t in timearray])
-    #denum = expectedvalue * (1 - model.reliability_cdf(timearray)) + model.reliability_cdf(timearray) * timearray
-    
-    # expectedvalue = np.array([scipy.integrate.quad(model.failure_pdf, 0, t)[0]*t for t in timearray])
-    # denum = expectedvalue + timearray * model.reliability_cdf(timearray)
-    
     expectedvalue = np.array([scipy.integrate.quad(model.reliability_cdf, 0, t)[0] for t in timearray])
-    denum = expectedvalue
+    denum = expectedvalue * (1 - model.reliability_cdf(timearray)) + model.reliability_cdf(timearray) * timearray
+    
+    # expectedvalue = np.array([scipy.integrate.quad(model.reliability_cdf, 0, t)[0] for t in timearray])
+    # denum = expectedvalue
     
     cput = (Cp * model.reliability_cdf(timearray) + 
             Cu * (1 - model.reliability_cdf(timearray))) / denum

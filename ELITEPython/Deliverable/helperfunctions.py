@@ -784,6 +784,7 @@ def read_config_file(path):
             'weight_conversion': ['weight_conversion', float, return_0],
             'weight_makespan': ['weight_makespan', float, return_0],
             'weight_tardiness': ['weight_tardiness', float, return_0],
+            'weight_precedence': ['weight_precedence', float, return_0],
         }
         
         scenario_actions = {
@@ -803,7 +804,7 @@ def read_config_file(path):
             'working_method': ['working_method', str, raise_no_failure],
             'adapt_ifin': ['adapt_ifin', read_intlist, raise_no_failure],
             'remove_breaks': ['remove_breaks', read_bool, return_0],
-            'ntimes': ['ntimes', int, return_1]
+            'ntimes': ['ntimes', int, return_1],
         }
         
         ga_actions = {
@@ -987,8 +988,8 @@ def config_to_sched_objects(sections):
 
 def start_logging(filename):
     '''
-    Start logging in a file during the execution of this program
-    Also output to a file
+    Start logging in a file during the execution of this program. 
+    Also output to a file.
     '''
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',

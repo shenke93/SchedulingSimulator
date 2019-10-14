@@ -285,8 +285,11 @@ class Schedule:
                     if 'quantity' in unit1:
                         quantity = unit1['quantity']
                     else:
-                        #calculate quantity
-                        quantity = du * unit1['targetproductionrate']
+                        try:
+                            #calculate quantity
+                            quantity = du * unit1['targetproductionrate']
+                        except:
+                            logging.warning('No target production rate found')
                 except:
                     logging.warning('No correct duration information found, go to debugging')
                     import pdb; pdb.set_trace()
@@ -862,7 +865,23 @@ class Schedule:
             elif flowtime > 0:
                 flowtime_cost += flowtime
         return flowtime_cost
-    
+
+    def get_precedence_cost(self, detail=False):
+        if detail:
+            precedence_cost = [0]*len(self.time_dict)
+        else:
+            precedence_cost = 0
+        if self.precedence_dict: 
+            for beforeitem in self.precedence_dict:
+                for afteritem in self.precedence_dict[beforeitem]:
+                    if beforeitem in list(self.order):
+                        if afteritem not in self.order[list(self.order).index(beforeitem):]:
+                            if detail:
+                                precedence_cost[list(self.order).index(afteritem)] += 1
+                            else:
+                                precedence_cost += 1
+        return precedence_cost
+  
     # def get_weighted_tardiness_cost(self, detail=False):
     #     """
     #     Get the weighted tardiness cost for a certain
@@ -926,21 +945,7 @@ class Schedule:
     def validate_precedence(self):
         """ validate precedence """
         #jobs = list(self.order.copy())
-        order = list(self.order)
-        if self.precedence_dict is not None:
-            for item in order:
-                if item in self.precedence_dict:
-                    prec = set(self.precedence_dict[item])
-                    #import pdb; pdb.set_trace()
-                    jobs_temp = set(order[:order.index(item)])
-                    #jobs.remove(item)
-                    #print('Remove ' + str(item))
-                    # print("Item:", item)
-                    # print("Prec:", prec)
-                    # print("afters:", jobs)
-                    if not prec.isdisjoint(jobs_temp): # prec set and the executed jobs have intersections
-                        return False
-        return True
+        return True if self.get_precedence_cost() == 0 else False 
 
     def validate(self):
         # validate due date
@@ -971,13 +976,15 @@ class Schedule:
         if weights is None:
             wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
             we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
-            wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
+            wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0);
+            wp = self.weights.get('weight_precedence', 0)
            
         else:
             wf = weights.get('weight_failure', 0); wvf = weights.get('weight_virtual_failure', 0)
             we = weights.get('weight_energy', 0); wc = weights.get('weight_conversion', 0)
-            wb = weights.get('weight_constraint', 0); wft = weights.get('weight_flowtime', 0)
-        factors = (wf, wvf, we, wc, wb, wft)
+            wb = weights.get('weight_constraint', 0); wft = weights.get('weight_flowtime', 0);
+            wp = weights.get('weight_precedence', 0)
+        factors = (wf, wvf, we, wc, wb, wft, wp)
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             #for i in sub_pop:
@@ -1004,10 +1011,14 @@ class Schedule:
             flowtime_cost = self.get_flowtime_cost(detail=detail)
         else:
             flowtime_cost = 0
+        if wp:
+            precedence_cost = self.get_precedence_cost(detail=detail)
+        else:
+            precedence_cost = 0
         if split_types:
             total_cost = (np.array(failure_cost), np.array(virtual_failure_cost), np.array(energy_cost), 
                           np.array(conversion_cost), np.array(constraint_cost),
-                          np.array(flowtime_cost), factors)
+                          np.array(flowtime_cost), np.array(precedence_cost), factors)
         else:
             try:
                 # if (type(conversion_cost) is list) and (type(energy_cost) is list):
@@ -1023,24 +1034,27 @@ class Schedule:
                 # conversion_cost has sometimes a length which is too long, solve it here temporarily
                 total_cost = wf * np.array(failure_cost) + wvf * np.array(virtual_failure_cost) +\
                              we * np.array(energy_cost) + wc * np.array(conversion_cost) + wb * np.array(constraint_cost) +\
-                             wft * np.array(flowtime_cost)
+                             wft * np.array(flowtime_cost) + wp * np.array(precedence_cost)
             except:
                 print()
                 print(np.array(failure_cost).shape, np.array(virtual_failure_cost).shape, np.array(energy_cost).shape,
-                      np.array(conversion_cost).shape, np.array(constraint_cost).shape, np.array(flowtime_cost).shape)
+                      np.array(conversion_cost).shape, np.array(constraint_cost).shape, np.array(flowtime_cost).shape,
+                      np.array(precedence_cost).shape)
                 print(detail)
                 print(energy_cost)
                 print(conversion_cost)
                 print(constraint_cost)
+                print(flowtime_cost)
+                print(precedence_cost)
                 import pdb; pdb.set_trace()
                 raise
             
         return total_cost
 
     def print_fitness(self, inputstr="Total"):
-        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, factors = self.get_fitness(split_types=True)
+        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, factors = self.get_fitness(split_types=True)
         total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3]\
-                   + d_cost * factors[4] + ft_cost * factors[5]
+                   + d_cost * factors[4] + ft_cost * factors[5] + prec_cost * factors[6]
         #import pdb; pdb.set_trace()
 
         logging.info(inputstr + " failure cost: " + str(f_cost))
@@ -1049,22 +1063,25 @@ class Schedule:
         logging.info(inputstr + " conversion cost: " + str(c_cost))
         logging.info(inputstr + " deadline cost: " + str(d_cost))
         logging.info(inputstr + " flowtime cost: " + str(ft_cost))
+        logging.info(inputstr + " precedence cost: " + str(prec_cost))
         logging.info("Factors: " + str(factors))
         logging.info("Total cost: " + str(total_cost))
 
         logging.info("Number of changeovers: " + str(self.get_num_conversions()))
     
     def fitness_csv(self):
-        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, factors = self.get_fitness(split_types=True)
-        unweighted_total_cost = f_cost + vf_cost + e_cost + d_cost + ft_cost
+        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, factors = self.get_fitness(split_types=True)
+        unweighted_total_cost = f_cost + vf_cost + e_cost + d_cost + ft_cost + prec_cost
         weighted_total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3]\
-                              + d_cost * factors[4] + ft_cost * factors[5]
-        indexcol = ['failure', 'virtual_failure', 'energy', 'conversion', 'due', 'flowtime', 'total']
-        series1 = pd.Series(data=[f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, unweighted_total_cost], index=indexcol, name='Unweighted costs')
+                              + d_cost * factors[4] + ft_cost * factors[5] * prec_cost * factors[6]
+        indexcol = ['failure', 'virtual_failure', 'energy', 'conversion', 'due', 'flowtime', 'precedence', 'total']
+        series1 = pd.Series(data=[f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, unweighted_total_cost], 
+                            index=indexcol, name='Unweighted costs')
         series2 = pd.Series(data=factors, index=indexcol[:-1], name='Multiply factors')
         series3 = pd.Series(data=[f_cost * factors[0], vf_cost * factors[1], 
                                   e_cost * factors[2], c_cost * factors[3],
-                                  d_cost * factors[4], ft_cost * factors[5], weighted_total_cost], index=indexcol, name='Weighted costs')
+                                  d_cost * factors[4], ft_cost * factors[5],
+                                  prec_cost * factors[6], weighted_total_cost], index=indexcol, name='Weighted costs')
         output_frame = pd.DataFrame([series1, series2, series3]).T
         return output_frame
         

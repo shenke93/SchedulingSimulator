@@ -789,7 +789,7 @@ def run_opt(original_schedule, settings, start_time=None):
     candidate_schedule = pop[best_index]
     
     if settings.validation == True:
-        valid = candidate_schedule.validate_duedate()
+        valid = candidate_schedule.validate()
         if valid:
             logging.info('Valid schedule found')
         else:

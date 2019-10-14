@@ -19,6 +19,8 @@ def show_ga_results(result):
     ax = plt.gca()
     ax.set(title='Fitness evolution graph', xlabel='# iterations', ylabel='Predicted cost')
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ran = max(result['best']) - min(result['best'])
+    plt.ylim(min(result['best']) - ran*0.05, max(result['best']) + ran*0.05)
     ax.legend()
     #return plt.gcf()
 

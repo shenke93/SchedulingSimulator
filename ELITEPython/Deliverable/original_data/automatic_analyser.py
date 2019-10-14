@@ -279,23 +279,23 @@ for choice in choices:
     from probdist import total_cost_maintenance, pm_recommend
 
 
-    # minimum = pm_recommend(weib, cp, cu)
-    # PM = int(minimum)
+    minimum = pm_recommend(weib, cp, cu)
+    PM = int(minimum)
     
-    # plt.plot(minimum, total_cost_maintenance(minimum, weib, cp, cu), 'o')
-    # t_plot = np.linspace(1, float(minimum * 2), 50)
-    # total, prev, unexp = total_cost_maintenance(t_plot, weib, cp, cu, True)
-    # #import pdb; pdb.set_trace()
-    # plt.plot(t_plot, total, label='total cost')
-    # plt.plot(t_plot, prev, label='preventive')
-    # plt.plot(t_plot, unexp, label='unexpected')
-    # plt.legend()
-    # plt.ylabel('Cost per hour')
-    # plt.xlabel('t[hours]')
-    # plt.title(f'Suggested time between planned maintenance: {PM} hours\n= less then {int(np.ceil(PM / 24))} days')
-    # plt.ylim(bottom=-total[-1]*0.1, top=total[-1]*1.5)
-    # plt.savefig(join(outfolder, 'PM_recommended'))
-    # plt.close()
+    plt.plot(minimum, total_cost_maintenance(minimum, weib, cp, cu), 'o')
+    t_plot = np.linspace(1, float(minimum * 2), 50)
+    total, prev, unexp = total_cost_maintenance(t_plot, weib, cp, cu, True)
+    #import pdb; pdb.set_trace()
+    plt.plot(t_plot, total, label='total cost')
+    plt.plot(t_plot, prev, label='preventive')
+    plt.plot(t_plot, unexp, label='unexpected')
+    plt.legend()
+    plt.ylabel('Cost per hour')
+    plt.xlabel('t[hours]')
+    plt.title(f'Suggested time between planned maintenance: {PM} hours\n= less then {int(np.ceil(PM / 24))} days')
+    plt.ylim(bottom=-total[-1]*0.1, top=total[-1]*1.5)
+    plt.savefig(join(outfolder, 'PM_recommended.png'))
+    plt.close()
     
     #PM = weib.mean_time()
     
@@ -465,16 +465,16 @@ for choice in choices:
         conversion_times = ET.SubElement(files, "conversion_times")
         conversion_times.text = os.path.split(newname)[1]    
 
-    sns.heatmap(new_mc, annot=True, fmt=".0f")
+    annot = False if choice_type == 'ArticleCode' else True
+    sns.heatmap(new_mc, annot=annot, fmt=".0f")
     plt.tight_layout()
     plt.savefig(splitext(output_used)[0] + '_conversions.pdf', dpi=2400, figsize=(6, 8))
     plt.close()
     
-    sns.heatmap(num_conversions, annot=True, fmt=".0f")
+    sns.heatmap(num_conversions, annot=annot, fmt=".0f")
     plt.tight_layout()
     plt.savefig(splitext(output_used)[0] + '_num_conversions.pdf', dpi=2400, figsize=(6, 8))
     plt.close()
-    
 
 
     #print('Generating cleaning times between the types')
