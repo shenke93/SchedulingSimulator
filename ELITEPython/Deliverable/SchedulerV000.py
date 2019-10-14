@@ -737,6 +737,8 @@ def run_opt(original_schedule, settings, start_time=None):
             print(str(generation) + ' reached - changing parameters of the GA')
             ga.cross_rate /= 2
             ga.mutation_rate = (ga.mutation_rate + 1) / 2
+            #ga.cross_rate = (ga.cross_rate + 1) / 2
+            #ga.mutation_rate /= 2
 #         print("Gen: ", generation)
         pop, res = ga.evolve(1)          # natural selection, crossover and mutation
         #print("pop:", pop)

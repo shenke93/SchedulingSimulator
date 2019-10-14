@@ -44,45 +44,13 @@ break_pauses = None # seconds # breaks will be split in these periods
 if (turn_off_if is not None) and (break_pauses is not None):
     assert (turn_off_if < break_pauses), 'Variable break_pauses should be larger then turn_off_if'
 
-def plot_hist(runtime, obs_run, cutoff_perc, fitter):
-    # alpha ~ MTBF only if beta close to 1
-    from probdist import make_hist_frame, sturges_rule
-    from lifelines import KaplanMeierFitter
-    #kmf = KaplanMeierFitter()
-    numbins = sturges_rule(len(runtime))
-
-    maxt = np.percentile(np.array(runtime), cutoff_perc)
-    mint = 0
-
-    df_hist, ran = make_hist_frame(runtime, obs_run, numbins=numbins, range=(mint, maxt), return_bins=True)
-    t = np.linspace(np.min(ran), np.max(ran), 100)
-    plt.figure(figsize=(10,5))
-    #x = np.linspace(0, maxt, numbins)
-    c_fail = df_hist['FailCDF']
-    p_fail = df_hist['Failures']/len(runtime)
-    plt.bar(ran[:-1] + (ran[1]-ran[0])/2, p_fail, width=ran[1]-ran[0], edgecolor='k')
-    plt.bar(ran[:-1] + (ran[1]-ran[0])/2, c_fail, width=ran[1]-ran[0], 
-            alpha=0.1, edgecolor='k'#, yerr=df_hist['Std']**(0.5)
-            )
-    plt.xlabel(r'time (h)')
-    plt.ylabel(r'F(t)')
-    plt.plot(t , fitter.failure_cdf(t), 'r', label=fitter)
-    #ax = plt.gca()
-    #ax.fill_between(t, weib_low.failure_cdf(t), weib_high.failure_cdf(t), alpha=0.3, color='r', zorder=3)
-    #kmf.fit(runtime, event_observed=obs_run)
-    #plt.plot(1-kmf.survival_function_, color='g', drawstyle=('steps-post'))
-    plt.xlim(0, maxt)
-    plt.legend()
-    return df_hist, ran
-
-
 sys.path.append(os.path.split(sys.path[0])[0])
 
 from probdist import duration_run_down, Weibull, Lognormal
 from lifelines import WeibullFitter, LogNormalFitter
 from functions_auto_analyser import add_column_type, add_breaks, group_productions, remove_breaks, construct_downtimes,\
                                     save_downtimes, generate_durations, generate_energy_per_production,\
-                                    construct_energy_2tarifs, adapt_standard_matrix, ConversionTable
+                                    construct_energy_2tarifs, adapt_standard_matrix, ConversionTable, plot_hist
 
 print(__doc__)
 
@@ -95,13 +63,14 @@ choices = {'production': ('productionfile.csv', 'prod_speed.csv', 'PastaType', '
            'packaging': ('packagingfile_old.csv', 'pack_speed.csv', 'BigPack-simple','packagingfile_old', 7*24),
            #'production_pertype': ('productionfile.csv', 'prod_speed.csv', 'ArticleCode', 'productionfile_pertype', 7*24),
            }
+
 for choice in choices:
     print(f"Executing for: {choice}")
     file_used, file_speed, choice_type, outfolder, maint_t = choices[choice]
     try:
         df = pd.read_csv(file_used, parse_dates=['StartDateUTC', 'EndDateUTC'])
         df = df.sort_values('StartDateUTC')
-        list_reasons = sorted(list(df.ReasonId.unique()))
+        list_reasons = sorted(list(df['ReasonId'].unique()))
     except:
         raise NameError('{} not found in this folder ({})'.format(file_used, os.curdir))
 
@@ -278,22 +247,22 @@ for choice in choices:
     # Generate the suggested time between planned maintenance
     from probdist import total_cost_maintenance, pm_recommend
 
-
     minimum = pm_recommend(weib, cp, cu)
     PM = int(minimum)
     
-    plt.plot(minimum, total_cost_maintenance(minimum, weib, cp, cu), 'o')
     t_plot = np.linspace(1, float(minimum * 2), 50)
     total, prev, unexp = total_cost_maintenance(t_plot, weib, cp, cu, True)
     #import pdb; pdb.set_trace()
     plt.plot(t_plot, total, label='total cost')
-    plt.plot(t_plot, prev, label='preventive')
-    plt.plot(t_plot, unexp, label='unexpected')
-    plt.legend()
-    plt.ylabel('Cost per hour')
-    plt.xlabel('t[hours]')
-    plt.title(f'Suggested time between planned maintenance: {PM} hours\n= less then {int(np.ceil(PM / 24))} days')
+    plt.plot(t_plot, prev, label='preventative')
+    plt.plot(t_plot, unexp, label='corrective')
+    plt.plot(minimum, total_cost_maintenance(minimum, weib, cp, cu), 'o', zorder=100)
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),  borderaxespad=0., ncol=3)
+    plt.ylabel('Cost per hour (€)')
+    plt.xlabel('Time (hour)')
+    #plt.title(f'Suggested time between planned maintenance: {PM} hours\n= less then {int(np.ceil(PM / 24))} days')
     plt.ylim(bottom=-total[-1]*0.1, top=total[-1]*1.5)
+    plt.tight_layout()
     plt.savefig(join(outfolder, 'PM_recommended.png'))
     plt.close()
     

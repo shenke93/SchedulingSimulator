@@ -15,7 +15,7 @@ def show_ga_results(result):
     #fig, ax = plt.subplots(figsize=(6, 4))
     #result_rolling = result.rolling(int(len(result)/20)).mean()
     #result_rolling.columns = [c + '_rolling_mean' for c in result_rolling.columns]
-    result.plot()
+    result[['best', 'mean', 'worst']].plot()
     ax = plt.gca()
     ax.set(title='Fitness evolution graph', xlabel='# iterations', ylabel='Predicted cost')
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))

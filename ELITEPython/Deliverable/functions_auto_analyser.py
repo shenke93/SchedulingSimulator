@@ -417,3 +417,35 @@ def adapt_standard_matrix(mean_conversions):
     #        new_mc.loc[i, j] += surplus # add this to the diagonals
     
     return new_mc
+
+def plot_hist(runtime, obs_run, cutoff_perc, fitter):
+    # alpha ~ MTBF only if beta close to 1
+    from probdist import make_hist_frame, sturges_rule
+    from lifelines import KaplanMeierFitter
+    import matplotlib.pyplot as plt
+    #kmf = KaplanMeierFitter()
+    numbins = sturges_rule(len(runtime))
+
+    maxt = np.percentile(np.array(runtime), cutoff_perc)
+    mint = 0
+
+    df_hist, ran = make_hist_frame(runtime, obs_run, numbins=numbins, range=(mint, maxt), return_bins=True)
+    t = np.linspace(np.min(ran), np.max(ran), 100)
+    plt.figure(figsize=(10,5))
+    #x = np.linspace(0, maxt, numbins)
+    c_fail = df_hist['FailCDF']
+    p_fail = df_hist['Failures']/len(runtime)
+    plt.bar(ran[:-1] + (ran[1]-ran[0])/2, p_fail, width=ran[1]-ran[0], edgecolor='k')
+    plt.bar(ran[:-1] + (ran[1]-ran[0])/2, c_fail, width=ran[1]-ran[0], 
+            alpha=0.1, edgecolor='k'#, yerr=df_hist['Std']**(0.5)
+            )
+    plt.xlabel(r'time (h)')
+    plt.ylabel(r'F(t)')
+    plt.plot(t , fitter.failure_cdf(t), 'r', label=fitter)
+    #ax = plt.gca()
+    #ax.fill_between(t, weib_low.failure_cdf(t), weib_high.failure_cdf(t), alpha=0.3, color='r', zorder=3)
+    #kmf.fit(runtime, event_observed=obs_run)
+    #plt.plot(1-kmf.survival_function_, color='g', drawstyle=('steps-post'))
+    plt.xlim(0, maxt)
+    plt.legend()
+    return df_hist, ran
