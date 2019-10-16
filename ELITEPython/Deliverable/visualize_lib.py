@@ -15,13 +15,14 @@ def show_ga_results(result):
     #fig, ax = plt.subplots(figsize=(6, 4))
     #result_rolling = result.rolling(int(len(result)/20)).mean()
     #result_rolling.columns = [c + '_rolling_mean' for c in result_rolling.columns]
-    result[['best', 'mean', 'worst']].plot()
+    result[['best', 'worst', 'mean']].plot()
     ax = plt.gca()
-    ax.set(title='Fitness evolution graph', xlabel='# iterations', ylabel='Predicted cost')
+    ax.set(#title='Fitness evolution graph', 
+           xlabel='# iterations', ylabel='Predicted cost')
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ran = max(result['best']) - min(result['best'])
     plt.ylim(min(result['best']) - ran*0.05, max(result['best']) + ran*0.05)
-    ax.legend()
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=len(result.columns))
     #return plt.gcf()
 
 def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', enddate='EndDateUTC', order=False, downtimes=None, duedate=None):
@@ -108,9 +109,14 @@ def plot_gantt(df_task, reason_str, articlename, startdate='StartDateUTC', endda
     try:
         timerange = np.arange(0, np.max(df_task['Vis_End'])+24, 24)
         label = pd.date_range(df_task[startdate].iloc[0].floor('D'), periods = len(timerange))
+        label = label.strftime("%Y-%m-%d")
         plt.xticks(timerange, label, rotation=90)
         plt.xlim(timerange.min(), timerange.max())
         plt.xlabel('Time[h]')
+        # from matplotlib.ticker import 
+        # plt.xaxis.set_major_formatter()
+        #import matplotlib.ticker as ticker
+        #ax.xaxis.set_major_locator(ticker.MultipleLocator(1.00))
         return label
     except:
         #plt.xticks(np.linspace(df_task[startdate].min(), df_task[enddate].max(), 10), rotation=90)
@@ -218,7 +224,8 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', prod
     # first plot the gantt chart and its title
     fig.add_subplot(5, 1, (4,5))
     timerange = plot_gantt(tasks, colors, productions, downtimes=downtimes, startdate=startdate, enddate=enddate)
-    plt.title(title, y=1.15)
+    if title:
+        plt.title(title, y=1.15)
 
     # now plot the energy prices
     fig.add_subplot(5, 1, 1)
@@ -226,6 +233,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', prod
     plt.plot(prices['Euro'], drawstyle='steps-post')
     plt.ylim(bottom=-prices['Euro'].max()*0.05, top=prices['Euro'].max()*1.05)
     plt.xlim(timerange[0], timerange[-1])
+    plt.ylabel("€ / kWh")
     
     # plot the energy consumption
     fig.add_subplot(5, 1, 2)
@@ -234,6 +242,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', prod
     plt.plot(timetasks, drawstyle='steps-post')
     plt.ylim(bottom=-timetasks['Power'].max()*0.05, top=timetasks['Power'].max()*1.05)
     plt.xlim(timerange[0], timerange[-1])
+    plt.ylabel("kW")
 
     # plot the failure rate if available
     if failure_rate is not None:
@@ -243,6 +252,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', prod
         plt.plot(failure_rate, drawstyle='steps-post')
         plt.xlim(timerange[0], timerange[-1])
         plt.ylim(bottom=-0.05, top=1.05)
+        plt.ylabel("cdf")
 
     plt.tight_layout()
 

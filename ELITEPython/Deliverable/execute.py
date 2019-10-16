@@ -29,9 +29,6 @@ def main(config):
     '''
     logging.info('Scheduler v0.0.5')
 
-    # copy the config file to the export folder
-    logging.info('Copying the config file to the export folder')
-
     export = config['output_config']['export']
     export_paper = config['output_config']['export_paper']
     export_indeff = config['output_config']['export_indeff']
@@ -39,8 +36,12 @@ def main(config):
     # export_folder = config['output_config']['export_folder']
 
     if export:
+        # copy the config file to the export folder
+        logging.info('Copying the config file to the export folder')
         import shutil
         shutil.copy2(CONFIGFILE, os.path.join(export_folder, r"config_bu.ini"))
+        if config['input_config'].get('failure_xml_file', False):
+            shutil.copy2(config['input_config']['failure_xml_file'], os.path.join(export_folder, "failure_xml_file.xml"))
         
     schedule_list, settings = config_to_sched_objects(config)
     test = config['scenario_config']['test']
@@ -137,7 +138,15 @@ def main(config):
             fig = plt.figure(figsize=(15, 7), dpi=2400)
             plot_gantt(best, 'Type', 'Product', startdate='Start', enddate='End', downtimes=downtimes)
             plt.title('Gantt plot')
-            plt.savefig(os.path.join(export_folder, r"gantt_plot.pdf"))
+            plt.savefig(os.path.join(export_folder, r"gantt_plot_best.pdf"))
+            plt.close()
+            
+        if export_paper is True:
+            print('Export to {}'.format(export_folder))
+            fig = plt.figure(figsize=(15, 7), dpi=2400)
+            plot_gantt(orig, 'Type', 'Product', startdate='Start', enddate='End', downtimes=downtimes)
+            plt.title('Gantt plot')
+            plt.savefig(os.path.join(export_folder, r"gantt_plot_orig.pdf"))
             plt.close()
 
         energy_price = pd.read_csv(config['input_config']['ep_file'], index_col=0, parse_dates=True)
@@ -145,7 +154,7 @@ def main(config):
 
 
         show_energy_plot(best, energy_price,
-                         'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()),
+                         #'Best schedule - Fitness {:.1f} €'.format(best_sched.get_fitness()),
                          colors='Type', productions='Product', downtimes=downtimes, failure_rate=best_failure,
                          startdate='Start', enddate='End')
         if export:
@@ -162,7 +171,7 @@ def main(config):
         orig = orig[['Start', 'End', 'Totaltime', 'Product', 'Type', 'Power']]
 
         show_energy_plot(orig, energy_price,
-                         'Original schedule - Fitness {:.1f} €'.format(orig_sched.get_fitness()),
+                         #'Original schedule - Fitness {:.1f} €'.format(orig_sched.get_fitness()),
                          colors='Type', productions='Product', downtimes=downtimes, failure_rate=orig_failure,
                          startdate='Start', enddate='End')
         if export:

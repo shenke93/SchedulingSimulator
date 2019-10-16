@@ -1,3 +1,7 @@
+http://people.brunel.ac.uk/~mastjjb/jeb/orlib/wtinfo.html
+
+OR-Library is a collection of test data sets for a variety of Operations Research (OR) problems.
+
 There are 3 data files.
 
 The single-machine total weighted tardiness problem can be stated as 

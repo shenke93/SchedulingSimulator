@@ -50,7 +50,8 @@ from probdist import duration_run_down, Weibull, Lognormal
 from lifelines import WeibullFitter, LogNormalFitter
 from functions_auto_analyser import add_column_type, add_breaks, group_productions, remove_breaks, construct_downtimes,\
                                     save_downtimes, generate_durations, generate_energy_per_production,\
-                                    construct_energy_2tarifs, adapt_standard_matrix, ConversionTable, plot_hist
+                                    construct_energy_2tarifs, adapt_standard_matrix, ConversionTable, plot_hist,\
+                                    heatmap, annotate_heatmap
 
 print(__doc__)
 
@@ -372,9 +373,12 @@ for choice in choices:
     #mean_conversions = generate_conversion_table(df_task, reasons_absolute_conversion + reasons_absolute_cleaning, 
     #                                             'ProductionRequestId', choice_type)
 
+    var_conversions = ct.return_variance_conversions()
     #if print_all:
     #    print(mean_conversions)
     #import pdb; pdb.set_trace()
+    
+    std_conversions = ct.return_std_conversions()
 
     print('Adapting the conversion time matrix - Redefining diagonal')
     #new_mc = adapt_standard_matrix(mean_conversions)
@@ -431,20 +435,48 @@ for choice in choices:
         # export
         new_mc.to_csv(newname)
         num_conversions.to_csv(splitext(output_used)[0] + '_num_conversions.csv')
+        std_conversions.to_csv(splitext(output_used)[0] + '_std_conversions.csv')
         conversion_times = ET.SubElement(files, "conversion_times")
         conversion_times.text = os.path.split(newname)[1]    
 
-    annot = False if choice_type == 'ArticleCode' else True
+    #annot = False if choice_type == 'ArticleCode' else True
+    annot = True
     sns.heatmap(new_mc, annot=annot, fmt=".0f")
+    # fig, ax = plt.subplots()
+    # plt.figure(figsize=(12, 16))
+    # im, cbar = heatmap(np.array(new_mc), new_mc.columns, new_mc.columns, cmap="YlGn")
+    # texts = annotate_heatmap(im)
     plt.tight_layout()
-    plt.savefig(splitext(output_used)[0] + '_conversions.pdf', dpi=2400, figsize=(6, 8))
+    plt.savefig(splitext(output_used)[0] + '_conversions.pdf', dpi=2400)
+    #plt.show()
     plt.close()
     
     sns.heatmap(num_conversions, annot=annot, fmt=".0f")
+    # fig, ax = plt.subplots()
+    # plt.figure(figsize=(12, 16))
+    # im, cbar = heatmap(np.array(num_conversions), num_conversions.columns, num_conversions.columns, cmap="YlGn")
+    # texts = annotate_heatmap(im)
     plt.tight_layout()
-    plt.savefig(splitext(output_used)[0] + '_num_conversions.pdf', dpi=2400, figsize=(6, 8))
+    plt.savefig(splitext(output_used)[0] + '_num_conversions.pdf', dpi=2400)
     plt.close()
+    
+    # #fig, ax = plt.subplots()
+    # # plt.figure(figsize=(12, 16))
+    # sns.heatmap(var_conversions, annot=annot, fmt="4.0e")
+    # # im, cbar = heatmap(np.array(var_conversions), var_conversions.columns, var_conversions.columns, cmap="YlGn")
+    # # texts = annotate_heatmap(im)    
+    # plt.tight_layout()
+    # plt.savefig(splitext(output_used)[0] + '_variance_conversions.pdf', dpi=2400)
+    # plt.close()
 
+    # fig, ax = plt.subplots()
+    # plt.figure(figsize=(12, 16))
+    sns.heatmap(std_conversions, annot=annot, fmt="4.0e")
+    # im, cbar = heatmap(np.array(std_conversions), std_conversions.columns, std_conversions.columns, cmap="YlGn")
+    # texts = annotate_heatmap(im)   
+    plt.tight_layout()
+    plt.savefig(splitext(output_used)[0] + '_std_conversions.pdf', dpi=2400)
+    plt.close()
 
     #print('Generating cleaning times between the types')
     #print('Exporting the cleaning time matrix')

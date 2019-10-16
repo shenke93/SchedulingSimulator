@@ -663,6 +663,7 @@ def read_config_file(path):
         return_sections['input_config']['prc_file'] = None
         return_sections['input_config']['ep_file'] = os.path.join(configfolder, this_section['energy_price_file'])
         return_sections['input_config']['ji_file'] = os.path.join(configfolder, this_section['job_info_file'])
+        return_sections['input_config']['failure_xml_file'] = os.path.join(configfolder, this_section['failure_xml_file'])
         return_sections['input_config']['failure_info'] \
             = read_failure_info(os.path.join(configfolder, this_section['failure_xml_file']))
         return_sections['input_config']['prec_file'] = None

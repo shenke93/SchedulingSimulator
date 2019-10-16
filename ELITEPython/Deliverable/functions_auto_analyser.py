@@ -3,6 +3,9 @@ These are the functions used in the automatic analyser
 '''
 import numpy as np
 import pandas as pd
+from itertools import product
+import matplotlib.pyplot as plt
+import matplotlib
 
 def add_column_type(df, from_col='ArticleName', choice='BigPack'):
     '''
@@ -188,7 +191,7 @@ def generate_durations(group, beforedays=None, afterdays=None, randomfactor=None
     return out
     #out.to_csv(output)
 
-def generate_energy_per_production(group, choice=None, df_merged=None):
+def generate_energy_per_production(group, fixed_price=8, variable_price=4, fixed_energy=8, variable_energy=4):
     
     #articlenum = len(group.ArticleName.unique())
     #fs = pd.read_csv(file_speed, index_col=0)
@@ -197,8 +200,8 @@ def generate_energy_per_production(group, choice=None, df_merged=None):
     #             .reset_index(drop=True)
     # group = group.merge(file_speed, left_index=True, right_on='ProductionRequestId', how='left')\
     #                     .set_index('ProductionRequestId').fillna(1.0)
-    rand1 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='UnitPrice')    # unit price
-    rand2 = pd.Series(np.random.random_sample((len(group),)) * 1 + 0.5, index=group.index, name='Power')  # power
+    rand1 = pd.Series(np.random.random_sample((len(group),)) * 4 + 8, index=group.index, name='UnitPrice')    # unit price
+    rand2 = pd.Series(np.random.random_sample((len(group),)) * 4 + 8, index=group.index, name='Power')  # power
     rand3 = pd.Series(np.random.randint(1, 10, (len(group),)), index=group.index, name='Weight') #weights
     
     energycons = pd.concat([group, 
@@ -211,32 +214,6 @@ def generate_energy_per_production(group, choice=None, df_merged=None):
     energycons.loc[energycons['Type']=='NONE', 'Weight'] = 0
     energycons.loc[energycons['Type']=='NONE', 'Quantity'] = \
         energycons.loc[energycons['Type']=='NONE', 'Totaltime']
-    
-    # if choice:
-    #     raise NameError('Not defined any more (please fix).')
-    #     assert(df_merged is not None)
-    #     energycons = add_column_type(energycons, from_col='ProductDescription', choice=choice)
-    #     energycons = energycons.merge(df_merged[['Availability']], left_on=choice, right_index=True)
-    #     energycons = energycons.drop(choice, axis=1)
-    #     energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate', 'Availability']
-    # else:
-    #     energycons.columns = ['Product', 'UnitPrice',  'Power', 'TargetProductionRate']
-    #energycons.insert(1, 'UnitPrice', 5)
-    #energycons.insert(len(energycons.columns), 'TargetProductionRate', 3000)
-    #energycons.loc[energycons.Product == 'NONE', 'Power'] = 0
-    # if choice:
-    #     energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
-    #                                    'Availability': 1}, ignore_index=True)
-    #     energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 'TargetProductionRate': 1,
-    #                                    'Availability': 1}, ignore_index=True)
-    #else:
-    #    energycons = energycons.append({'Product': 'NONE', 'UnitPrice': 0, 
-    #                                    'Power': 0, 'TargetProductionRate': 1}, ignore_index=True)
-    #    energycons = energycons.append({'Product': 'MAINTENANCE', 'UnitPrice': 0, 'Power': 0, 
-    #                                    'TargetProductionRate': 1}, ignore_index=True)
-    # energycons.loc[:, 'Weight'] = 1
-    # energycons.loc[energycons.Product == 'NONE', 'Weight'] = 0
-    # energycons.loc[energycons.Product == 'MAINTENANCE', 'Weight'] = 0
     return energycons
 
 def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):
@@ -251,6 +228,7 @@ def construct_energy_2tarifs(ran, daytarif, nighttarif, starttime, endtime):
 
 
 class ConversionTable(object):
+    
     def __init__(self, df, reasons, unique_col='ProductionRequestId', type_col='PastaType', duration_col='Duration'):
         self.df = df
         self.reasons = reasons
@@ -300,8 +278,8 @@ class ConversionTable(object):
             
     
     def return_mean_conversions(self, drop_zeros=True):
-        # Convert the list into a matrix
         from itertools import product
+        # Convert the list into a matrix
         l, mat = self.output_matrix()
         copy_mat = mat.copy()
         for i, j in product(range(len(l)), range(len(l))):
@@ -313,8 +291,8 @@ class ConversionTable(object):
         return pd_out
     
     def return_median_conversions(self, drop_zeros=True):
-        # Convert the list into a matrix
         from itertools import product
+        # Convert the list into a matrix
         l, mat = self.output_matrix()
         copy_mat = mat.copy()
         for i, j in product(range(len(l)), range(len(l))):
@@ -326,8 +304,8 @@ class ConversionTable(object):
         return pd_out
     
     def return_num_conversions(self):
-        # Convert the list into a numeric matrix
         from itertools import product
+        # Convert the list into a numeric matrix
         l, mat = self.output_matrix()
         copy_mat = mat.copy()
         for i, j in product(range(len(l)), range(len(l))):
@@ -335,6 +313,30 @@ class ConversionTable(object):
             all_complete = mat[i][j]
             num_conversions = len(all_complete)
             copy_mat[i][j] = num_conversions
+        pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
+        return pd_out
+    
+    def return_variance_conversions(self):
+        from itertools import product
+        # Convert into a matrix with the variance of the conversion
+        l, mat = self.output_matrix()
+        copy_mat = mat.copy()
+        for i, j in product(range(len(l)), range(len(l))):
+            all_complete = mat[i][j]
+            variance_conversions = np.var(all_complete)
+            copy_mat[i][j] = variance_conversions
+        pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
+        return pd_out
+    
+    def return_std_conversions(self):
+        from itertools import product
+        # Convert into a matrix with the variance of the conversion
+        l, mat = self.output_matrix()
+        copy_mat = mat.copy()
+        for i, j in product(range(len(l)), range(len(l))):
+            all_complete = mat[i][j]
+            variance_conversions = np.std(all_complete)
+            copy_mat[i][j] = variance_conversions
         pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
         return pd_out
 
@@ -449,3 +451,122 @@ def plot_hist(runtime, obs_run, cutoff_perc, fitter):
     plt.xlim(0, maxt)
     plt.legend()
     return df_hist, ran
+
+def heatmap(data, row_labels, col_labels, ax=None,
+                cbar_kw={}, cbarlabel="", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Parameters
+    ----------
+    data
+        A 2D numpy array of shape (N, M).
+    row_labels
+        A list or array of length N with the labels for the rows.
+    col_labels
+        A list or array of length M with the labels for the columns.
+    ax
+        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+        not provided, use current axes or create a new one.  Optional.
+    cbar_kw
+        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+    cbarlabel
+        The label for the colorbar.  Optional.
+    **kwargs
+        All other arguments are forwarded to `imshow`.
+    """
+
+    if not ax:
+        ax = plt.gca()
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    # We want to show all ticks...
+    ax.set_xticks(np.arange(data.shape[1]))
+    ax.set_yticks(np.arange(data.shape[0]))
+    # ... and label them with the respective list entries.
+    ax.set_xticklabels(col_labels)
+    ax.set_yticklabels(row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False,
+                labeltop=True, labelbottom=False)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+            rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    for edge, spine in ax.spines.items():
+        spine.set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
+
+
+def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
+                    textcolors=["black", "white"],
+                    threshold=None, **textkw):
+    """
+    A function to annotate a heatmap.
+
+    Parameters
+    ----------
+    im
+        The AxesImage to be labeled.
+    data
+        Data used to annotate.  If None, the image's data is used.  Optional.
+    valfmt
+        The format of the annotations inside the heatmap.  This should either
+        use the string format method, e.g. "$ {x:.2f}", or be a
+        `matplotlib.ticker.Formatter`.  Optional.
+    textcolors
+        A list or array of two color specifications.  The first is used for
+        values below a threshold, the second for those above.  Optional.
+    threshold
+        Value in data units according to which the colors from textcolors are
+        applied.  If None (the default) uses the middle of the colormap as
+        separation.  Optional.
+    **kwargs
+        All other arguments are forwarded to each call to `text` used to create
+        the text labels.
+    """
+
+    if not isinstance(data, (list, np.ndarray)):
+        data = im.get_array()
+
+    # Normalize the threshold to the images color range.
+    if threshold is not None:
+        threshold = im.norm(threshold)
+    else:
+        threshold = im.norm(data.max())/2.
+
+    # Set default alignment to center, but allow it to be
+    # overwritten by textkw.
+    kw = dict(horizontalalignment="center",
+            verticalalignment="center")
+    kw.update(textkw)
+
+    # Get the formatter in case a string is supplied
+    if isinstance(valfmt, str):
+        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+
+    # Loop over the data and create a `Text` for each "pixel".
+    # Change the text's color depending on the data.
+    texts = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
+            text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+            texts.append(text)
+
+    return texts

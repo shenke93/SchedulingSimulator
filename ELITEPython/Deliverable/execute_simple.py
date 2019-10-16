@@ -15,7 +15,7 @@ os.chdir(curdir)
 #from SchedulerV000 import run_opt
 #from visualise_lib import show_ga_results, plot_gantt, show_energy_plot
 
-NUM = 100
+NUM = 50
 FILENAME = fr'OR dataset\wt{NUM}.txt'
 OUTPUT_FILENAME = fr'OR dataset\wtself{NUM}.txt'
 TIMING_FILENAME = fr'OR dataset\timing{NUM}.txt'
@@ -23,10 +23,10 @@ TIMING_FILENAME = fr'OR dataset\timing{NUM}.txt'
 def read_file_num(filename, num_jobs):
     with open(filename) as f:
         read_data = f.read()
-        
+  
     temp = re.findall(r"\d+", read_data)
     temp = [int(t) for t in temp]
-    
+
     list_jobs = []
     list_priorities = []
     list_duedate = []
@@ -46,9 +46,7 @@ def read_file_num(filename, num_jobs):
         if (j == num_jobs*3 - 1):
             list_jobs.append(temp_jobs)
             list_priorities.append(temp_priorities)
-            list_duedate.append(temp_duedate)
-        
-            
+            list_duedate.append(temp_duedate)   
     return list_jobs, list_priorities, list_duedate
 
 if __name__ == "__main__":
@@ -70,8 +68,8 @@ if __name__ == "__main__":
     
         # Get the settings for the scheduler
         settings = GA_settings(pop_size=8, cross_rate=0.5, mutation_rate=0.8,
-                               num_mutations=5, iterations=25000,
-                               adapt_ifin=[2500, 5000, 7500, 10000])
+                               num_mutations=1, iterations=25000,
+                               adapt_ifin=[5000, 10000, 15000, 20000])
     
         num += 1
         print('Run #'+ str(num))
