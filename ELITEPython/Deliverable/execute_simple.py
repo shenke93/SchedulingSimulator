@@ -15,7 +15,7 @@ os.chdir(curdir)
 #from SchedulerV000 import run_opt
 #from visualise_lib import show_ga_results, plot_gantt, show_energy_plot
 
-NUM = 50
+NUM = 40
 FILENAME = fr'OR dataset\wt{NUM}.txt'
 OUTPUT_FILENAME = fr'OR dataset\wtself{NUM}.txt'
 TIMING_FILENAME = fr'OR dataset\timing{NUM}.txt'

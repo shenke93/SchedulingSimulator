@@ -726,7 +726,8 @@ def read_config_file(path):
         #return_sections['output_config'] = my_config_parser(output_actions, this_section)
         return_sections['output_config'] = {}
         return_sections['output_config']['export_folder'] =\
-            os.path.join(pathname, this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M%S", localtime()))
+            os.path.join(pathname, this_section['export_folder'] + '_' + strftime("%Y%m%d_%H%M%S", localtime()) +\
+                         '_' + config['scenario-config']['test'])
 
         return_sections['output_config']['interactive'] = False
         if 'interactive' in this_section:
