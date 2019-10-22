@@ -179,7 +179,7 @@ class Scheduler(object):
         Get fitness values for all individuals in a generation.
         '''
         wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
-        we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
+        we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_changeover', 0)
         wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
         wp = self.weights.get('weight_precedence', 0); nc = self.weights.get('num_changeovers', 0)
         factors = (wf, wvf, we, wc, wb, wft, wp, nc)
@@ -201,7 +201,7 @@ class Scheduler(object):
         else:
             energy_cost = [0 for i in sub_pop]
         if wc:
-            conversion_cost = [np.array(i.get_conversion_cost(detail=detail)) for i in sub_pop]
+            conversion_cost = [np.array(i.get_changeover_cost(detail=detail)) for i in sub_pop]
         else:
             conversion_cost = [0 for i in sub_pop]
         if wb:
@@ -217,7 +217,7 @@ class Scheduler(object):
         else:
             precedence_cost = [0 for i in sub_pop]
         if nc:
-            num_conversions = [np.array(i.get_num_conversions(detail=detail)) for i in sub_pop]
+            num_conversions = [np.array(i.get_num_changeovers(detail=detail)) for i in sub_pop]
         else:
             num_conversions = [0 for i in sub_pop]
         if split_types:
@@ -389,7 +389,7 @@ class GA(Scheduler):
             #winner_loser = np.array([winner_out, loser_out])
         return winner_loser
 
-    def mutate(self, loser, prob=False, perimeter=3):
+    def mutate(self, loser, prob=False, perimeter=None):
         ''' Using microbial genetic evolution strategy, mutation only works on the loser.
         Two random points change place here.
         '''
@@ -407,7 +407,9 @@ class GA(Scheduler):
             # prob.pop(int(point))
             # inverse = list(np.array(prob).max() - np.array(prob))
             # inverse = inverse / sum(inverse)
-            perimeter = 10
+            # perimeter = 10
+            if perimeter == None:
+                perimeter = len(tmpl)
             random_number = np.random.choice(list(range(-perimeter, perimeter+1)), size=1)
             swap_point = int(point) + int(random_number)
             if swap_point >= len(loser):
@@ -531,9 +533,9 @@ class GA(Scheduler):
                         #print(detailed_fitness)
                         mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
                         #loser = self.mutate(loser)
-                        loser = self.mutate_swap(loser, mutation_prob)
+                        loser = self.mutate(loser, mutation_prob)
                     elif evolution == 'random':
-                        loser = self.mutate_swap(loser)
+                        loser = self.mutate(loser)
                     else:
                         raise ValueError('Evolution parameter should be one of [random, roulette], not found.')
                 winner_loser[1] = loser

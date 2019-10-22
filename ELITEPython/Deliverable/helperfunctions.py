@@ -781,7 +781,7 @@ def read_config_file(path):
             'weight_failure': ['weight_failure', float, return_0],
             'weight_virtual_failure': ['weight_virtual_failure', float, return_0],
             'weight_flowtime': ['weight_flowtime', float, return_0],
-            'weight_conversion': ['weight_conversion', float, return_0],
+            'weight_changeover': ['weight_changeover', float, return_0],
             'weight_makespan': ['weight_makespan', float, return_0],
             'weight_tardiness': ['weight_tardiness', float, return_0],
             'weight_precedence': ['weight_precedence', float, return_0],
