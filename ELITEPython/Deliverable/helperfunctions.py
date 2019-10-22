@@ -63,12 +63,10 @@ def read_precedence(precedenceFile):
             for row in reader:
                 key = int(row['Before'])
 #               print(key)
-                if key in precedence_dict: 
-#                   print("In")
-                    precedence_dict[key].append(int(row['After']))
-                else:
-#                   print("Not In")
-                    precedence_dict[key] = [int(row['After'])]
+                if key not in precedence_dict:
+                    precedence_dict[key] = []
+                precedence_dict[key].append(int(row['After']))
+
     except:
         print("Unexpected error when reading precedence information from '{}'".format(precedenceFile)) 
         raise
@@ -787,6 +785,7 @@ def read_config_file(path):
             'weight_makespan': ['weight_makespan', float, return_0],
             'weight_tardiness': ['weight_tardiness', float, return_0],
             'weight_precedence': ['weight_precedence', float, return_0],
+            'num_changeovers': ['num_changeovers', float, return_0]
         }
         
         scenario_actions = {

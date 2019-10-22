@@ -181,7 +181,8 @@ class Scheduler(object):
         wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
         we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
         wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0)
-        factors = (wf, wvf, we, wc, wb)
+        wp = self.weights.get('weight_precedence', 0); nc = self.weights.get('num_changeovers', 0)
+        factors = (wf, wvf, we, wc, wb, wft, wp, nc)
         #import pdb; pdb.set_trace()
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
@@ -211,14 +212,25 @@ class Scheduler(object):
             flowtime_cost = [np.array(i.get_flowtime_cost(detail=detail)) for i in sub_pop]
         else:
             flowtime_cost = [0 for i in sub_pop]
+        if wp:
+            precedence_cost = [np.array(i.get_precedence_cost(detail=detail)) for i in sub_pop]
+        else:
+            precedence_cost = [0 for i in sub_pop]
+        if nc:
+            num_conversions = [np.array(i.get_num_conversions(detail=detail)) for i in sub_pop]
+        else:
+            num_conversions = [0 for i in sub_pop]
         if split_types:
             total_cost = (np.array(failure_cost), np.array(virtual_failure_cost), np.array(energy_cost), 
-                          np.array(conversion_cost), np.array(constraint_cost), np.array(flowtime_cost), factors)
+                          np.array(conversion_cost), np.array(constraint_cost), np.array(flowtime_cost),
+                          np.array(precedence_cost), np.array(num_conversions),
+                          factors)
         else:
             try:
                 total_cost = wf * np.array(failure_cost) + wvf * np.array(virtual_failure_cost) +\
                              we * np.array(energy_cost) + wc * np.array(conversion_cost) + wb * np.array(constraint_cost) +\
-                             wft * np.array(flowtime_cost)
+                             wft * np.array(flowtime_cost) + wp * np.array(precedence_cost) +\
+                             nc * np.array(num_conversions)
             except:
                 print(np.array(failure_cost).shape, np.array(virtual_failure_cost).shape, np.array(energy_cost).shape,
                       np.array(conversion_cost).shape, np.array(flowtime_cost).shape, np.array(constraint_cost).shape)
@@ -351,11 +363,9 @@ class GA(Scheduler):
         return winner_loser
 
     def crossover_similar(self, winner_loser): 
-        ''' Using microbial genetic evolution strategy, the crossover result is used 
-        to represent the loser.
+        ''' Using microbial genetic evolution strategy, the crossover result is used to represent the loser.
         This algorithm keeps the jobs which are common between two lists at the same place.
-        An example image of this can be found in 
-        'A genetic algorithm for hybrid flowshops, page 788'.
+        An example image of this can be found in 'A genetic algorithm for hybrid flowshops, page 788'.
         '''
         # determine common points
         #print(winner_loser.shape)
@@ -425,6 +435,7 @@ class GA(Scheduler):
                     point = int(np.random.choice(tmpl, size=1, replace=False, p=prob))
                 except:
                     import pdb; pdb.set_trace()
+                    raise
                 tmpl.pop(int(point))
                 # prob.pop(int(point))
                 # inverse = list(np.array(prob).max() - np.array(prob))
@@ -468,8 +479,10 @@ class GA(Scheduler):
                 prob = [p / sum(prob) for p in prob]
                 # roulette wheel 
                 sub_pop_idx = np.random.choice(idx, size=num_couples * 2, replace=False, p=prob)
-            else: # if evolution = 'random':
+            elif evolution == 'random': # if evolution = 'random':
                 sub_pop_idx = np.random.choice(np.arange(0, self.pop_size), size=2, replace=False)
+            else:
+                raise ValueError('Evolution parameter should be one of [random, roulette], not found.')
 
             # for each pair of schedules:
             for j in list(range(len(sub_pop_idx) >> 1)):
@@ -481,11 +494,13 @@ class GA(Scheduler):
                 #winner_loser_idx = np.argsort(fitness)
                 if evolution == 'roulette':
                     winner_loser_idx = np.sort(temp_pop_idx)
-                else:
+                elif evolution == 'random':
                     sub_pop = self.pop[temp_pop_idx] # pick 2 individuals from pop
                     fitness = self.fitness[temp_pop_idx]
                     #fitness = self.get_fitness(sub_pop) # get the fitness values of the two
                     winner_loser_idx = temp_pop_idx[np.argsort(fitness)]
+                else:
+                    raise ValueError('Evolution parameter should be one of [random, roulette], not found.')
             
 #               print('winner_loser_idx', winner_loser_idx)
 
@@ -516,9 +531,9 @@ class GA(Scheduler):
                         #print(detailed_fitness)
                         mutation_prob = [f/sum(detailed_fitness) for f in detailed_fitness]
                         #loser = self.mutate(loser)
-                        loser = self.mutate(loser, mutation_prob)
+                        loser = self.mutate_swap(loser, mutation_prob)
                     elif evolution == 'random':
-                        loser = self.mutate(loser)
+                        loser = self.mutate_swap(loser)
                     else:
                         raise ValueError('Evolution parameter should be one of [random, roulette], not found.')
                 winner_loser[1] = loser

@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.backends.backend_qt5agg
 import math
+import numpy as np
 #from CONFIGFILE import adapt_ifin
 
 plt.style.use('seaborn-darkgrid')
@@ -189,6 +190,13 @@ def main(config):
         logging.info('Generating pareto solutions')
         list_added = []
         list_result = []
+        failure_cost = []
+        virtual_failure_cost = []
+        energy_cost = []
+        conversion_cost = []
+        constraint_cost = []
+        flowtime_cost = []
+        precedence_cost = []
 
         i = 0
         for schedule in schedule_list:
@@ -206,7 +214,24 @@ def main(config):
 
             list_added.append(time)
             list_result.append(fitn)
-
+            
+            bestsched = best_sched.get_fitness(split_types=True)
+            for j in range(len(bestsched)-1):
+                if j == 0:
+                    failure_cost.append(bestsched[j] * bestsched[-1][j])
+                elif j == 1:
+                    virtual_failure_cost.append(bestsched[j] * bestsched[-1][j])
+                elif j == 2:
+                    energy_cost.append(bestsched[j] * bestsched[-1][j])
+                elif j == 3:
+                    conversion_cost.append(bestsched[j] * bestsched[-1][j])
+                elif j == 4:
+                    constraint_cost.append(bestsched[j] * bestsched[-1][j])
+                elif j == 5:
+                    flowtime_cost.append(bestsched[j] * bestsched[-1][j])
+                elif j == 6:
+                    precedence_cost.append(bestsched[j] * bestsched[-1][j])
+                
         logging.info("Final result")
         logging.info(list_added)
         logging.info(list_result)
@@ -218,10 +243,36 @@ def main(config):
         plt.xlim(0, max(list_added)+1)
         plt.ylim(min(list_result) * 0.95, max(list_result) * 1.05)
         plt.xlabel("Added breaks (hours)")
-        plt.ylabel("Total cost (Euros)")
+        plt.ylabel("Total cost (Euro)")
         plt.savefig(os.path.join(export_folder, 'output.pdf'))
         plt.savefig(os.path.join(export_folder, 'output.png'), dpi=300)
         plt.show()
+        
+        ind = list_added
+        
+        p1 = plt.bar(ind, failure_cost)
+        p2 = plt.bar(ind, virtual_failure_cost, bottom=failure_cost)
+        temp = np.array(failure_cost) + np.array(virtual_failure_cost)
+        p3 = plt.bar(ind, energy_cost, bottom=temp)
+        temp = np.array(energy_cost) + temp
+        p4 = plt.bar(ind, conversion_cost, bottom=temp)
+        temp = np.array(conversion_cost) + temp
+        p5 = plt.bar(ind, constraint_cost, bottom=temp)
+        temp = np.array(constraint_cost) + temp
+        p6 = plt.bar(ind, flowtime_cost, bottom=temp)
+        temp = np.array(precedence_cost) + temp
+        p7 = plt.bar(ind, precedence_cost, bottom=temp)
+        
+        plt.legend((p1[0], p2[0], p3[0], p4[0], p5[0], p6[0], p7[0]),
+                   ('Failure cost', 'Virtual failure cost', 'Energy cost', 
+                    'Conversion cost', 'Flowtime cost', 'Precedence cost'))
+        plt.xlabel('Added breaks (hours)')
+        plt.ylabel('Total cost (Euro)')
+        plt.savefig(os.path.join(export_folder, 'output_bars.pdf'))
+        plt.savefig(os.path.join(export_folder, 'output_bars.png'), dpi=300)
+        plt.show()
+        
+        
         
     logging.shutdown()
     

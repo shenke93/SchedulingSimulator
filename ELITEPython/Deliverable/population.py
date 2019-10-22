@@ -714,7 +714,10 @@ class Schedule:
         return energy_cost
 
     def get_num_conversions(self, detail=False):
-        num_conversions = 0
+        if detail:
+            num_conversions = [0]
+        else:
+            num_conversions = 0
         for item1, item2 in zip(list(self.time_dict.keys())[:-1], list(self.time_dict.keys())[1:]):
             # if item2 == 0:
             #     pass
@@ -724,13 +727,19 @@ class Schedule:
             try:
                 first_product_type = self.job_dict[item1]['type']
             except:
-                continue
+                first_product_type = "NONE"
             try:
                 second_product_type = self.job_dict[item2]['type']
             except:
-                continue
+                second_product_type = "NONE"
             if first_product_type != second_product_type:
-                num_conversions += 1
+                if detail:
+                    num_conversions.append(1)
+                else:
+                    num_conversions += 1
+            else:
+                if detail:
+                    num_conversions.append(0)
         return num_conversions
 
     def get_conversion_cost(self, detail=False):
@@ -977,14 +986,14 @@ class Schedule:
             wf = self.weights.get('weight_failure', 0); wvf =self.weights.get('weight_virtual_failure', 0)
             we = self.weights.get('weight_energy', 0); wc = self.weights.get('weight_conversion', 0)
             wb = self.weights.get('weight_constraint', 0); wft = self.weights.get('weight_flowtime', 0);
-            wp = self.weights.get('weight_precedence', 0)
+            wp = self.weights.get('weight_precedence', 0); wnc = self.weights.get('num_changeovers', 0)
            
         else:
             wf = weights.get('weight_failure', 0); wvf = weights.get('weight_virtual_failure', 0)
             we = weights.get('weight_energy', 0); wc = weights.get('weight_conversion', 0)
-            wb = weights.get('weight_constraint', 0); wft = weights.get('weight_flowtime', 0);
-            wp = weights.get('weight_precedence', 0)
-        factors = (wf, wvf, we, wc, wb, wft, wp)
+            wb = weights.get('weight_constraint', 0); wft = weights.get('weight_flowtime', 0)
+            wp = weights.get('weight_precedence', 0); wnc = weights.get('num_changeovers', 0)
+        factors = (wf, wvf, we, wc, wb, wft, wp, wnc)
         if wf or wvf:
             #failure_cost, virtual_failure_cost = [np.array(i.get_failure_cost(detail=detail, split_costs=True)) for i in sub_pop]
             #for i in sub_pop:
@@ -1015,10 +1024,15 @@ class Schedule:
             precedence_cost = self.get_precedence_cost(detail=detail)
         else:
             precedence_cost = 0
+        if wnc:
+            num_changeovers = self.get_num_conversions(detail=detail)
+        else:
+            num_changeovers = 0
         if split_types:
             total_cost = (np.array(failure_cost), np.array(virtual_failure_cost), np.array(energy_cost), 
                           np.array(conversion_cost), np.array(constraint_cost),
-                          np.array(flowtime_cost), np.array(precedence_cost), factors)
+                          np.array(flowtime_cost), np.array(precedence_cost), 
+                          np.array(num_changeovers), factors)
         else:
             try:
                 # if (type(conversion_cost) is list) and (type(energy_cost) is list):
@@ -1034,27 +1048,29 @@ class Schedule:
                 # conversion_cost has sometimes a length which is too long, solve it here temporarily
                 total_cost = wf * np.array(failure_cost) + wvf * np.array(virtual_failure_cost) +\
                              we * np.array(energy_cost) + wc * np.array(conversion_cost) + wb * np.array(constraint_cost) +\
-                             wft * np.array(flowtime_cost) + wp * np.array(precedence_cost)
+                             wft * np.array(flowtime_cost) + wp * np.array(precedence_cost) +\
+                             wnc * np.array(num_changeovers)
             except:
                 print()
                 print(np.array(failure_cost).shape, np.array(virtual_failure_cost).shape, np.array(energy_cost).shape,
                       np.array(conversion_cost).shape, np.array(constraint_cost).shape, np.array(flowtime_cost).shape,
-                      np.array(precedence_cost).shape)
+                      np.array(precedence_cost).shape, np.array(num_changeovers))
                 print(detail)
                 print(energy_cost)
                 print(conversion_cost)
                 print(constraint_cost)
                 print(flowtime_cost)
                 print(precedence_cost)
+                print(num_changeovers)
                 import pdb; pdb.set_trace()
                 raise
             
         return total_cost
 
     def print_fitness(self, inputstr="Total"):
-        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, factors = self.get_fitness(split_types=True)
+        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, num_conv, factors = self.get_fitness(split_types=True)
         total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3]\
-                   + d_cost * factors[4] + ft_cost * factors[5] + prec_cost * factors[6]
+                   + d_cost * factors[4] + ft_cost * factors[5] + prec_cost * factors[6] + num_conv * factors[7]
         #import pdb; pdb.set_trace()
 
         logging.info(inputstr + " failure cost: " + str(f_cost))
@@ -1070,18 +1086,19 @@ class Schedule:
         logging.info("Number of changeovers: " + str(self.get_num_conversions()))
     
     def fitness_csv(self):
-        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, factors = self.get_fitness(split_types=True)
+        f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, num_conv, factors = self.get_fitness(split_types=True)
         unweighted_total_cost = f_cost + vf_cost + e_cost + d_cost + ft_cost + prec_cost
         weighted_total_cost = f_cost * factors[0] + vf_cost * factors[1] + e_cost  * factors[2] + c_cost * factors[3]\
-                              + d_cost * factors[4] + ft_cost * factors[5] * prec_cost * factors[6]
-        indexcol = ['failure', 'virtual_failure', 'energy', 'conversion', 'due', 'flowtime', 'precedence', 'total']
-        series1 = pd.Series(data=[f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, unweighted_total_cost], 
+                              + d_cost * factors[4] + ft_cost * factors[5] * prec_cost * factors[6] + num_conv * factors[7]
+        indexcol = ['failure', 'virtual_failure', 'energy', 'conversion', 'due', 'flowtime', 'precedence', 'num_conv', 'total']
+        series1 = pd.Series(data=[f_cost, vf_cost, e_cost, c_cost, d_cost, ft_cost, prec_cost, num_conv, unweighted_total_cost], 
                             index=indexcol, name='Unweighted costs')
         series2 = pd.Series(data=factors, index=indexcol[:-1], name='Multiply factors')
         series3 = pd.Series(data=[f_cost * factors[0], vf_cost * factors[1], 
                                   e_cost * factors[2], c_cost * factors[3],
                                   d_cost * factors[4], ft_cost * factors[5],
-                                  prec_cost * factors[6], weighted_total_cost], index=indexcol, name='Weighted costs')
+                                  prec_cost * factors[6], num_conv * factors[7]
+                                  , weighted_total_cost], index=indexcol, name='Weighted costs')
         output_frame = pd.DataFrame([series1, series2, series3]).T
         return output_frame
         

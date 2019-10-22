@@ -379,6 +379,8 @@ for choice in choices:
     #import pdb; pdb.set_trace()
     
     std_conversions = ct.return_std_conversions()
+    
+    import pdb; pdb.set_trace()
 
     print('Adapting the conversion time matrix - Redefining diagonal')
     #new_mc = adapt_standard_matrix(mean_conversions)

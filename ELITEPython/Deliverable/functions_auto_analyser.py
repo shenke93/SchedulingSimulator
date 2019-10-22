@@ -339,6 +339,11 @@ class ConversionTable(object):
             copy_mat[i][j] = variance_conversions
         pd_out = pd.DataFrame(copy_mat, index=l, columns=l)
         return pd_out
+    
+    def return_all_conversions(self, type1, type2):
+        l, mat = self.output_matrix()
+        return_conversions = mat[l.index(type1)][l.index(type2)]
+        return return_conversions
 
 
 def adapt_standard_matrix(mean_conversions):
