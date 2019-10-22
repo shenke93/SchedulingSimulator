@@ -715,7 +715,7 @@ class Schedule:
 
     def get_num_changeovers(self, detail=False):
         if detail:
-            num_changeovers = [0]
+            num_changeovers = []
         else:
             num_changeovers = 0
         for item1, item2 in zip(list(self.time_dict.keys())[:-1], list(self.time_dict.keys())[1:]):
@@ -731,8 +731,7 @@ class Schedule:
             try:
                 second_product_type = self.job_dict[item2]['type']
             except:
-                #second_product_type = "NONE"
-                continue
+                second_product_type = "NONE"
             if first_product_type != second_product_type:
                 if detail:
                     num_changeovers.append(1)

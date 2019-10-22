@@ -407,7 +407,6 @@ class GA(Scheduler):
             # prob.pop(int(point))
             # inverse = list(np.array(prob).max() - np.array(prob))
             # inverse = inverse / sum(inverse)
-            # perimeter = 10
             if perimeter == None:
                 perimeter = len(tmpl)
             random_number = np.random.choice(list(range(-perimeter, perimeter+1)), size=1)

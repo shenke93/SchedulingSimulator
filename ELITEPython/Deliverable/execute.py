@@ -136,7 +136,7 @@ def main(config):
 
         if export_paper is True:
             print('Export to {}'.format(export_folder))
-            fig = plt.figure(figsize=(15, 7), dpi=2400)
+            plt.figure(figsize=(15, 7), dpi=2400)
             plot_gantt(best, 'Type', 'Product', startdate='Start', enddate='End', downtimes=downtimes)
             plt.title('Gantt plot')
             plt.savefig(os.path.join(export_folder, r"gantt_plot_best.pdf"))
@@ -144,7 +144,7 @@ def main(config):
             
         if export_paper is True:
             print('Export to {}'.format(export_folder))
-            fig = plt.figure(figsize=(15, 7), dpi=2400)
+            plt.figure(figsize=(15, 7), dpi=2400)
             plot_gantt(orig, 'Type', 'Product', startdate='Start', enddate='End', downtimes=downtimes)
             plt.title('Gantt plot')
             plt.savefig(os.path.join(export_folder, r"gantt_plot_orig.pdf"))
