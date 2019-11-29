@@ -165,8 +165,8 @@ def read_failure_data(maintenanceFile):
 class JobInfo(object):
     '''
     A class which contains the JobInfo dictionary.
-    It can also add breaks and other info to the dictionary
-    It can also change the job file based on start and end date
+    It can also add breaks and other info to the dictionary.
+    It can also change the job file based on start and end date.
     '''
     def __init__(self):
         '''
@@ -250,7 +250,7 @@ class JobInfo(object):
                 reader = csv.DictReader(jobInfo_csv)
                 for row in reader:
                     if row['Product'] != 'MAINTENANCE': # Do not read maintenance tasks
-                        job_num = int(row['ProductionRequestId'])
+                        job_ID = int(row['ProductionRequestId'])
                         # insert product name
                         #job_entry = dict({'product': row['Product']})
                         job_entry = {}
@@ -264,8 +264,8 @@ class JobInfo(object):
                                     job_entry[value[0]] = othervalue
                         
                     # add the item to the job dictionary
-                        job_dict[job_num] = job_entry
-                        job_order.append(job_num)
+                        job_dict[job_ID] = job_entry
+                        job_order.append(job_ID)
         except:
             print("Unexpected error when reading job information from {}:".format(job_file))
             raise
@@ -829,6 +829,7 @@ def read_config_file(path):
     return return_sections
 
 class GA_settings:
+    ### All parameter setting of the genetic algorithm
     def __init__(self, pop_size=12, cross_rate=0.5, mutation_rate=0.4, num_mutations=3,
                  evolution_method='roulette', validation=False, pre_selection=False,
                  iterations=25000, stop_condition=None, stop_value=5000, adapt_ifin=[]):
@@ -875,6 +876,7 @@ def config_to_sched_objects(sections):
     
     failure_downtimes = False
     if working_method == 'historical':
+        ### If in the historical mode, follow the down durations in history
         try:
             downdur_dict = read_down_durations(down_duration_file, daterange=(start_time, end_time)) # File from EnergyConsumption/InputOutput
             #print('test')
@@ -906,11 +908,13 @@ def config_to_sched_objects(sections):
         precedence_dict = None
     price_dict = read_price(energy_file)
     
+    ### Read jobs from file
     ji = JobInfo()
     ji.read_from_file(job_file)
     
     #import pdb; pdb.set_trace()
     
+    ### Select jobs according to the date range
     if (start_time != None) and (end_time != None):
         #job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
         ji.limit_range(start_time, end_time)
@@ -919,17 +923,20 @@ def config_to_sched_objects(sections):
     else:
         raise NameError('No start time found!')
     
+    ### If breakdowns exist, generate new starting job list
     if breakdown_record_file:
         record = read_breakdown_record(breakdown_record_file)
         print('Limiting range of file after disruption at time', record)
         ji.limit_range_disruptions(record)
         start_time = record
-        
+    
+    ### If urgent jobs exist, generate new starting job list    
     if urgent_job_info:
         ji_new = JobInfo()
         ji_new.read_from_file(urgent_job_info)
         ji = ji_new + ji
-        
+    
+    ### If remove all breaks    
     if remove_breaks:
         ji.remove_all_breaks()
         

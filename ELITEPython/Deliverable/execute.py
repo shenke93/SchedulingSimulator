@@ -30,21 +30,26 @@ def main(config):
     '''
     logging.info('Scheduler v0.0.5')
 
-    export = config['output_config']['export']
+    ### All flags!
+    # if export the config file will be copied to the export file.
+    export = config['output_config']['export'] 
     export_paper = config['output_config']['export_paper']
     export_indeff = config['output_config']['export_indeff']
     interactive = config['output_config']['interactive']
     # export_folder = config['output_config']['export_folder']
-
+    
     if export:
-        # copy the config file to the export folder
+        ### Copy the config file to the export folder
         logging.info('Copying the config file to the export folder')
         import shutil
         shutil.copy2(CONFIGFILE, os.path.join(export_folder, r"config_bu.ini"))
+        ### Also copy the failure models to the export folder
         if config['input_config'].get('failure_xml_file', False):
             shutil.copy2(config['input_config']['failure_xml_file'], os.path.join(export_folder, "failure_xml_file.xml"))
         
     schedule_list, settings = config_to_sched_objects(config)
+    ### settings: all GA parameters from the configure file
+    
     test = config['scenario_config']['test']
     
     if test == 'GA':
@@ -277,6 +282,7 @@ def main(config):
     logging.shutdown()
     
 if __name__ == "__main__":
+    ### Find the config file
     if getattr(sys, 'frozen', False):
         # frozen
         pathname = os.path.dirname(sys.executable)
@@ -287,7 +293,7 @@ if __name__ == "__main__":
     os.chdir(pathname)
     CONFIGFILE = os.path.join(os.path.abspath(os.curdir), 'config.ini')
     
-    # Read the config file
+    ### Read the config file
     if os.path.exists(CONFIGFILE):
         config = read_config_file(CONFIGFILE)
         #from helperfunctions import Config
@@ -298,10 +304,12 @@ if __name__ == "__main__":
 
     # Make the export folder and start logging in the logging file
     export_folder = config['output_config']['export_folder']
-
+    
+    ### Set the output place
     if not os.path.exists(export_folder):
         os.makedirs(export_folder)
     start_logging(os.path.join(export_folder, 'out.log'))
     logging.info("Starting logging")
-
+    
+    ### Run the main function
     main(config)
