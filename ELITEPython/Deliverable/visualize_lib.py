@@ -15,13 +15,18 @@ def show_ga_results(result):
     #fig, ax = plt.subplots(figsize=(6, 4))
     #result_rolling = result.rolling(int(len(result)/20)).mean()
     #result_rolling.columns = [c + '_rolling_mean' for c in result_rolling.columns]
+#     result[['best', 'worst', 'mean']].plot(style=['s-', 'o-', '^-'])
+#     result[['best', 'worst', 'mean']].plot(style=['-', '--', '-.'])
+#     result[['best', 'worst', 'mean']].plot(style=['-', '--', ','])
     result[['best', 'worst', 'mean']].plot()
+
+
     ax = plt.gca()
     ax.set(#title='Fitness evolution graph', 
-           xlabel='# iterations', ylabel='Predicted cost')
+           xlabel='Iterations', ylabel='Cost(€)')
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ran = max(result['best']) - min(result['best'])
-    plt.ylim(min(result['best']) - ran*0.05, max(result['best']) + ran*0.05)
+#     ran = max(result['best']) - min(result['best'])
+#     plt.ylim(min(result['best']) - ran*0.05, max(result['best']) + ran*0.05)
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=len(result.columns))
     #return plt.gcf()
 
@@ -233,7 +238,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', prod
     plt.plot(prices['Euro'], drawstyle='steps-post')
     plt.ylim(bottom=-prices['Euro'].max()*0.05, top=prices['Euro'].max()*1.05)
     plt.xlim(timerange[0], timerange[-1])
-    plt.ylabel("€ / kWh")
+    plt.ylabel("€ / MWH")
     
     # plot the energy consumption
     fig.add_subplot(5, 1, 2)
@@ -242,7 +247,7 @@ def show_energy_plot(tasks, prices, title='Schedule', colors='ArticleName', prod
     plt.plot(timetasks, drawstyle='steps-post')
     plt.ylim(bottom=-timetasks['Power'].max()*0.05, top=timetasks['Power'].max()*1.05)
     plt.xlim(timerange[0], timerange[-1])
-    plt.ylabel("kW")
+    plt.ylabel("MW")
 
     # plot the failure rate if available
     if failure_rate is not None:

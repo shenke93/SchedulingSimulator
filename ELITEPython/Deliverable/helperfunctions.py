@@ -832,7 +832,7 @@ class GA_settings:
     ### All parameter setting of the genetic algorithm
     def __init__(self, pop_size=12, cross_rate=0.5, mutation_rate=0.4, num_mutations=3,
                  evolution_method='roulette', validation=False, pre_selection=False,
-                 iterations=25000, stop_condition=None, stop_value=5000, adapt_ifin=[]):
+                 iterations=0, stop_condition=None, stop_value=5000, adapt_ifin=[]):
         self.pop_size = pop_size
         self.cross_rate = cross_rate
         self.mutation_rate = mutation_rate
@@ -915,13 +915,14 @@ def config_to_sched_objects(sections):
     #import pdb; pdb.set_trace()
     
     ### Select jobs according to the date range
-    if (start_time != None) and (end_time != None):
-        #job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
-        ji.limit_range(start_time, end_time)
-    elif (start_time != None):
-        ji.limit_range(start_time)
-    else:
-        raise NameError('No start time found!')
+    ### TODO: no need of start/end
+#     if (start_time != None) and (end_time != None):
+#         #job_dict_new = select_from_range(start_time, end_time, read_jobs(job_file), 'start', 'end') # File from EnergyConsumption/InputOutput
+#         ji.limit_range(start_time, end_time)
+#     elif (start_time != None):
+#         ji.limit_range(start_time)
+#     else:
+#         raise NameError('No start time found!')
     
     ### If breakdowns exist, generate new starting job list
     if breakdown_record_file:
@@ -944,11 +945,14 @@ def config_to_sched_objects(sections):
     
     if test == 'GA':
         if add_time > 0:
+            ### If add break times
             ji.add_breaks(add_time)
         sched = Schedule(ji.job_order, ji.job_dict, start_time, downdur_dict,
                         price_dict, precedence_dict, failure_info, scenario, 
                         duration_str, working_method, weights)
         first_schedule_list.append(sched)
+        
+    ### If use Pareto Front
     if test == 'PAR':
         for time in add_time_list:
             import copy
@@ -964,6 +968,7 @@ def config_to_sched_objects(sections):
     # first_schedule = Schedule(ji.job_order, ji.job_dict, start_time, product_related_characteristics_dict, down_duration_dict,
     #                         price_dict, precedence_dict, failure_info, scenario, duration_str, working_method, weights)
     
+    ### Dict for scenario settings
     init_dict = {}
     
     if sections['scenario_config']['pop_size']:

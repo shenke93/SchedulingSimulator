@@ -49,17 +49,31 @@ def main(config):
         
     schedule_list, settings = config_to_sched_objects(config)
     ### settings: all GA parameters from the configure file
+    ### schedule_list: initial list for optimizations
     
     test = config['scenario_config']['test']
     
     if test == 'GA':
+        ### Run the genetic algorithm
         schedule = schedule_list[0]
+        
+#         print("schedule order:", schedule.order)
+#         print("Schedule dict:", schedule.job_dict)
+#         print("Schedule scenario:", schedule.scenario)
+#         print("Schedule weights:", schedule.weights)
+#         exit()
+
+        # TODO:
+        ### Generate the new Input from the original input
+        ### Alternative: using groupby on the input file. Done.
+        
+        
         best_result, orig_result, best_sched, \
         orig_sched, lists_result = run_opt(schedule, settings)
 
         logging.info('Execution finished.')
         
-        # Show iteration results
+        ### Show iteration results
         show_ga_results(lists_result)
         if export:
             out_df = lists_result
@@ -83,7 +97,8 @@ def main(config):
         #     plt.show()
         # else:
         #     plt.close()            
-            
+        
+        ### Make the Gantt plot    
         # Show in Gantt plot 
         # -----------------
         result_dict = best_sched.get_time()
