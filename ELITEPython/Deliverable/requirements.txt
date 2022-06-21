@@ -1,5 +1,5 @@
 pandas == 0.24
-numpy == 1.16
+numpy == 1.22.0
 matplotlib == 3.0
 scipy
 sympy
